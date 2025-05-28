@@ -586,4 +586,127 @@ document.addEventListener('DOMContentLoaded', () => {
             goldenLayoutInstance.updateSize();
         }
     });
+
+    // Expose editor state globally for debugging
+    const editorDebugInterface = {
+        get projectFiles() { return projectFiles; },
+        set projectFiles(newProjectFiles) {
+            console.log('[Debug] Setting projectFiles. Old:', projectFiles, 'New:', newProjectFiles);
+            projectFiles = newProjectFiles;
+            if (projectFilesComponentInstance) {
+                projectFilesComponentInstance.updateFileListDisplay();
+            }
+            renderPreviewFromState();
+            console.log('[Debug] projectFiles set and UI updated (file list, preview).');
+        },
+
+        get goldenLayoutInstance() { return goldenLayoutInstance; },
+        // No setter for goldenLayoutInstance as it's foundational
+
+        get activeEditorFileId() { return activeEditorFileId; },
+        set activeEditorFileId(newFileId) {
+            console.log('[Debug] Setting activeEditorFileId to:', newFileId);
+            activeEditorFileId = newFileId;
+            if (projectFilesComponentInstance) {
+                projectFilesComponentInstance.updateFileListDisplay(); // Update highlight
+            }
+            // Attempt to focus the editor tab
+            if (this.editorStack && projectFiles[newFileId]) {
+                const itemToFocus = this.editorStack.contentItems.find(item => {
+                    const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+                    return state && state.fileId === newFileId;
+                });
+                if (itemToFocus) {
+                    this.editorStack.setActiveContentItem(itemToFocus);
+                    console.log('[Debug] Focused editor tab for:', newFileId);
+                } else {
+                    console.log('[Debug] No open editor tab found to focus for:', newFileId);
+                }
+            }
+        },
+
+        get projectFilesComponentInstance() { return projectFilesComponentInstance; },
+        // No setter for projectFilesComponentInstance
+
+        get editorStack() {
+            return goldenLayoutInstance ? goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack') : null;
+        },
+
+        // --- Helper functions for more granular control ---
+        setProjectFileContent(fileId, content) {
+            if (projectFiles[fileId]) {
+                console.log(`[Debug] Setting content for fileId: ${fileId}`);
+                projectFiles[fileId].content = content;
+
+                // Update Ace editor if open
+                const editorStack = this.editorStack;
+                if (editorStack) {
+                    const openTab = editorStack.contentItems.find(item => {
+                        const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+                        return state && state.fileId === fileId;
+                    });
+                    if (openTab && openTab.container && openTab.container.componentReference && openTab.container.componentReference.editor) {
+                        const editor = openTab.container.componentReference.editor;
+                        if (editor.getValue() !== content) {
+                            editor.setValue(content, -1); // -1 moves cursor to beginning
+                            console.log(`[Debug] Updated Ace editor content for fileId: ${fileId}`);
+                        }
+                    }
+                }
+                renderPreviewFromState();
+            } else {
+                console.warn(`[Debug] setProjectFileContent: fileId ${fileId} not found.`);
+            }
+        },
+
+        getProjectFileContent(fileId) {
+            return projectFiles[fileId] ? projectFiles[fileId].content : undefined;
+        },
+
+        refreshPreview() {
+            console.log('[Debug] Manually refreshing preview.');
+            renderPreviewFromState();
+        },
+
+        refreshProjectFilesList() {
+            if (projectFilesComponentInstance) {
+                console.log('[Debug] Manually refreshing project files list.');
+                projectFilesComponentInstance.updateFileListDisplay();
+            }
+        },
+        
+        focusEditorTabByFileId(fileId) {
+            if (this.editorStack && projectFiles[fileId]) {
+                const itemToFocus = this.editorStack.contentItems.find(item => {
+                    const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+                    return state && state.fileId === fileId;
+                });
+                if (itemToFocus) {
+                    this.editorStack.setActiveContentItem(itemToFocus);
+                    console.log(`[Debug] Attempted to focus editor tab for fileId: ${fileId}`);
+                    return true;
+                }
+            }
+            console.warn(`[Debug] Could not focus editor tab for fileId: ${fileId} (not found or stack unavailable).`);
+            return false;
+        },
+
+        getAllEditorInstances() {
+            const es = this.editorStack;
+            if (es && es.contentItems) {
+                return es.contentItems
+                    .map(item => item.container && item.container.componentReference && item.container.componentReference.editor)
+                    .filter(editor => !!editor);
+            }
+            return [];
+        },
+
+        getActiveEditorInstance() {
+            const es = this.editorStack;
+            const activeItem = es ? es.getActiveContentItem() : null;
+            return activeItem && activeItem.container && activeItem.container.componentReference ? activeItem.container.componentReference.editor : null;
+        }
+    };
+    window.__$goldenviewerEditor = editorDebugInterface;
+    console.log('[DOMContentLoaded] Editor state exposed globally as window.__$goldenviewerEditor with setters and helpers.');
 });
