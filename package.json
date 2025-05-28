@@ -20,7 +20,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "ace-builds": "^1.33.0",
-    "express": "^4.17.1",
+    "express": "^5.0.0",
     "golden-layout": "^2.6.0",
     "tslib": "^2.8.1"
   },
