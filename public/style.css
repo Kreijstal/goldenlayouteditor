@@ -1,0 +1,23 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* Prevents scrollbars on the body */
+}
+
+#layoutContainer {
+    width: 100%;
+    height: 100%;
+}
+
+/* Basic styling for the iframe preview */
+.preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Basic styling for the editor container */
+.editor-container {
+    width: 100%;
+    height: 100%;
+}
