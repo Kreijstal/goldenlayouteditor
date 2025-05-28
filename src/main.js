@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let previewFrame;
 let goldenLayoutInstance;
 let projectFilesComponentInstance; // To access its methods
+let activeEditorFileId = null; // To track the currently active file in the editor
 
 // Helper to generate unique IDs for new files
 function generateUniqueFileId() {
@@ -231,77 +232,120 @@ class ProjectFilesComponent {
         this.ul.innerHTML = ''; // Clear existing list
         Object.values(projectFiles).forEach(file => {
             const li = document.createElement('li');
-            li.style.display = 'flex'; // For aligning name and button
-            li.style.justifyContent = 'space-between'; // Space them out
-            li.style.alignItems = 'center';
             li.style.padding = '5px 0';
+            li.style.display = 'flex';
+            li.style.alignItems = 'center';
+            if (file.id === activeEditorFileId) {
+                li.classList.add('active-file');
+            }
 
             const nameSpan = document.createElement('span');
             nameSpan.textContent = file.name;
             nameSpan.style.cursor = 'pointer';
+            nameSpan.style.flexGrow = '1'; // Allow span to take available space
             nameSpan.setAttribute('data-file-id', file.id);
-            nameSpan.onclick = () => {
-                console.log(`[ProjectFilesComponent] Clicked on file: ${file.name} (ID: ${file.id})`);
+            
+            nameSpan.onclick = () => { // Click to open/focus editor
+                console.log(`[ProjectFilesComponent] Clicked on file: ${file.name} (ID: ${file.id}) to open/focus.`);
                 this.openOrFocusEditor(file.id);
             };
-            li.appendChild(nameSpan);
-
-            const renameButton = document.createElement('button');
-            renameButton.textContent = 'Rename';
-            renameButton.style.marginLeft = '10px';
-            renameButton.style.padding = '2px 5px';
-            renameButton.style.fontSize = '0.8em';
-            renameButton.onclick = (e) => {
-                e.stopPropagation(); // Prevent li click event
-                this.renameFile(file.id);
+            nameSpan.ondblclick = () => { // Double click to rename
+                console.log(`[ProjectFilesComponent] Double-clicked on file: ${file.name} (ID: ${file.id}) to rename.`);
+                this.enterRenameMode(file.id, nameSpan, li);
             };
-            li.appendChild(renameButton);
-
+            li.appendChild(nameSpan);
             this.ul.appendChild(li);
         });
-        console.log('[ProjectFilesComponent] File list display updated.');
+        console.log('[ProjectFilesComponent] File list display updated. Active file ID:', activeEditorFileId);
     }
 
-    renameFile(fileId) {
+    enterRenameMode(fileId, nameSpanElement, listItemElement) {
+        const currentName = projectFiles[fileId].name;
+        nameSpanElement.style.display = 'none'; // Hide the span
+
+        const inputElement = document.createElement('input');
+        inputElement.type = 'text';
+        inputElement.value = currentName;
+        inputElement.style.width = 'calc(100% - 10px)'; // Adjust width as needed
+        inputElement.style.padding = '2px';
+        inputElement.style.border = '1px solid #ccc';
+        inputElement.style.fontFamily = 'sans-serif'; // Match font
+
+        const commit = () => {
+            this.commitRename(fileId, inputElement.value, nameSpanElement, inputElement);
+        };
+
+        const cancel = () => {
+            nameSpanElement.style.display = ''; // Show the span again
+            inputElement.remove();
+            console.log('[ProjectFilesComponent] Rename cancelled.');
+        };
+
+        inputElement.onblur = commit;
+        inputElement.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+            }
+        };
+
+        // Insert input before the span (or replace, then re-add span on commit/cancel)
+        listItemElement.insertBefore(inputElement, nameSpanElement);
+        inputElement.focus();
+        inputElement.select();
+    }
+
+    commitRename(fileId, newName, originalNameSpan, inputElement) {
+        originalNameSpan.style.display = ''; // Show the span again
+        inputElement.remove();
+
         const currentFile = projectFiles[fileId];
         if (!currentFile) {
-            console.error(`[ProjectFilesComponent] File with ID ${fileId} not found for renaming.`);
+            console.error(`[ProjectFilesComponent] File with ID ${fileId} not found for committing rename.`);
             return;
         }
 
-        const newName = window.prompt("Enter new file name:", currentFile.name);
-        if (newName && newName.trim() !== "" && newName !== currentFile.name) {
-            console.log(`[ProjectFilesComponent] Renaming file ${currentFile.name} to ${newName}`);
-            currentFile.name = newName.trim();
-            currentFile.type = getFileTypeFromExtension(currentFile.name); // Update type based on new extension
+        const trimmedNewName = newName.trim();
+        if (trimmedNewName && trimmedNewName !== currentFile.name) {
+            console.log(`[ProjectFilesComponent] Committing rename for file ${currentFile.name} to ${trimmedNewName}`);
+            currentFile.name = trimmedNewName;
+            const oldType = currentFile.type;
+            currentFile.type = getFileTypeFromExtension(currentFile.name);
 
             this.updateFileListDisplay(); // Refresh the file list
 
-            // Update tab title and editor mode if the file is open
-            const itemIdentifier = 'editor-' + fileId;
-            const allStacks = goldenLayoutInstance.getAllStacks();
-            const editorStack = allStacks.find(stack => stack.id === 'editorStack');
+            const editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
             if (editorStack) {
-                const openTab = editorStack.contentItems.find(item => item.id === itemIdentifier);
+                const openTab = editorStack.contentItems.find(item => {
+                    const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+                    return state && state.fileId === fileId;
+                });
                 if (openTab) {
                     openTab.setTitle(currentFile.name);
-                    // Find the Ace editor instance associated with this tab to update its mode
-                    // This is a bit indirect. The EditorComponent instance itself holds the editor.
-                    // We might need a way to access the component instance from the GoldenLayout item.
-                    // For now, if the tab is re-created or focused, EditorComponent's constructor will set the mode.
-                    // A more direct update would require a map of fileId to EditorComponent instance or similar.
-                    console.log(`[ProjectFilesComponent] Tab title updated for ${itemIdentifier}. Mode will update if tab is re-focused or re-created.`);
-                    // If the editor component instance is accessible, we could do:
-                    // openTab.component.editor.session.setMode(`ace/mode/${currentFile.type}`);
+                    console.log(`[ProjectFilesComponent] Tab title updated for fileId "${fileId}" to "${currentFile.name}".`);
+                    
+                    if (oldType !== currentFile.type) {
+                        const editorComponent = openTab.container.componentReference; // componentReference should still point to our EditorComponent instance
+                        if (editorComponent && editorComponent.editor) {
+                            editorComponent.editor.session.setMode(`ace/mode/${currentFile.type}`);
+                            console.log(`[ProjectFilesComponent] Editor mode updated for fileId "${fileId}" to ${currentFile.type}.`);
+                        } else {
+                             console.warn(`[ProjectFilesComponent] Could not directly access editor instance via componentReference to update mode for fileId "${fileId}".`);
+                        }
+                    }
                 }
             }
-            renderPreviewFromState(); // Re-render preview if a relevant file was renamed (e.g. index.html)
-        } else if (newName === currentFile.name) {
-            console.log('[ProjectFilesComponent] New name is the same as the old name. No change.');
+            renderPreviewFromState();
         } else {
-            console.log('[ProjectFilesComponent] Rename cancelled or invalid name provided.');
+            console.log('[ProjectFilesComponent] Rename not committed (name unchanged or empty).');
+            // No need to call updateFileListDisplay if name didn't change, originalNameSpan is already correct.
         }
     }
+    
+    // Removed old window.prompt based renameFile method
 
     handleDragOver(event) {
         event.preventDefault();
@@ -382,17 +426,20 @@ class ProjectFilesComponent {
              return;
         }
         console.log('[ProjectFilesComponent] Editor stack retrieved by getAllStacks() and filtering by ID:', editorStack.id);
-
-        const itemIdentifier = 'editor-' + fileId; // Unique ID for the content item
-        console.log('[ProjectFilesComponent] Looking for item with ID:', itemIdentifier);
         
-        // Log all item IDs in the stack for debugging
-        editorStack.contentItems.forEach(item => console.log('[ProjectFilesComponent] Stack item ID:', item.id, 'Title:', item.title, 'ComponentState:', item.componentState));
+        editorStack.contentItems.forEach((item, index) => {
+            const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+            const stateFileId = state && state.fileId ? state.fileId : 'undefined';
+            console.log(`[ProjectFilesComponent] Stack item ${index} - Title: ${item.title}, container.getState().fileId: ${stateFileId}, GL item.id: ${item.id || '<none>'}`);
+        });
 
-        const existingItem = editorStack.contentItems.find(item => item.id === itemIdentifier);
+        const existingItem = editorStack.contentItems.find(item => {
+            const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+            return state && state.fileId === fileId;
+        });
 
         if (existingItem) {
-            console.log('[ProjectFilesComponent] Activating existing item by ID:', existingItem.id, 'Title:', existingItem.title);
+            console.log(`[ProjectFilesComponent] Activating existing item for fileId "${fileId}", Title: ${existingItem.title}`);
             editorStack.setActiveContentItem(existingItem);
         } else {
             if (!projectFiles[fileId]) {
@@ -400,10 +447,11 @@ class ProjectFilesComponent {
                 return;
             }
             const newTitle = projectFiles[fileId].name;
-            console.log(`[ProjectFilesComponent] Adding new component for fileId: "${fileId}", title: "${newTitle}", item ID: "${itemIdentifier}"`);
-            // Pass the itemIdentifier as the fourth argument to addComponent (componentId)
-            // The arguments for addComponent are: componentType, componentState, title, componentId
-            editorStack.addComponent('editor', { fileId: fileId }, newTitle, itemIdentifier);
+            const contentItemId = 'editor-' + fileId;
+            console.log(`[ProjectFilesComponent] Adding new component for fileId: "${fileId}", title: "${newTitle}", contentItemId: "${contentItemId}"`);
+            // Pass { fileId: fileId } as componentState. EditorComponent constructor will use this.
+            // GoldenLayout should make this state retrievable via item.container.getState().
+            editorStack.addComponent('editor', { fileId: fileId }, newTitle, contentItemId);
         }
     }
 }
@@ -479,6 +527,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     goldenLayoutInstance.loadLayout(layoutConfig);
     console.log('[DOMContentLoaded] GoldenLayout loaded.');
+
+    // Set initial active file ID
+    if (projectFiles.htmlFile) { // Check if htmlFile exists
+        activeEditorFileId = projectFiles.htmlFile.id;
+        if (projectFilesComponentInstance) {
+            projectFilesComponentInstance.updateFileListDisplay(); // Update highlight
+        }
+    }
+    
+    // Listen for active tab changes to update highlight
+    const editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
+    if (editorStack) {
+        const initialActiveItem = editorStack.getActiveContentItem();
+        if (initialActiveItem) {
+            const state = initialActiveItem.container && typeof initialActiveItem.container.getState === 'function' ? initialActiveItem.container.getState() : null;
+            if (state && state.fileId) {
+                activeEditorFileId = state.fileId;
+                console.log('[DOMContentLoaded] Initial active file ID (from container.getState()):', activeEditorFileId);
+            } else if (initialActiveItem.isComponent && initialActiveItem.componentState && initialActiveItem.componentState.fileId) {
+                 // Fallback for initial item from layout config if getState() isn't populated yet (less likely but safe)
+                activeEditorFileId = initialActiveItem.componentState.fileId;
+                console.log('[DOMContentLoaded] Initial active file ID (from componentState directly):', activeEditorFileId);
+            }
+            if (activeEditorFileId && projectFilesComponentInstance) {
+                 projectFilesComponentInstance.updateFileListDisplay();
+            }
+        }
+
+        editorStack.on('activeContentItemChanged', (activeContentItem) => {
+            if (activeContentItem && activeContentItem.container && typeof activeContentItem.container.getState === 'function') {
+                const state = activeContentItem.container.getState();
+                if (state && state.fileId) {
+                    activeEditorFileId = state.fileId;
+                    console.log('[GoldenLayout] Active tab changed. New active file ID (from container.getState()):', activeEditorFileId);
+                } else {
+                    activeEditorFileId = null;
+                    console.warn('[GoldenLayout] Active tab is an editor, but fileId is missing in container.getState().', activeContentItem);
+                }
+            } else {
+                activeEditorFileId = null;
+                if (activeContentItem && activeContentItem.isComponent && activeContentItem.componentType === 'editor') {
+                     console.warn('[GoldenLayout] Active tab is an editor, but its container or getState is unavailable.', activeContentItem);
+                } else {
+                    console.log('[GoldenLayout] Active tab changed. Not an editor or container/getState unavailable.');
+                }
+            }
+            if (projectFilesComponentInstance) {
+                projectFilesComponentInstance.updateFileListDisplay();
+            }
+        });
+    } else {
+        console.warn('[DOMContentLoaded] Could not find editorStack to attach activeContentItemChanged listener.');
+    }
 
     window.addEventListener('resize', () => {
         if (goldenLayoutInstance) {

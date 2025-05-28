@@ -22,7 +22,28 @@ html, body {
     height: 100%;
 }
 
+.project-files-container {
+    font-family: sans-serif; /* Apply sans-serif font to the project files panel */
+}
+
 .project-files-container.drag-over-active {
     background-color: #e0e0e0; /* Light grey background when dragging over */
     border: 2px dashed #aaaaaa;
+}
+
+.project-files-container ul li {
+    /* Add some default styling for list items if needed */
+}
+
+.project-files-container ul li.active-file {
+    background-color: #cce5ff; /* Light blue background for active file */
+    font-weight: bold;
+}
+
+.project-files-container ul li input[type="text"] {
+    font-family: sans-serif; /* Ensure input also uses sans-serif */
+    padding: 3px;
+    border: 1px solid #ccc;
+    box-sizing: border-box; /* Ensure padding and border don't make it overflow */
+    width: 100%; /* Take full width of the li (minus any button space if we re-add) */
 }
