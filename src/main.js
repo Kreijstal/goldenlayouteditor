@@ -7,6 +7,9 @@ require('ace-builds/src-min-noconflict/ext-language_tools');
 require('ace-builds/src-min-noconflict/mode-css');
 require('ace-builds/src-min-noconflict/mode-javascript');
 
+// Import preview handlers
+const { generatePreviewContent } = require('./preview-handlers');
+
 // Helper to generate unique IDs for files/dirs
 function generateUniqueId() {
     return 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -115,7 +118,9 @@ updateProjectFilesCache();
 let previewFrame;
 let goldenLayoutInstance;
 let projectFilesComponentInstance; // To access its methods
+let previewComponentInstance; // To access preview methods
 let activeEditorFileId = null; // To track the currently active file in the editor
+let activePreviewFileId = 'htmlFile'; // To track which file is being previewed
 
 // Helper to generate unique IDs for files and directories
 function generateUniqueId(prefix = 'item') {
@@ -161,34 +166,60 @@ if ('serviceWorker' in navigator) {
 // --- Preview Rendering ---
 
 function updatePreviewFiles() {
-    try {
-        // Update all files in the service worker
-        if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
-            Object.values(projectFiles).forEach(file => {
-                serviceWorkerRegistration.active.postMessage({
-                    type: 'updateFile',
-                    fileName: file.name, // This now includes the full path like "tomato/style.css"
-                    content: file.content
-                });
-            });
-        }
-        
-        if (previewFrame) {
-            // Add a cache-busting parameter to ensure fresh content
-            const timestamp = Date.now();
-            // Use relative path to work with GitHub Pages subdirectory deployment
-            const previewUrl = `./preview/index.html?t=${timestamp}`;
+    return new Promise((resolve) => {
+        try {
+            // Wait for service worker to be ready
+            const waitForServiceWorker = () => {
+                if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                    // Get the file to preview
+                    const previewFile = projectFiles[activePreviewFileId];
+                    if (!previewFile) {
+                        console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
+                        resolve(false);
+                        return;
+                    }
+
+                    // Generate preview content using handlers
+                    const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
+                    
+                    // Update all files in the service worker (for CSS/JS dependencies)
+                    Object.values(projectFiles).forEach(file => {
+                        serviceWorkerRegistration.active.postMessage({
+                            type: 'updateFile',
+                            fileName: file.name,
+                            content: file.content
+                        });
+                    });
+
+                    // Update the preview content specifically
+                    serviceWorkerRegistration.active.postMessage({
+                        type: 'updateFile',
+                        fileName: 'preview.html',
+                        content: previewContent.content
+                    });
+                    
+                    if (previewFrame) {
+                        // Add a cache-busting parameter to ensure fresh content
+                        const timestamp = Date.now();
+                        const previewUrl = `./preview/preview.html?t=${timestamp}`;
+                        
+                        // Reload the preview iframe
+                        previewFrame.src = previewUrl;
+                        console.log(`[RenderPreview] Preview updated for file: ${previewFile.name}`);
+                    }
+                    resolve(true);
+                } else {
+                    // Retry after a short delay
+                    setTimeout(waitForServiceWorker, 100);
+                }
+            };
             
-            // Reload the preview iframe to fetch fresh files from service worker
-            previewFrame.src = previewUrl;
-            console.log('[RenderPreview] All files updated in service worker and preview reloaded.');
+            waitForServiceWorker();
+        } catch (error) {
+            console.error('[RenderPreview] Failed to update files in service worker:', error);
+            resolve(false);
         }
-        
-        return true;
-    } catch (error) {
-        console.error('[RenderPreview] Failed to update files in service worker:', error);
-        return false;
-    }
+    });
 }
 
 // --- Editor Component ---
@@ -222,10 +253,10 @@ class EditorComponent {
         }
         this.editor.focus();
 
-        this.editor.session.on('change', () => {
+        this.editor.session.on('change', async () => {
             projectFiles[this.fileId].content = this.editor.getValue();
             console.log(`[EditorComponent] Content changed for ${fileData.name}, triggering preview render.`);
-            updatePreviewFiles();
+            await updatePreviewFiles();
         });
 
         this.editor.on('changeSelection', () => {
@@ -246,20 +277,77 @@ class EditorComponent {
 class PreviewComponent {
     constructor(container) {
         this.rootElement = container.element;
+        this.rootElement.style.display = 'flex';
+        this.rootElement.style.flexDirection = 'column';
+        
+        // Create preview controls
+        const controlsDiv = document.createElement('div');
+        controlsDiv.style.padding = '10px';
+        controlsDiv.style.borderBottom = '1px solid #ccc';
+        controlsDiv.style.background = '#f5f5f5';
+        controlsDiv.style.display = 'flex';
+        controlsDiv.style.alignItems = 'center';
+        controlsDiv.style.gap = '10px';
+
+        const label = document.createElement('label');
+        label.textContent = 'Preview: ';
+        label.style.fontWeight = 'bold';
+
+        this.fileSelect = document.createElement('select');
+        this.fileSelect.style.padding = '5px';
+        this.fileSelect.style.border = '1px solid #ccc';
+        this.fileSelect.style.borderRadius = '3px';
+        
+        this.updateFileOptions();
+        
+        this.fileSelect.onchange = () => {
+            activePreviewFileId = this.fileSelect.value;
+            console.log('[PreviewComponent] Preview file changed to:', activePreviewFileId);
+            updatePreviewFiles();
+        };
+
+        controlsDiv.appendChild(label);
+        controlsDiv.appendChild(this.fileSelect);
+        this.rootElement.appendChild(controlsDiv);
+
+        // Create iframe container
+        const iframeContainer = document.createElement('div');
+        iframeContainer.style.flex = '1';
+        iframeContainer.style.position = 'relative';
+        
         previewFrame = document.createElement('iframe');
         previewFrame.classList.add('preview-iframe');
+        previewFrame.style.width = '100%';
+        previewFrame.style.height = '100%';
+        previewFrame.style.border = 'none';
         
-        // Set initial src to load from preview directory
-        previewFrame.src = './preview/index.html';
+        // Set initial src
+        previewFrame.src = './preview/preview.html';
         
-        this.rootElement.appendChild(previewFrame);
-        console.log('[PreviewComponent] Initializing, loading preview from static files.');
+        iframeContainer.appendChild(previewFrame);
+        this.rootElement.appendChild(iframeContainer);
+        
+        console.log('[PreviewComponent] Initializing with file selector.');
+        previewComponentInstance = this;
         
         // Write files and reload after a short delay to ensure iframe is ready
-        setTimeout(() => {
+        setTimeout(async () => {
             console.log('[PreviewComponent] Executing initial updatePreviewFiles.');
-            updatePreviewFiles();
-        }, 200); // Slight delay to ensure iframe is ready
+            await updatePreviewFiles();
+        }, 200);
+    }
+    
+    updateFileOptions() {
+        this.fileSelect.innerHTML = '';
+        Object.values(projectFiles).forEach(file => {
+            const option = document.createElement('option');
+            option.value = file.id;
+            option.textContent = file.name;
+            if (file.id === activePreviewFileId) {
+                option.selected = true;
+            }
+            this.fileSelect.appendChild(option);
+        });
     }
 }
 
@@ -275,6 +363,13 @@ class ProjectFilesComponent {
         this.ul.style.listStyleType = 'none';
         this.ul.style.padding = '0';
         this.rootElement.appendChild(this.ul);
+
+        // Add "New File" button
+        const newFileButton = document.createElement('button');
+        newFileButton.textContent = 'New File';
+        newFileButton.style.margin = '10px 0';
+        newFileButton.onclick = () => this.createNewFile();
+        this.rootElement.insertBefore(newFileButton, this.ul);
 
         this.updateFileListDisplay(); // Initial display
         console.log('[ProjectFilesComponent] Initialized.');
@@ -313,9 +408,151 @@ class ProjectFilesComponent {
                 this.enterRenameMode(file.id, nameSpan, li);
             };
             li.appendChild(nameSpan);
+
+            // Add Delete button
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '❌'; // Or use an icon
+            deleteButton.style.marginLeft = '10px';
+            deleteButton.style.padding = '2px 5px';
+            deleteButton.style.border = 'none';
+            deleteButton.style.background = 'transparent';
+            deleteButton.style.cursor = 'pointer';
+            deleteButton.setAttribute('title', `Delete ${file.name}`);
+            deleteButton.onclick = (e) => {
+                e.stopPropagation(); // Prevent li click event
+                this.deleteFile(file.id);
+            };
+            li.appendChild(deleteButton);
+
             this.ul.appendChild(li);
         });
         console.log('[ProjectFilesComponent] File list display updated. Active file ID:', activeEditorFileId);
+    }
+
+    createNewFile() {
+        // Check if input already exists
+        if (this.rootElement.querySelector('.new-file-input')) {
+            return; // Prevent multiple inputs
+        }
+
+        const newFileButton = this.rootElement.querySelector('button');
+        
+        // Create input element
+        const inputElement = document.createElement('input');
+        inputElement.type = 'text';
+        inputElement.className = 'new-file-input';
+        inputElement.placeholder = 'Enter filename (e.g., new.js, style.css)';
+        inputElement.style.width = 'calc(100% - 20px)';
+        inputElement.style.margin = '5px 0';
+        inputElement.style.padding = '5px';
+        inputElement.style.border = '1px solid #ccc';
+        inputElement.style.borderRadius = '3px';
+        inputElement.style.fontFamily = 'sans-serif';
+
+        const commit = () => {
+            const fileName = inputElement.value.trim();
+            if (!fileName) {
+                cancel();
+                return;
+            }
+
+            // Check if file with the same name already exists
+            if (Object.values(projectFiles).some(f => f.name === fileName)) {
+                inputElement.style.borderColor = 'red';
+                inputElement.title = `File "${fileName}" already exists`;
+                return;
+            }
+
+            const newFileId = generateUniqueId('file');
+            const fileType = getFileTypeFromExtension(fileName);
+
+            projectFiles[newFileId] = {
+                id: newFileId,
+                name: fileName,
+                type: fileType,
+                content: `// New file: ${fileName}\n`,
+                cursor: { row: 0, column: 0 },
+                selection: null
+            };
+
+            console.log(`[ProjectFilesComponent] New file "${fileName}" created with ID: ${newFileId}`);
+            inputElement.remove();
+            this.updateFileListDisplay();
+            if (previewComponentInstance) {
+                previewComponentInstance.updateFileOptions(); // Update preview file options
+            }
+            updatePreviewFiles();
+            this.openOrFocusEditor(newFileId);
+        };
+
+        const cancel = () => {
+            inputElement.remove();
+            console.log('[ProjectFilesComponent] New file creation cancelled.');
+        };
+
+        inputElement.onblur = commit;
+        inputElement.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+            }
+        };
+
+        // Insert input after the New File button
+        this.rootElement.insertBefore(inputElement, this.ul);
+        inputElement.focus();
+    }
+
+    deleteFile(fileId) {
+        const fileToDelete = projectFiles[fileId];
+        if (!fileToDelete) {
+            console.error(`[ProjectFilesComponent] File with ID ${fileId} not found for deletion.`);
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete "${fileToDelete.name}"?`)) {
+            return;
+        }
+
+        console.log(`[ProjectFilesComponent] Deleting file: ${fileToDelete.name} (ID: ${fileId})`);
+        delete projectFiles[fileId];
+
+        // Close editor tab if open
+        const editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
+        if (editorStack) {
+            const openTab = editorStack.contentItems.find(item => {
+                const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+                return state && state.fileId === fileId;
+            });
+            if (openTab) {
+                console.log(`[ProjectFilesComponent] Closing editor tab for deleted file: ${fileToDelete.name}`);
+                openTab.close(); // GoldenLayout's method to close a tab
+            }
+        }
+        
+        if (activeEditorFileId === fileId) {
+            activeEditorFileId = null; // Clear active file if it was the one deleted
+        }
+
+        this.updateFileListDisplay();
+        if (previewComponentInstance) {
+            previewComponentInstance.updateFileOptions(); // Update preview file options
+        }
+        // If the deleted file was being previewed, switch to the first available file
+        if (activePreviewFileId === fileId) {
+            const remainingFiles = Object.keys(projectFiles);
+            if (remainingFiles.length > 0) {
+                activePreviewFileId = remainingFiles[0];
+                if (previewComponentInstance) {
+                    previewComponentInstance.fileSelect.value = activePreviewFileId;
+                }
+            }
+        }
+        updatePreviewFiles(); // Update service worker
+        console.log(`[ProjectFilesComponent] File "${fileToDelete.name}" deleted.`);
     }
 
     enterRenameMode(fileId, nameSpanElement, listItemElement) {
@@ -375,6 +612,9 @@ class ProjectFilesComponent {
             currentFile.type = getFileTypeFromExtension(currentFile.name);
 
             this.updateFileListDisplay(); // Refresh the file list
+            if (previewComponentInstance) {
+                previewComponentInstance.updateFileOptions(); // Update preview file options after rename
+            }
 
             const editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
             if (editorStack) {
@@ -433,7 +673,7 @@ class ProjectFilesComponent {
                     const fileContent = e.target.result;
                     const fileName = file.name;
                     const fileType = getFileTypeFromExtension(fileName);
-                    const newFileId = generateUniqueFileId();
+                    const newFileId = generateUniqueId('file');
 
                     projectFiles[newFileId] = {
                         id: newFileId,
@@ -445,6 +685,9 @@ class ProjectFilesComponent {
                     };
                     console.log(`[ProjectFilesComponent] File "${fileName}" read and added with ID: ${newFileId}`);
                     this.updateFileListDisplay();
+                    if (previewComponentInstance) {
+                        previewComponentInstance.updateFileOptions(); // Update preview file options
+                    }
                     // Optionally open the first dropped file
                     if (Array.from(files).indexOf(file) === 0) {
                         this.openOrFocusEditor(newFileId);
