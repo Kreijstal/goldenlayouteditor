@@ -85,12 +85,13 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer) {
     diagnosticsContainer.textContent = 'Compiling...';
 
     // Add all project files to the compiler's virtual file system.
-    // For Typst, the main file is usually identified by its path.
-    typstCompiler.addSource(`/main.typ`, mainFile.content);
+    // Use the actual filename from the selected file
+    const mainFilePath = `/${mainFile.name}`;
+    typstCompiler.addSource(mainFilePath, mainFile.content);
 
     try {
         const artifact = await typstCompiler.compile({
-          mainFilePath: "/main.typ",
+          mainFilePath: mainFilePath,
         });
 
         diagnosticsContainer.textContent = 'No errors or warnings.'; // Simplified for demo
@@ -621,21 +622,15 @@ class PreviewComponent {
         this.rootElement.style.display = 'flex';
         this.rootElement.style.flexDirection = 'column';
 
-        // --- UI for Web Preview ---
-        this.webPreviewContainer = document.createElement('div');
-        this.webPreviewContainer.style.width = '100%';
-        this.webPreviewContainer.style.height = '100%';
-        this.webPreviewContainer.style.display = 'flex';
-        this.webPreviewContainer.style.flexDirection = 'column';
-        
-        // Create preview controls for web preview
-        const controlsDiv = document.createElement('div');
-        controlsDiv.style.padding = '10px';
-        controlsDiv.style.borderBottom = '1px solid #ccc';
-        controlsDiv.style.background = '#f5f5f5';
-        controlsDiv.style.display = 'flex';
-        controlsDiv.style.alignItems = 'center';
-        controlsDiv.style.gap = '10px';
+        // Create external preview controls (always visible at top)
+        this.controlsDiv = document.createElement('div');
+        this.controlsDiv.style.padding = '10px';
+        this.controlsDiv.style.borderBottom = '1px solid #ccc';
+        this.controlsDiv.style.background = '#f5f5f5';
+        this.controlsDiv.style.display = 'flex';
+        this.controlsDiv.style.alignItems = 'center';
+        this.controlsDiv.style.gap = '10px';
+        this.controlsDiv.style.flexShrink = '0';
 
         const label = document.createElement('label');
         label.textContent = 'Preview: ';
@@ -654,9 +649,34 @@ class PreviewComponent {
             this.updatePreviewMode();
         };
 
-        controlsDiv.appendChild(label);
-        controlsDiv.appendChild(this.fileSelect);
-        this.webPreviewContainer.appendChild(controlsDiv);
+        // Preview mode indicator
+        this.modeIndicator = document.createElement('span');
+        this.modeIndicator.style.padding = '4px 8px';
+        this.modeIndicator.style.borderRadius = '3px';
+        this.modeIndicator.style.fontSize = '12px';
+        this.modeIndicator.style.fontWeight = 'bold';
+        this.modeIndicator.style.marginLeft = '10px';
+
+        this.controlsDiv.appendChild(label);
+        this.controlsDiv.appendChild(this.fileSelect);
+        this.controlsDiv.appendChild(this.modeIndicator);
+        
+        // Add controls to the root element
+        this.rootElement.appendChild(this.controlsDiv);
+        
+        // Create preview content container
+        this.previewContentContainer = document.createElement('div');
+        this.previewContentContainer.style.flex = '1';
+        this.previewContentContainer.style.display = 'flex';
+        this.previewContentContainer.style.flexDirection = 'column';
+        this.rootElement.appendChild(this.previewContentContainer);
+        
+        // --- UI for Web Preview ---
+        this.webPreviewContainer = document.createElement('div');
+        this.webPreviewContainer.style.width = '100%';
+        this.webPreviewContainer.style.height = '100%';
+        this.webPreviewContainer.style.display = 'flex';
+        this.webPreviewContainer.style.flexDirection = 'column';
 
         // Create iframe container
         const iframeContainer = document.createElement('div');
@@ -680,6 +700,7 @@ class PreviewComponent {
         this.typstPreviewContainer.style.display = 'flex';
         this.typstPreviewContainer.style.flexDirection = 'column';
         this.typstPreviewContainer.style.height = '100%';
+        
         this.outputDiv = document.createElement('div');
         this.outputDiv.style.flex = '1';
         this.outputDiv.style.padding = '1rem';
@@ -696,8 +717,9 @@ class PreviewComponent {
         this.typstPreviewContainer.appendChild(this.outputDiv);
         this.typstPreviewContainer.appendChild(this.diagnosticsDiv);
         
-        this.rootElement.appendChild(this.webPreviewContainer);
-        this.rootElement.appendChild(this.typstPreviewContainer);
+        // Add both preview containers to the content container
+        this.previewContentContainer.appendChild(this.webPreviewContainer);
+        this.previewContentContainer.appendChild(this.typstPreviewContainer);
         
         previewComponentInstance = this;
         
@@ -718,23 +740,31 @@ class PreviewComponent {
     }
     
     async updatePreviewMode() {
-        const activeFile = projectFiles[activeEditorFileId];
+        const previewFile = projectFiles[activePreviewFileId];
         
-        if (activeFile && activeFile.type === 'typst') {
+        if (previewFile && previewFile.type === 'typst') {
+            // Show Typst preview
             this.webPreviewContainer.style.display = 'none';
             this.typstPreviewContainer.style.display = 'flex';
+            this.modeIndicator.textContent = 'Typst';
+            this.modeIndicator.style.backgroundColor = '#4CAF50';
+            this.modeIndicator.style.color = 'white';
             this.diagnosticsDiv.textContent = "Loading Typst renderer...";
             
             const success = await ensureTypstInitialized();
             if (success) {
-                await renderTypst(activeEditorFileId, this.outputDiv, this.diagnosticsDiv);
+                await renderTypst(activePreviewFileId, this.outputDiv, this.diagnosticsDiv);
             } else {
                 this.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load. Check console.';
             }
 
         } else {
+            // Show web preview
             this.webPreviewContainer.style.display = 'flex';
             this.typstPreviewContainer.style.display = 'none';
+            this.modeIndicator.textContent = 'HTML';
+            this.modeIndicator.style.backgroundColor = '#2196F3';
+            this.modeIndicator.style.color = 'white';
             
             // Trigger a render for the web project
             updatePreviewFiles();
