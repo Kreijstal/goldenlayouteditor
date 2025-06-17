@@ -143,8 +143,12 @@ let serviceWorkerRegistration = null;
 
 // Register service worker
 if ('serviceWorker' in navigator) {
-    // Use relative path to work with GitHub Pages subdirectory deployment
-    navigator.serviceWorker.register('./worker.js')
+    // Detect if we're running in a subdirectory (like GitHub Pages)
+    const currentPath = window.location.pathname;
+    const basePath = currentPath.endsWith('/') ? currentPath : currentPath + '/';
+    const workerPath = basePath + 'worker.js';
+    
+    navigator.serviceWorker.register(workerPath)
         .then(registration => {
             console.log('[ServiceWorker] Registered successfully');
             serviceWorkerRegistration = registration;
@@ -172,7 +176,8 @@ function updatePreviewFiles() {
         if (previewFrame) {
             // Add a cache-busting parameter to ensure fresh content
             const timestamp = Date.now();
-            const previewUrl = `/preview/index.html?t=${timestamp}`;
+            // Use relative path to work with GitHub Pages subdirectory deployment
+            const previewUrl = `./preview/index.html?t=${timestamp}`;
             
             // Reload the preview iframe to fetch fresh files from service worker
             previewFrame.src = previewUrl;
@@ -245,7 +250,7 @@ class PreviewComponent {
         previewFrame.classList.add('preview-iframe');
         
         // Set initial src to load from preview directory
-        previewFrame.src = '/preview/index.html';
+        previewFrame.src = './preview/index.html';
         
         this.rootElement.appendChild(previewFrame);
         console.log('[PreviewComponent] Initializing, loading preview from static files.');
