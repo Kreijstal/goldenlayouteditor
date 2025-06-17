@@ -18,12 +18,12 @@ let projectFiles = {
 <head>
     <meta charset="UTF-8">
     <title>My Page</title>
-    <link rel="stylesheet" href="style.css"> <!-- Placeholder for style.css -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <h1>Hello, World!</h1>
     <p>Edit this HTML content, and see style.css and script.js in action.</p>
-    <script src="script.js" defer></script> <!-- Placeholder for script.js -->
+    <script src="script.js" defer></script>
 </body>
 </html>`,
         cursor: { row: 0, column: 0 },
@@ -50,7 +50,7 @@ h1 {
         id: "jsFile",
         name: "script.js",
         type: "javascript",
-        content: `console.log('Script loaded via placeholder replacement!');
+        content: `console.log('Script loaded successfully!');
 document.addEventListener('DOMContentLoaded', () => {
     const h1 = document.querySelector('h1');
     if (h1) {
@@ -90,50 +90,79 @@ function getFileTypeFromExtension(fileName) {
     }
 }
 
+// --- Service Worker Setup ---
+let serviceWorkerRegistration = null;
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./worker.js')
+        .then(registration => {
+            console.log('[ServiceWorker] Registered successfully');
+            serviceWorkerRegistration = registration;
+        })
+        .catch(error => {
+            console.error('[ServiceWorker] Registration failed:', error);
+        });
+}
+
 // --- Preview Rendering ---
-function renderPreviewFromState() {
-    if (previewFrame && previewFrame.contentWindow) {
-        console.log('[RenderPreview] Attempting to update preview.');
-        let htmlTemplate = projectFiles.htmlFile.content;
-        const cssContent = projectFiles.cssFile.content;
-        const jsContent = projectFiles.jsFile.content;
-
-        // Replace CSS placeholder
-        const cssPlaceholderRegex = /<link\s+.*?href="style\.css".*?>/i;
-        if (htmlTemplate.match(cssPlaceholderRegex)) {
-            htmlTemplate = htmlTemplate.replace(cssPlaceholderRegex, `<style>\n${cssContent}\n</style>`);
-            console.log('[RenderPreview] CSS placeholder replaced.');
-        } else {
-            console.warn('[RenderPreview] CSS placeholder not found. Attempting fallback injection.');
-            const headEndTag = '</head>';
-            if (htmlTemplate.includes(headEndTag)) {
-                htmlTemplate = htmlTemplate.replace(headEndTag, `<style>\n${cssContent}\n</style>\n${headEndTag}`);
-            } else {
-                htmlTemplate = `<style>\n${cssContent}\n</style>\n${htmlTemplate}`;
-            }
+async function updatePreviewFiles() {
+    try {
+        // Update all files in the service worker
+        if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+            Object.values(projectFiles).forEach(file => {
+                serviceWorkerRegistration.active.postMessage({
+                    type: 'updateFile',
+                    fileName: file.name,
+                    content: file.content
+                });
+            });
         }
-
-        // Replace JS placeholder
-        const jsPlaceholderRegex = /<script\s+.*?src="script\.js".*?><\/script>/i;
-        if (htmlTemplate.match(jsPlaceholderRegex)) {
-            htmlTemplate = htmlTemplate.replace(jsPlaceholderRegex, `<script defer>\n${jsContent}\n</script>`);
-            console.log('[RenderPreview] JS placeholder replaced.');
-        } else {
-            console.warn('[RenderPreview] JS placeholder not found. Attempting fallback injection.');
-            const bodyEndTag = '</body>';
-            if (htmlTemplate.includes(bodyEndTag)) {
-                htmlTemplate = htmlTemplate.replace(bodyEndTag, `<script defer>\n${jsContent}\n</script>\n${bodyEndTag}`);
-            } else {
-                htmlTemplate += `\n<script defer>\n${jsContent}\n</script>`;
-            }
+        
+        if (previewFrame) {
+            // Add a cache-busting parameter to ensure fresh content
+            const timestamp = Date.now();
+            const previewUrl = `/preview/index.html?t=${timestamp}`;
+            
+            // Reload the preview iframe to fetch fresh files from service worker
+            previewFrame.src = previewUrl;
+            console.log('[RenderPreview] All files updated in service worker and preview reloaded.');
         }
+        
+        return true;
+    } catch (error) {
+        console.error('[RenderPreview] Failed to update files in service worker:', error);
+        return false;
+    }
+}
 
-        previewFrame.contentWindow.document.open();
-        previewFrame.contentWindow.document.write(htmlTemplate);
-        previewFrame.contentWindow.document.close();
-        console.log('[RenderPreview] Preview update complete.');
-    } else {
-        console.warn('[RenderPreview] Preview frame or contentWindow not available for update.');
+function updatePreviewFiles() {
+    try {
+        // Update all files in the service worker
+        if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+            Object.values(projectFiles).forEach(file => {
+                serviceWorkerRegistration.active.postMessage({
+                    type: 'updateFile',
+                    fileName: file.name,
+                    content: file.content
+                });
+            });
+        }
+        
+        if (previewFrame) {
+            // Add a cache-busting parameter to ensure fresh content
+            const timestamp = Date.now();
+            const previewUrl = `/preview/index.html?t=${timestamp}`;
+            
+            // Reload the preview iframe to fetch fresh files from service worker
+            previewFrame.src = previewUrl;
+            console.log('[RenderPreview] All files updated in service worker and preview reloaded.');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('[RenderPreview] Failed to update files in service worker:', error);
+        return false;
     }
 }
 
@@ -171,7 +200,7 @@ class EditorComponent {
         this.editor.session.on('change', () => {
             projectFiles[this.fileId].content = this.editor.getValue();
             console.log(`[EditorComponent] Content changed for ${fileData.name}, triggering preview render.`);
-            renderPreviewFromState();
+            updatePreviewFiles();
         });
 
         this.editor.on('changeSelection', () => {
@@ -194,13 +223,18 @@ class PreviewComponent {
         this.rootElement = container.element;
         previewFrame = document.createElement('iframe');
         previewFrame.classList.add('preview-iframe');
+        
+        // Set initial src to load from preview directory
+        previewFrame.src = '/preview/index.html';
+        
         this.rootElement.appendChild(previewFrame);
-        console.log('[PreviewComponent] Initializing, scheduling initial renderPreviewFromState.');
-        // Delay initial render slightly to ensure iframe is ready
+        console.log('[PreviewComponent] Initializing, loading preview from static files.');
+        
+        // Write files and reload after a short delay to ensure iframe is ready
         setTimeout(() => {
-            console.log('[PreviewComponent] Executing delayed initial renderPreviewFromState.');
-            renderPreviewFromState();
-        }, 100); // 100ms delay, can be adjusted
+            console.log('[PreviewComponent] Executing initial updatePreviewFiles.');
+            updatePreviewFiles();
+        }, 200); // Slight delay to ensure iframe is ready
     }
 }
 
@@ -338,7 +372,7 @@ class ProjectFilesComponent {
                     }
                 }
             }
-            renderPreviewFromState();
+            updatePreviewFiles();
         } else {
             console.log('[ProjectFilesComponent] Rename not committed (name unchanged or empty).');
             // No need to call updateFileListDisplay if name didn't change, originalNameSpan is already correct.
@@ -596,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (projectFilesComponentInstance) {
                 projectFilesComponentInstance.updateFileListDisplay();
             }
-            renderPreviewFromState();
+            updatePreviewFiles();
             console.log('[Debug] projectFiles set and UI updated (file list, preview).');
         },
 
@@ -653,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }
-                renderPreviewFromState();
+                updatePreviewFiles();
             } else {
                 console.warn(`[Debug] setProjectFileContent: fileId ${fileId} not found.`);
             }
@@ -665,7 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         refreshPreview() {
             console.log('[Debug] Manually refreshing preview.');
-            renderPreviewFromState();
+            updatePreviewFiles();
         },
 
         refreshProjectFilesList() {
