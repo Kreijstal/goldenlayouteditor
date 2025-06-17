@@ -59,19 +59,37 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     const pathname = url.pathname;
     
-    // Remove leading slash and preview prefix to get the file path
-    let filePath = pathname.startsWith('/preview/') ? pathname.slice(9) : pathname.slice(1);
-    
-    // Check if this is a request for a file we're managing
-    if ((pathname.includes('/preview/') || pathname.startsWith('/')) && files.has(filePath)) {
-        const fileName = filePath.split('/').pop(); // Get just the filename for MIME type
-        event.respondWith(
-            new Response(files.get(filePath), {
-                headers: {
-                    'Content-Type': getMimeType(fileName),
-                    'Cache-Control': 'no-cache'
-                }
-            })
-        );
+    // Check if this is a preview request
+    if (pathname.includes('/preview/')) {
+        // Remove the preview prefix to get the file path
+        let filePath = pathname.substring(pathname.indexOf('/preview/') + 9);
+        
+        // If requesting index.html or empty path, serve the main HTML file
+        if (filePath === 'index.html' || filePath === '') {
+            if (files.has('index.html')) {
+                event.respondWith(
+                    new Response(files.get('index.html'), {
+                        headers: {
+                            'Content-Type': 'text/html',
+                            'Cache-Control': 'no-cache'
+                        }
+                    })
+                );
+                return;
+            }
+        }
+        
+        // Check if we have this specific file
+        if (files.has(filePath)) {
+            const fileName = filePath.split('/').pop(); // Get just the filename for MIME type
+            event.respondWith(
+                new Response(files.get(filePath), {
+                    headers: {
+                        'Content-Type': getMimeType(fileName),
+                        'Cache-Control': 'no-cache'
+                    }
+                })
+            );
+        }
     }
 });
