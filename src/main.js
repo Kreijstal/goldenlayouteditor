@@ -143,7 +143,8 @@ let serviceWorkerRegistration = null;
 
 // Register service worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/worker.js')
+    // Use relative path to work with GitHub Pages subdirectory deployment
+    navigator.serviceWorker.register('./worker.js')
         .then(registration => {
             console.log('[ServiceWorker] Registered successfully');
             serviceWorkerRegistration = registration;
