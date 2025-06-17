@@ -1,24 +1,35 @@
-nne // Preview Handlers for different file types
-// This module defines how different file types should be previewed
+// --- Web Content Preview Handler ---
 
-const previewHandlers = {
-    // HTML files - render directly in iframe
-    html: {
-        canPreview: true,
-        handler: (fileContent, fileName) => {
+/**
+ * Determines if this handler can preview a given file.
+ * @param {string} fileName - The name of the file.
+ * @returns {boolean} - True if the handler can preview the file.
+ */
+function canHandle(fileName) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    const webExtensions = ['html', 'htm', 'css', 'js', 'javascript', 'json'];
+    return webExtensions.includes(extension);
+}
+
+/**
+ * Generates the preview content for a web file.
+ * @param {string} fileName - The name of the file.
+ * @param {string} fileContent - The content of the file.
+ * @returns {object} - An object containing the preview type and content.
+ */
+function generatePreview(fileName, fileContent) {
+    const extension = fileName.split('.').pop().toLowerCase();
+
+    switch (extension) {
+        case 'html':
+        case 'htm':
             return {
                 type: 'html',
-                content: fileContent,
-                url: null // Will be served by service worker
+                content: fileContent
             };
-        }
-    },
 
-    // CSS files - show styled preview with sample content
-    css: {
-        canPreview: true,
-        handler: (fileContent, fileName) => {
-            const sampleHtml = `
+        case 'css':
+            const cssPreviewHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,16 +57,11 @@ ${fileContent}
 </html>`;
             return {
                 type: 'html',
-                content: sampleHtml,
-                url: null
+                content: cssPreviewHtml
             };
-        }
-    },
 
-    // JavaScript files - show code with syntax highlighting
-    javascript: {
-        canPreview: true,
-        handler: (fileContent, fileName) => {
+        case 'js':
+        case 'javascript':
             const jsPreviewHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -76,7 +82,7 @@ ${fileContent}
 <body>
     <div class="code-container">
         <div class="filename">${fileName}</div>
-        <pre class="code">${fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+        <pre class="code">${fileContent.replace(/</g, '<').replace(/>/g, '>')}</pre>
         <button class="run-button" onclick="runCode()">Run Code</button>
         <div class="console">
             <div class="console-title">Console Output:</div>
@@ -88,7 +94,6 @@ ${fileContent}
             const output = document.getElementById('console-output');
             output.innerHTML = '';
             
-            // Override console.log to capture output
             const originalLog = console.log;
             console.log = function(...args) {
                 output.innerHTML += args.join(' ') + '\\n';
@@ -96,7 +101,6 @@ ${fileContent}
             };
             
             try {
-                // Execute the user's code
                 eval(\`${fileContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`);
                 if (output.innerHTML === '') {
                     output.innerHTML = 'Code executed successfully (no console output)';
@@ -106,7 +110,6 @@ ${fileContent}
                 output.style.color = '#ff6b6b';
             }
             
-            // Restore original console.log
             console.log = originalLog;
         }
     </script>
@@ -114,56 +117,18 @@ ${fileContent}
 </html>`;
             return {
                 type: 'html',
-                content: jsPreviewHtml,
-                url: null
+                content: jsPreviewHtml
             };
-        }
-    },
 
-    // Text files - simple text viewer
-    text: {
-        canPreview: true,
-        handler: (fileContent, fileName) => {
-            const textPreviewHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Text Preview - ${fileName}</title>
-    <style>
-        body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
-        .text-container { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .filename { color: #666; margin-bottom: 10px; font-weight: bold; }
-        .content { white-space: pre-wrap; line-height: 1.5; }
-    </style>
-</head>
-<body>
-    <div class="text-container">
-        <div class="filename">${fileName}</div>
-        <div class="content">${fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-    </div>
-</body>
-</html>`;
-            return {
-                type: 'html',
-                content: textPreviewHtml,
-                url: null
-            };
-        }
-    },
-
-    // JSON files - formatted JSON viewer
-    json: {
-        canPreview: true,
-        handler: (fileContent, fileName) => {
+        case 'json':
             let formattedJson;
             try {
                 const parsed = JSON.parse(fileContent);
                 formattedJson = JSON.stringify(parsed, null, 2);
             } catch (error) {
-                formattedJson = fileContent; // Show original if parsing fails
+                formattedJson = fileContent;
             }
-
+            
             const jsonPreviewHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -182,23 +147,17 @@ ${fileContent}
     <div class="json-container">
         <div class="filename">${fileName}</div>
         <div class="json">
-            <div class="json-content">${formattedJson.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <div class="json-content">${formattedJson.replace(/</g, '<').replace(/>/g, '>')}</div>
         </div>
     </div>
 </body>
 </html>`;
             return {
                 type: 'html',
-                content: jsonPreviewHtml,
-                url: null
+                content: jsonPreviewHtml
             };
-        }
-    },
-
-    // Default handler for unknown file types
-    default: {
-        canPreview: true,
-        handler: (fileContent, fileName) => {
+            
+        default:
             const defaultPreviewHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -223,43 +182,62 @@ ${fileContent}
 </html>`;
             return {
                 type: 'html',
-                content: defaultPreviewHtml,
-                url: null
+                content: defaultPreviewHtml
             };
-        }
     }
-};
+}
 
-// Get preview handler for a file
-function getPreviewHandler(fileName, fileType) {
-    // Determine file extension
+/**
+ * Gets the file type for web files (used for editor mode).
+ * @param {string} fileName - The name of the file.
+ * @returns {string} - The file type for editor configuration.
+ */
+function getFileType(fileName) {
     const extension = fileName.split('.').pop().toLowerCase();
-    
-    // Map extensions to handler types
-    const extensionMap = {
-        'html': 'html',
-        'htm': 'html',
-        'css': 'css',
-        'js': 'javascript',
-        'javascript': 'javascript',
-        'txt': 'text',
-        'md': 'text',
-        'json': 'json'
-    };
-    
-    const handlerType = extensionMap[extension] || 'default';
-    return previewHandlers[handlerType] || previewHandlers.default;
+    switch (extension) {
+        case 'html':
+        case 'htm':
+            return 'html';
+        case 'css':
+            return 'css';
+        case 'js':
+        case 'javascript':
+            return 'javascript';
+        case 'json':
+            return 'json';
+        default:
+            return 'text';
+    }
 }
 
-// Generate preview content for a file
-function generatePreviewContent(fileName, fileContent, fileType) {
-    const handler = getPreviewHandler(fileName, fileType);
-    return handler.handler(fileContent, fileName);
+/**
+ * Gets the Ace editor mode for web files.
+ * @param {string} fileName - The name of the file.
+ * @returns {string} - The Ace editor mode.
+ */
+function getAceMode(fileName) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    switch (extension) {
+        case 'html':
+        case 'htm':
+            return 'html';
+        case 'css':
+            return 'css';
+        case 'js':
+        case 'javascript':
+            return 'javascript';
+        case 'json':
+            return 'json';
+        default:
+            return 'text';
+    }
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { previewHandlers, getPreviewHandler, generatePreviewContent };
-} else {
-    window.previewHandlers = { previewHandlers, getPreviewHandler, generatePreviewContent };
-}
+module.exports = {
+    canHandle,
+    generatePreview,
+    getFileType,
+    getAceMode,
+    // This handler doesn't need special rendering logic beyond the preview
+    render: null
+};

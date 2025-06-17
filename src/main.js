@@ -1,5 +1,6 @@
 const { GoldenLayout, Stack } = require('golden-layout'); // Import Stack
 const ace = require('ace-builds/src-min-noconflict/ace');
+const handlerRegistry = require('./handlers');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
@@ -7,324 +8,10 @@ require('ace-builds/src-min-noconflict/ext-language_tools');
 require('ace-builds/src-min-noconflict/mode-css');
 require('ace-builds/src-min-noconflict/mode-javascript');
 
-// --- Typst Integration Variables ---
-let typstModule, typstCompiler, typstRenderer;
-let isTypstInitializing = false;
 
-/**
- * Lazily loads and initializes the Typst library from a CDN.
- * Ensures that the initialization only happens once.
- * @returns {Promise<boolean>} - True if initialization is successful, false otherwise.
- */
-async function ensureTypstInitialized() {
-    // If it's already initialized, we're done.
-    if (typstCompiler) {
-        return true;
-    }
-
-    // If it's currently initializing in another async call, wait for it to finish.
-    if (isTypstInitializing) {
-        // A simple polling mechanism to wait for the other process to finish
-        return new Promise(resolve => {
-            const interval = setInterval(() => {
-                if (typstCompiler) {
-                    clearInterval(interval);
-                    resolve(true);
-                } else if (!isTypstInitializing) {
-                    // It failed elsewhere
-                    clearInterval(interval);
-                    resolve(false);
-                }
-            }, 100);
-        });
-    }
-
-    isTypstInitializing = true;
-    console.log('Initializing Typst.ts (lazy-loaded)...');
-
-    try {
-        // Dynamically import the library from esm.sh
-        typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc1");
-        
-        typstCompiler = typstModule.createTypstCompiler();
-        typstRenderer = typstModule.createTypstRenderer();
-
-        await Promise.all([
-          typstCompiler.init({
-            getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc1/pkg/typst_ts_web_compiler_bg.wasm",
-            beforeBuild: [
-              typstModule.preloadRemoteFonts([
-                'https://raw.githubusercontent.com/Myriad-Dreamin/typst.ts/main/assets/data/LibertinusSerif-Regular-subset.otf',
-              ]),
-            ]
-          }),
-          typstRenderer.init({
-            getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc1/pkg/typst_ts_renderer_bg.wasm',
-          })
-        ]);
-
-        console.log('Typst.ts Initialized successfully.');
-        isTypstInitializing = false;
-        return true;
-
-    } catch(err) {
-        console.error("Failed to initialize Typst.ts", err);
-        isTypstInitializing = false;
-        return false;
-    }
-}
-
-/**
- * Renders a Typst file to SVG
- * @param {string} mainFileId - The ID of the main Typst file
- * @param {HTMLElement} outputContainer - Container to display the rendered output
- * @param {HTMLElement} diagnosticsContainer - Container to display diagnostics
- */
-async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, preserveZoom = false) {
-    const mainFile = projectFiles[mainFileId];
-    diagnosticsContainer.textContent = 'Compiling...';
-
-    // Add all project files to the compiler's virtual file system for dependencies
-    // Typst can import JSON, text, SVG, and other file types
-    Object.values(projectFiles).forEach(file => {
-        const filePath = `/${file.name}`;
-        typstCompiler.addSource(filePath, file.content);
-    });
-    
-    // Use the actual filename from the selected file as main
-    const mainFilePath = `/${mainFile.name}`;
-
-    try {
-        const artifact = await typstCompiler.compile({
-          mainFilePath: mainFilePath,
-        });
-
-        diagnosticsContainer.textContent = 'No errors or warnings.'; // Simplified for demo
-
-        if (artifact && artifact.result) {
-          const svg = await typstRenderer.renderSvg({
-            artifactContent: artifact.result,
-          });
-          
-          // Preserve existing zoom state if available
-          let existingZoomLevel = null;
-          let existingTextAlign = null;
-          const existingSvg = outputContainer.querySelector('svg');
-          if (preserveZoom && existingSvg && previewComponentInstance) {
-            existingZoomLevel = previewComponentInstance.zoomLevel;
-            existingTextAlign = outputContainer.style.textAlign;
-          }
-          
-          outputContainer.innerHTML = svg;
-          
-          // Set up the SVG for proper scaling
-          const svgElement = outputContainer.querySelector('svg');
-          if (svgElement) {
-            // Make SVG responsive and set initial size
-            svgElement.style.maxWidth = '100%';
-            svgElement.style.height = 'auto';
-            svgElement.style.display = 'block';
-            svgElement.style.margin = '0 auto';
-            
-            // Apply zoom logic if preview component exists
-            if (previewComponentInstance) {
-              if (preserveZoom && existingZoomLevel) {
-                // Immediately apply preserved zoom to avoid flicker
-                svgElement.style.transform = `scale(${existingZoomLevel})`;
-                svgElement.style.transformOrigin = 'top center';
-                outputContainer.style.textAlign = existingTextAlign || (existingZoomLevel === 1.0 ? 'center' : 'left');
-                previewComponentInstance.updateZoomDisplay();
-              } else {
-                // Use hardcoded 228% zoom for initial render
-                previewComponentInstance.zoomLevel = 2.28;
-                svgElement.style.transform = `scale(${previewComponentInstance.zoomLevel})`;
-                svgElement.style.transformOrigin = 'top center';
-                outputContainer.style.textAlign = 'left';
-                previewComponentInstance.updateZoomDisplay();
-              }
-            }
-          }
-        } else {
-          outputContainer.innerHTML = '<p style="color: red;">Compilation failed.</p>';
-        }
-    } catch (err) {
-        console.error("Typst Compilation/Rendering failed:", err);
-        diagnosticsContainer.textContent = `CRITICAL ERROR: ${err.message}`;
-    }
-}
-
-// Preview handlers for different file types
+// Preview handlers for different file types - now using handler registry
 function generatePreviewContent(fileName, fileContent, fileType) {
-    const extension = fileName.split('.').pop().toLowerCase();
-    
-    switch (extension) {
-        case 'html':
-        case 'htm':
-            return {
-                type: 'html',
-                content: fileContent
-            };
-            
-        case 'css':
-            const cssPreviewHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>CSS Preview - ${fileName}</title>
-    <style>
-${fileContent}
-    </style>
-</head>
-<body>
-    <h1>CSS Preview</h1>
-    <p>This is a sample paragraph to demonstrate your CSS styles.</p>
-    <div class="sample-div">Sample div element</div>
-    <button>Sample button</button>
-    <ul>
-        <li>List item 1</li>
-        <li>List item 2</li>
-        <li>List item 3</li>
-    </ul>
-    <table border="1">
-        <tr><th>Header 1</th><th>Header 2</th></tr>
-        <tr><td>Cell 1</td><td>Cell 2</td></tr>
-    </table>
-</body>
-</html>`;
-            return {
-                type: 'html',
-                content: cssPreviewHtml
-            };
-            
-        case 'js':
-        case 'javascript':
-            const jsPreviewHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>JavaScript Preview - ${fileName}</title>
-    <style>
-        body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
-        .code-container { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .code { background: #f8f8f8; padding: 15px; border-radius: 3px; border-left: 4px solid #007acc; overflow-x: auto; }
-        .filename { color: #666; margin-bottom: 10px; font-weight: bold; }
-        .console { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 3px; margin-top: 15px; }
-        .console-title { color: #569cd6; margin-bottom: 10px; }
-        .run-button { background: #007acc; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer; margin-top: 10px; }
-        .run-button:hover { background: #005a9e; }
-    </style>
-</head>
-<body>
-    <div class="code-container">
-        <div class="filename">${fileName}</div>
-        <pre class="code">${fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-        <button class="run-button" onclick="runCode()">Run Code</button>
-        <div class="console">
-            <div class="console-title">Console Output:</div>
-            <div id="console-output">Click "Run Code" to execute the JavaScript</div>
-        </div>
-    </div>
-    <script>
-        function runCode() {
-            const output = document.getElementById('console-output');
-            output.innerHTML = '';
-            
-            // Override console.log to capture output
-            const originalLog = console.log;
-            console.log = function(...args) {
-                output.innerHTML += args.join(' ') + '\\n';
-                originalLog.apply(console, args);
-            };
-            
-            try {
-                // Execute the user's code
-                eval(\`${fileContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`);
-                if (output.innerHTML === '') {
-                    output.innerHTML = 'Code executed successfully (no console output)';
-                }
-            } catch (error) {
-                output.innerHTML = 'Error: ' + error.message;
-                output.style.color = '#ff6b6b';
-            }
-            
-            // Restore original console.log
-            console.log = originalLog;
-        }
-    </script>
-</body>
-</html>`;
-            return {
-                type: 'html',
-                content: jsPreviewHtml
-            };
-            
-        case 'json':
-            let formattedJson;
-            try {
-                const parsed = JSON.parse(fileContent);
-                formattedJson = JSON.stringify(parsed, null, 2);
-            } catch (error) {
-                formattedJson = fileContent;
-            }
-            
-            const jsonPreviewHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>JSON Preview - ${fileName}</title>
-    <style>
-        body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
-        .json-container { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .filename { color: #666; margin-bottom: 10px; font-weight: bold; }
-        .json { background: #f8f8f8; padding: 15px; border-radius: 3px; border-left: 4px solid #28a745; overflow-x: auto; }
-        .json-content { white-space: pre; color: #333; }
-    </style>
-</head>
-<body>
-    <div class="json-container">
-        <div class="filename">${fileName}</div>
-        <div class="json">
-            <div class="json-content">${formattedJson.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-        </div>
-    </div>
-</body>
-</html>`;
-            return {
-                type: 'html',
-                content: jsonPreviewHtml
-            };
-            
-        default:
-            const defaultPreviewHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>File Preview - ${fileName}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; text-align: center; }
-        .preview-container { background: white; padding: 40px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .icon { font-size: 64px; margin-bottom: 20px; }
-        .filename { color: #333; margin-bottom: 10px; font-weight: bold; font-size: 18px; }
-        .message { color: #666; }
-    </style>
-</head>
-<body>
-    <div class="preview-container">
-        <div class="icon">📄</div>
-        <div class="filename">${fileName}</div>
-        <div class="message">Preview not available for this file type</div>
-    </div>
-</body>
-</html>`;
-            return {
-                type: 'html',
-                content: defaultPreviewHtml
-            };
-    }
+    return handlerRegistry.generatePreviewContent(fileName, fileContent, fileType);
 }
 
 // Helper to generate unique IDs for files/dirs
@@ -481,22 +168,9 @@ function generateUniqueId(prefix = 'item') {
     return prefix + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 }
 
-// Helper to determine file type for Ace mode
+// Helper to determine file type for Ace mode - now uses dynamic handler registry
 function getFileTypeFromExtension(fileName) {
-    const extension = fileName.split('.').pop().toLowerCase();
-    switch (extension) {
-        case 'html':
-        case 'htm':
-            return 'html';
-        case 'css':
-            return 'css';
-        case 'js':
-            return 'javascript';
-        case 'typ':
-            return 'typst';
-        default:
-            return 'text'; // Default to plain text if unknown
-    }
+    return handlerRegistry.getFileType(fileName);
 }
 
 // --- Service Worker Setup ---
@@ -597,12 +271,8 @@ class EditorComponent {
         this.editor = ace.edit(this.rootElement);
         this.editor.setTheme("ace/theme/github");
         
-        // Set editor mode based on file type
-        let aceMode = fileData.type;
-        if (fileData.type === 'typst') {
-            // Ace doesn't have a native Typst mode, use text mode for now
-            aceMode = 'text';
-        }
+        // Set editor mode using the handler registry
+        const aceMode = handlerRegistry.getAceModeForFile(fileData.name);
         this.editor.session.setMode(`ace/mode/${aceMode}`);
         
         this.editor.setOptions({
@@ -624,22 +294,31 @@ class EditorComponent {
             // Check if this file change should trigger a preview update
             const previewFile = projectFiles[activePreviewFileId];
             
-            if (previewFile && previewFile.type === 'typst') {
-                // Update Typst preview if ANY file changes and we're previewing a Typst file
+            if (previewFile && handlerRegistry.requiresCustomRender(previewFile.name)) {
+                // Update custom preview (like Typst) if ANY file changes and we're previewing such a file
                 // (Typst can import JSON, text, SVG, and other file types, not just .typ files)
-                console.log(`File content changed for ${fileData.name}, triggering typst render for ${previewFile.name}.`);
+                console.log(`File content changed for ${fileData.name}, triggering custom render for ${previewFile.name}.`);
                 
-                // First, ensure the library is loaded and ready
-                const success = await ensureTypstInitialized();
-
-                if (success && previewComponentInstance) {
-                    // Now that we know it's ready, call the render function with zoom preservation
-                    await renderTypst(activePreviewFileId, previewComponentInstance.outputDiv, previewComponentInstance.diagnosticsDiv, true);
-                } else if (!success) {
-                    if (previewComponentInstance) previewComponentInstance.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load.';
+                try {
+                    if (previewComponentInstance) {
+                        await handlerRegistry.renderFile(
+                            previewFile.name,
+                            activePreviewFileId,
+                            previewComponentInstance.outputDiv,
+                            previewComponentInstance.diagnosticsDiv,
+                            projectFiles,
+                            true, // preserveZoom
+                            previewComponentInstance
+                        );
+                    }
+                } catch (error) {
+                    console.error('Custom render failed:', error);
+                    if (previewComponentInstance) {
+                        previewComponentInstance.diagnosticsDiv.textContent = `Error: ${error.message}`;
+                    }
                 }
 
-            } else if (fileData.type !== 'typst' && activePreviewFileId === this.fileId) {
+            } else if (!handlerRegistry.requiresCustomRender(fileData.name) && activePreviewFileId === this.fileId) {
                 // Only update web preview if this file is the one being previewed
                 console.log(`Web content changed for ${fileData.name}, triggering web preview render.`);
                 await updatePreviewFiles();
@@ -743,91 +422,15 @@ class PreviewComponent {
         iframeContainer.appendChild(previewFrame);
         this.webPreviewContainer.appendChild(iframeContainer);
 
-        // --- UI for Typst Preview ---
-        this.typstPreviewContainer = document.createElement('div');
-        this.typstPreviewContainer.style.display = 'flex';
-        this.typstPreviewContainer.style.flexDirection = 'column';
-        this.typstPreviewContainer.style.height = '100%';
-        
-        // Add Typst-specific controls
-        this.typstControlsDiv = document.createElement('div');
-        this.typstControlsDiv.style.padding = '5px 10px';
-        this.typstControlsDiv.style.borderBottom = '1px solid #ddd';
-        this.typstControlsDiv.style.background = '#fafafa';
-        this.typstControlsDiv.style.display = 'flex';
-        this.typstControlsDiv.style.alignItems = 'center';
-        this.typstControlsDiv.style.gap = '10px';
-        this.typstControlsDiv.style.fontSize = '14px';
-        
-        // Zoom controls
-        const zoomLabel = document.createElement('span');
-        zoomLabel.textContent = 'Zoom:';
-        zoomLabel.style.fontWeight = 'bold';
-        
-        this.zoomOutBtn = document.createElement('button');
-        this.zoomOutBtn.textContent = '−';
-        this.zoomOutBtn.style.padding = '2px 8px';
-        this.zoomOutBtn.style.border = '1px solid #ccc';
-        this.zoomOutBtn.style.background = 'white';
-        this.zoomOutBtn.style.cursor = 'pointer';
-        this.zoomOutBtn.style.borderRadius = '3px';
-        
-        this.zoomLevel = 1.0;
-        this.zoomDisplay = document.createElement('span');
-        this.zoomDisplay.textContent = '100%';
-        this.zoomDisplay.style.minWidth = '50px';
-        this.zoomDisplay.style.textAlign = 'center';
-        this.zoomDisplay.style.fontFamily = 'monospace';
-        
-        this.zoomInBtn = document.createElement('button');
-        this.zoomInBtn.textContent = '+';
-        this.zoomInBtn.style.padding = '2px 8px';
-        this.zoomInBtn.style.border = '1px solid #ccc';
-        this.zoomInBtn.style.background = 'white';
-        this.zoomInBtn.style.cursor = 'pointer';
-        this.zoomInBtn.style.borderRadius = '3px';
-        
-        this.fitWidthBtn = document.createElement('button');
-        this.fitWidthBtn.textContent = 'Fit Width';
-        this.fitWidthBtn.style.padding = '2px 8px';
-        this.fitWidthBtn.style.border = '1px solid #ccc';
-        this.fitWidthBtn.style.background = 'white';
-        this.fitWidthBtn.style.cursor = 'pointer';
-        this.fitWidthBtn.style.borderRadius = '3px';
-        this.fitWidthBtn.style.marginLeft = '10px';
-        
-        // Add zoom event listeners
-        this.zoomOutBtn.onclick = () => this.adjustZoom(0.9);
-        this.zoomInBtn.onclick = () => this.adjustZoom(1.1);
-        this.fitWidthBtn.onclick = () => this.fitToWidth();
-        
-        this.typstControlsDiv.appendChild(zoomLabel);
-        this.typstControlsDiv.appendChild(this.zoomOutBtn);
-        this.typstControlsDiv.appendChild(this.zoomDisplay);
-        this.typstControlsDiv.appendChild(this.zoomInBtn);
-        this.typstControlsDiv.appendChild(this.fitWidthBtn);
-        this.typstPreviewContainer.appendChild(this.typstControlsDiv);
-        
-        this.outputDiv = document.createElement('div');
-        this.outputDiv.style.flex = '1';
-        this.outputDiv.style.padding = '1rem';
-        this.outputDiv.style.overflow = 'auto'; // Enable scrollbars for pan
-        this.outputDiv.style.background = 'white';
-        this.outputDiv.style.textAlign = 'left'; // Left-aligned for fit-width default
-        this.diagnosticsDiv = document.createElement('div');
-        this.diagnosticsDiv.style.height = '100px';
-        this.diagnosticsDiv.style.backgroundColor = '#212529';
-        this.diagnosticsDiv.style.color = '#f8f9fa';
-        this.diagnosticsDiv.style.fontFamily = 'monospace';
-        this.diagnosticsDiv.style.whiteSpace = 'pre-wrap';
-        this.diagnosticsDiv.style.padding = '1rem';
-        this.diagnosticsDiv.style.overflowY = 'auto';
-        this.typstPreviewContainer.appendChild(this.outputDiv);
-        this.typstPreviewContainer.appendChild(this.diagnosticsDiv);
+        // --- UI for Custom Preview (e.g., Typst) ---
+        this.customPreviewContainer = document.createElement('div');
+        this.customPreviewContainer.style.display = 'flex';
+        this.customPreviewContainer.style.flexDirection = 'column';
+        this.customPreviewContainer.style.height = '100%';
         
         // Add both preview containers to the content container
         this.previewContentContainer.appendChild(this.webPreviewContainer);
-        this.previewContentContainer.appendChild(this.typstPreviewContainer);
+        this.previewContentContainer.appendChild(this.customPreviewContainer);
         
         previewComponentInstance = this;
         
@@ -850,26 +453,46 @@ class PreviewComponent {
     async updatePreviewMode() {
         const previewFile = projectFiles[activePreviewFileId];
         
-        if (previewFile && previewFile.type === 'typst') {
-            // Show Typst preview
+        if (previewFile && handlerRegistry.requiresCustomRender(previewFile.name)) {
+            // Show custom preview
             this.webPreviewContainer.style.display = 'none';
-            this.typstPreviewContainer.style.display = 'flex';
-            this.modeIndicator.textContent = 'Typst';
+            this.customPreviewContainer.style.display = 'flex';
+            this.modeIndicator.textContent = 'Custom';
             this.modeIndicator.style.backgroundColor = '#4CAF50';
             this.modeIndicator.style.color = 'white';
-            this.diagnosticsDiv.textContent = "Loading Typst renderer...";
             
-            const success = await ensureTypstInitialized();
-            if (success) {
-                await renderTypst(activePreviewFileId, this.outputDiv, this.diagnosticsDiv, false);
-            } else {
-                this.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load. Check console.';
+            // Clear previous custom UI and build new one
+            this.customPreviewContainer.innerHTML = '';
+            const ui = handlerRegistry.createPreviewUI(previewFile.name, this.customPreviewContainer, this);
+            this.outputDiv = ui.outputDiv;
+            this.diagnosticsDiv = ui.diagnosticsDiv;
+            this.zoomDisplay = ui.zoomDisplay; // The handler provides this now
+            
+            if (this.diagnosticsDiv) {
+                this.diagnosticsDiv.textContent = "Loading custom renderer...";
+            }
+            
+            try {
+                await handlerRegistry.renderFile(
+                    previewFile.name,
+                    activePreviewFileId,
+                    this.outputDiv,
+                    this.diagnosticsDiv,
+                    projectFiles,
+                    false, // preserveZoom
+                    this
+                );
+            } catch (error) {
+                console.error('Custom render failed:', error);
+                if (this.diagnosticsDiv) {
+                    this.diagnosticsDiv.textContent = `Error: ${error.message}`;
+                }
             }
 
         } else {
             // Show web preview
             this.webPreviewContainer.style.display = 'flex';
-            this.typstPreviewContainer.style.display = 'none';
+            this.customPreviewContainer.style.display = 'none';
             this.modeIndicator.textContent = 'HTML';
             this.modeIndicator.style.backgroundColor = '#2196F3';
             this.modeIndicator.style.color = 'white';
@@ -880,6 +503,7 @@ class PreviewComponent {
     }
     
     adjustZoom(factor) {
+        if (!this.outputDiv) return;
         this.zoomLevel *= factor;
         this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel)); // Clamp between 10% and 500%
         this.updateZoomDisplay();
@@ -887,6 +511,7 @@ class PreviewComponent {
     }
     
     fitToWidth() {
+        if (!this.outputDiv) return;
         const svg = this.outputDiv.querySelector('svg');
         if (svg) {
             const containerWidth = this.outputDiv.clientWidth - 32; // Account for padding
@@ -899,10 +524,13 @@ class PreviewComponent {
     }
     
     updateZoomDisplay() {
-        this.zoomDisplay.textContent = Math.round(this.zoomLevel * 100) + '%';
+        if (this.zoomDisplay) {
+            this.zoomDisplay.textContent = Math.round(this.zoomLevel * 100) + '%';
+        }
     }
     
     applyZoom() {
+        if (!this.outputDiv) return;
         const svg = this.outputDiv.querySelector('svg');
         if (svg) {
             svg.style.transform = `scale(${this.zoomLevel})`;
@@ -1204,10 +832,7 @@ class ProjectFilesComponent {
                     if (oldType !== currentFile.type) {
                         const editorComponent = openTab.container.componentReference; // componentReference should still point to our EditorComponent instance
                         if (editorComponent && editorComponent.editor) {
-                            let aceMode = currentFile.type;
-                            if (currentFile.type === 'typst') {
-                                aceMode = 'text'; // Ace doesn't have native Typst support
-                            }
+                            const aceMode = handlerRegistry.getAceModeForFile(currentFile.name);
                             editorComponent.editor.session.setMode(`ace/mode/${aceMode}`);
                             console.log(`[ProjectFilesComponent] Editor mode updated for fileId "${fileId}" to ${aceMode}.`);
                         } else {
@@ -1457,6 +1082,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     goldenLayoutInstance.loadLayout(layoutConfig);
     console.log('[DOMContentLoaded] GoldenLayout loaded.');
+
+    // Initialize custom Ace modes from all handlers
+    handlerRegistry.initializeAllAceModes();
 
     // Set initial active file ID
     if (projectFiles.htmlFile) { // Check if htmlFile exists
