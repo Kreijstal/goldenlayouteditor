@@ -7,8 +7,179 @@ require('ace-builds/src-min-noconflict/ext-language_tools');
 require('ace-builds/src-min-noconflict/mode-css');
 require('ace-builds/src-min-noconflict/mode-javascript');
 
-// Import preview handlers
-const { generatePreviewContent } = require('./preview-handlers');
+// Preview handlers for different file types
+function generatePreviewContent(fileName, fileContent, fileType) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    
+    switch (extension) {
+        case 'html':
+        case 'htm':
+            return {
+                type: 'html',
+                content: fileContent
+            };
+            
+        case 'css':
+            const cssPreviewHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSS Preview - ${fileName}</title>
+    <style>
+${fileContent}
+    </style>
+</head>
+<body>
+    <h1>CSS Preview</h1>
+    <p>This is a sample paragraph to demonstrate your CSS styles.</p>
+    <div class="sample-div">Sample div element</div>
+    <button>Sample button</button>
+    <ul>
+        <li>List item 1</li>
+        <li>List item 2</li>
+        <li>List item 3</li>
+    </ul>
+    <table border="1">
+        <tr><th>Header 1</th><th>Header 2</th></tr>
+        <tr><td>Cell 1</td><td>Cell 2</td></tr>
+    </table>
+</body>
+</html>`;
+            return {
+                type: 'html',
+                content: cssPreviewHtml
+            };
+            
+        case 'js':
+        case 'javascript':
+            const jsPreviewHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JavaScript Preview - ${fileName}</title>
+    <style>
+        body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
+        .code-container { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .code { background: #f8f8f8; padding: 15px; border-radius: 3px; border-left: 4px solid #007acc; overflow-x: auto; }
+        .filename { color: #666; margin-bottom: 10px; font-weight: bold; }
+        .console { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 3px; margin-top: 15px; }
+        .console-title { color: #569cd6; margin-bottom: 10px; }
+        .run-button { background: #007acc; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer; margin-top: 10px; }
+        .run-button:hover { background: #005a9e; }
+    </style>
+</head>
+<body>
+    <div class="code-container">
+        <div class="filename">${fileName}</div>
+        <pre class="code">${fileContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+        <button class="run-button" onclick="runCode()">Run Code</button>
+        <div class="console">
+            <div class="console-title">Console Output:</div>
+            <div id="console-output">Click "Run Code" to execute the JavaScript</div>
+        </div>
+    </div>
+    <script>
+        function runCode() {
+            const output = document.getElementById('console-output');
+            output.innerHTML = '';
+            
+            // Override console.log to capture output
+            const originalLog = console.log;
+            console.log = function(...args) {
+                output.innerHTML += args.join(' ') + '\\n';
+                originalLog.apply(console, args);
+            };
+            
+            try {
+                // Execute the user's code
+                eval(\`${fileContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`);
+                if (output.innerHTML === '') {
+                    output.innerHTML = 'Code executed successfully (no console output)';
+                }
+            } catch (error) {
+                output.innerHTML = 'Error: ' + error.message;
+                output.style.color = '#ff6b6b';
+            }
+            
+            // Restore original console.log
+            console.log = originalLog;
+        }
+    </script>
+</body>
+</html>`;
+            return {
+                type: 'html',
+                content: jsPreviewHtml
+            };
+            
+        case 'json':
+            let formattedJson;
+            try {
+                const parsed = JSON.parse(fileContent);
+                formattedJson = JSON.stringify(parsed, null, 2);
+            } catch (error) {
+                formattedJson = fileContent;
+            }
+            
+            const jsonPreviewHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSON Preview - ${fileName}</title>
+    <style>
+        body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
+        .json-container { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .filename { color: #666; margin-bottom: 10px; font-weight: bold; }
+        .json { background: #f8f8f8; padding: 15px; border-radius: 3px; border-left: 4px solid #28a745; overflow-x: auto; }
+        .json-content { white-space: pre; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="json-container">
+        <div class="filename">${fileName}</div>
+        <div class="json">
+            <div class="json-content">${formattedJson.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        </div>
+    </div>
+</body>
+</html>`;
+            return {
+                type: 'html',
+                content: jsonPreviewHtml
+            };
+            
+        default:
+            const defaultPreviewHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Preview - ${fileName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; text-align: center; }
+        .preview-container { background: white; padding: 40px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .icon { font-size: 64px; margin-bottom: 20px; }
+        .filename { color: #333; margin-bottom: 10px; font-weight: bold; font-size: 18px; }
+        .message { color: #666; }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <div class="icon">📄</div>
+        <div class="filename">${fileName}</div>
+        <div class="message">Preview not available for this file type</div>
+    </div>
+</body>
+</html>`;
+            return {
+                type: 'html',
+                content: defaultPreviewHtml
+            };
+    }
+}
 
 // Helper to generate unique IDs for files/dirs
 function generateUniqueId() {
@@ -710,19 +881,76 @@ class ProjectFilesComponent {
 
         // Attempt to find stack using getAllStacks() and filtering by ID
         const allStacks = goldenLayoutInstance.getAllStacks();
-        if (!allStacks || allStacks.length === 0) {
-            console.error('[ProjectFilesComponent] No stacks found using getAllStacks().');
+        if (!allStacks) {
+            console.error('[ProjectFilesComponent] goldenLayoutInstance.getAllStacks() returned null or undefined.');
             return;
         }
 
-        const editorStack = allStacks.find(stack => stack.id === 'editorStack');
+        let editorStack = allStacks.find(stack => stack.id === 'editorStack');
         
         if (!editorStack) {
-            console.error('[ProjectFilesComponent] Editor stack with ID "editorStack" not found among all stacks.');
-            console.log('[ProjectFilesComponent] Available stack IDs:', allStacks.map(s => s.id));
-            return;
+            console.warn('[ProjectFilesComponent] Editor stack with ID "editorStack" not found. Attempting to recreate it.');
+            console.log('[ProjectFilesComponent] Available stack IDs before recreation attempt:', allStacks.map(s => s.id));
+
+            try {
+                const rootContentItem = goldenLayoutInstance.root;
+                if (!rootContentItem || !rootContentItem.contentItems || rootContentItem.contentItems.length < 2) {
+                    throw new Error('Root content item or its children are not structured as expected for editorStack recreation.');
+                }
+
+                // Expected path: root (row) -> contentItems[1] (column for editor+preview) -> contentItems[0] (row for editorStack+preview)
+                const editorAndPreviewColumn = rootContentItem.contentItems[1];
+                if (!editorAndPreviewColumn || editorAndPreviewColumn.type !== 'column' || !editorAndPreviewColumn.contentItems || editorAndPreviewColumn.contentItems.length === 0) {
+                    throw new Error('Editor/Preview column not found, not a column, or has no children, during editorStack recreation.');
+                }
+
+                const editorPreviewRow = editorAndPreviewColumn.contentItems[0];
+                if (!editorPreviewRow || editorPreviewRow.type !== 'row') {
+                    throw new Error('Editor/Preview row (parent of editorStack) not found or not a row during editorStack recreation.');
+                }
+
+                if (typeof editorPreviewRow.addChild !== 'function') {
+                    throw new Error('Identified parent (editorPreviewRow) for editorStack does not have an addChild method.');
+                }
+
+                const editorStackConfig = {
+                    type: 'stack',
+                    id: 'editorStack',
+                    isClosable: true,
+                    content: []
+                };
+                
+                editorPreviewRow.addChild(editorStackConfig, 0); // Add as the first child in that row
+                console.log('[ProjectFilesComponent] editorStack configuration added to parent row.');
+
+                // Re-fetch the stack from the live layout
+                editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
+                
+                if (!editorStack) {
+                    console.error('[ProjectFilesComponent] Failed to find editorStack after attempting recreation. It might not have been added correctly or GL state is inconsistent.');
+                    console.log('[ProjectFilesComponent] Available stack IDs after recreation attempt:', goldenLayoutInstance.getAllStacks().map(s => s.id));
+                    return; 
+                }
+                console.log('[ProjectFilesComponent] editorStack successfully recreated and found.');
+
+            } catch (e) {
+                console.error('[ProjectFilesComponent] Error during editorStack recreation:', e);
+                // Log current layout structure for debugging if recreation fails.
+                try {
+                    const currentLayoutConfig = goldenLayoutInstance.toConfig(goldenLayoutInstance.root);
+                    console.error('[ProjectFilesComponent] Current GoldenLayout root structure for debugging:', JSON.stringify(currentLayoutConfig, null, 2));
+                } catch (configError) {
+                    console.error('[ProjectFilesComponent] Could not serialize current layout to config for debugging:', configError);
+                }
+                return;
+            }
         }
         
+        if (!editorStack) { // Should not happen if recreation was successful or it was found initially
+             console.error('[ProjectFilesComponent] Editor stack is still not available after all attempts.');
+             return;
+        }
+
         if (typeof editorStack.setActiveContentItem !== 'function') {
              console.error('[ProjectFilesComponent] Found item with ID "editorStack" is not a valid Stack object (missing setActiveContentItem).', editorStack);
              return;
