@@ -1426,10 +1426,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             content: [
                                 {
                                     type: 'component',
-                                    id: 'editor-' + projectFiles.htmlFile.id, // Assign an ID to the content item
+                                    id: 'editor-' + projectFiles["htmlFile"].id, // Assign an ID to the content item
                                     componentType: 'editor',
-                                    title: projectFiles.htmlFile.name, // Initial tab title
-                                    componentState: { fileId: projectFiles.htmlFile.id }
+                                    title: projectFiles["htmlFile"].name, // Initial tab title
+                                    componentState: { fileId: projectFiles["htmlFile"].id }
                                 }
                             ]
                         },
