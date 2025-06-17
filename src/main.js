@@ -80,14 +80,19 @@ async function ensureTypstInitialized() {
  * @param {HTMLElement} outputContainer - Container to display the rendered output
  * @param {HTMLElement} diagnosticsContainer - Container to display diagnostics
  */
-async function renderTypst(mainFileId, outputContainer, diagnosticsContainer) {
+async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, preserveZoom = false) {
     const mainFile = projectFiles[mainFileId];
     diagnosticsContainer.textContent = 'Compiling...';
 
-    // Add all project files to the compiler's virtual file system.
-    // Use the actual filename from the selected file
+    // Add all project files to the compiler's virtual file system for dependencies
+    // Typst can import JSON, text, SVG, and other file types
+    Object.values(projectFiles).forEach(file => {
+        const filePath = `/${file.name}`;
+        typstCompiler.addSource(filePath, file.content);
+    });
+    
+    // Use the actual filename from the selected file as main
     const mainFilePath = `/${mainFile.name}`;
-    typstCompiler.addSource(mainFilePath, mainFile.content);
 
     try {
         const artifact = await typstCompiler.compile({
@@ -100,7 +105,45 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer) {
           const svg = await typstRenderer.renderSvg({
             artifactContent: artifact.result,
           });
+          
+          // Preserve existing zoom state if available
+          let existingZoomLevel = null;
+          let existingTextAlign = null;
+          const existingSvg = outputContainer.querySelector('svg');
+          if (preserveZoom && existingSvg && previewComponentInstance) {
+            existingZoomLevel = previewComponentInstance.zoomLevel;
+            existingTextAlign = outputContainer.style.textAlign;
+          }
+          
           outputContainer.innerHTML = svg;
+          
+          // Set up the SVG for proper scaling
+          const svgElement = outputContainer.querySelector('svg');
+          if (svgElement) {
+            // Make SVG responsive and set initial size
+            svgElement.style.maxWidth = '100%';
+            svgElement.style.height = 'auto';
+            svgElement.style.display = 'block';
+            svgElement.style.margin = '0 auto';
+            
+            // Apply zoom logic if preview component exists
+            if (previewComponentInstance) {
+              if (preserveZoom && existingZoomLevel) {
+                // Immediately apply preserved zoom to avoid flicker
+                svgElement.style.transform = `scale(${existingZoomLevel})`;
+                svgElement.style.transformOrigin = 'top center';
+                outputContainer.style.textAlign = existingTextAlign || (existingZoomLevel === 1.0 ? 'center' : 'left');
+                previewComponentInstance.updateZoomDisplay();
+              } else {
+                // Use hardcoded 228% zoom for initial render
+                previewComponentInstance.zoomLevel = 2.28;
+                svgElement.style.transform = `scale(${previewComponentInstance.zoomLevel})`;
+                svgElement.style.transformOrigin = 'top center';
+                outputContainer.style.textAlign = 'left';
+                previewComponentInstance.updateZoomDisplay();
+              }
+            }
+          }
         } else {
           outputContainer.innerHTML = '<p style="color: red;">Compilation failed.</p>';
         }
@@ -578,25 +621,30 @@ class EditorComponent {
             const fileData = projectFiles[this.fileId];
             fileData.content = this.editor.getValue();
 
-            // Check the file type to decide which renderer to call
-            if (fileData.type === 'typst') {
-                console.log(`Typst content changed for ${fileData.name}, triggering typst render.`);
+            // Check if this file change should trigger a preview update
+            const previewFile = projectFiles[activePreviewFileId];
+            
+            if (previewFile && previewFile.type === 'typst') {
+                // Update Typst preview if ANY file changes and we're previewing a Typst file
+                // (Typst can import JSON, text, SVG, and other file types, not just .typ files)
+                console.log(`File content changed for ${fileData.name}, triggering typst render for ${previewFile.name}.`);
                 
                 // First, ensure the library is loaded and ready
                 const success = await ensureTypstInitialized();
 
                 if (success && previewComponentInstance) {
-                    // Now that we know it's ready, call the render function
-                    await renderTypst(this.fileId, previewComponentInstance.outputDiv, previewComponentInstance.diagnosticsDiv);
+                    // Now that we know it's ready, call the render function with zoom preservation
+                    await renderTypst(activePreviewFileId, previewComponentInstance.outputDiv, previewComponentInstance.diagnosticsDiv, true);
                 } else if (!success) {
                     if (previewComponentInstance) previewComponentInstance.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load.';
                 }
 
-            } else {
-                // The existing logic for web previews
+            } else if (fileData.type !== 'typst' && activePreviewFileId === this.fileId) {
+                // Only update web preview if this file is the one being previewed
                 console.log(`Web content changed for ${fileData.name}, triggering web preview render.`);
                 await updatePreviewFiles();
             }
+            // If conditions don't match, don't update the preview
         });
 
         this.editor.on('changeSelection', () => {
@@ -701,11 +749,71 @@ class PreviewComponent {
         this.typstPreviewContainer.style.flexDirection = 'column';
         this.typstPreviewContainer.style.height = '100%';
         
+        // Add Typst-specific controls
+        this.typstControlsDiv = document.createElement('div');
+        this.typstControlsDiv.style.padding = '5px 10px';
+        this.typstControlsDiv.style.borderBottom = '1px solid #ddd';
+        this.typstControlsDiv.style.background = '#fafafa';
+        this.typstControlsDiv.style.display = 'flex';
+        this.typstControlsDiv.style.alignItems = 'center';
+        this.typstControlsDiv.style.gap = '10px';
+        this.typstControlsDiv.style.fontSize = '14px';
+        
+        // Zoom controls
+        const zoomLabel = document.createElement('span');
+        zoomLabel.textContent = 'Zoom:';
+        zoomLabel.style.fontWeight = 'bold';
+        
+        this.zoomOutBtn = document.createElement('button');
+        this.zoomOutBtn.textContent = '−';
+        this.zoomOutBtn.style.padding = '2px 8px';
+        this.zoomOutBtn.style.border = '1px solid #ccc';
+        this.zoomOutBtn.style.background = 'white';
+        this.zoomOutBtn.style.cursor = 'pointer';
+        this.zoomOutBtn.style.borderRadius = '3px';
+        
+        this.zoomLevel = 1.0;
+        this.zoomDisplay = document.createElement('span');
+        this.zoomDisplay.textContent = '100%';
+        this.zoomDisplay.style.minWidth = '50px';
+        this.zoomDisplay.style.textAlign = 'center';
+        this.zoomDisplay.style.fontFamily = 'monospace';
+        
+        this.zoomInBtn = document.createElement('button');
+        this.zoomInBtn.textContent = '+';
+        this.zoomInBtn.style.padding = '2px 8px';
+        this.zoomInBtn.style.border = '1px solid #ccc';
+        this.zoomInBtn.style.background = 'white';
+        this.zoomInBtn.style.cursor = 'pointer';
+        this.zoomInBtn.style.borderRadius = '3px';
+        
+        this.fitWidthBtn = document.createElement('button');
+        this.fitWidthBtn.textContent = 'Fit Width';
+        this.fitWidthBtn.style.padding = '2px 8px';
+        this.fitWidthBtn.style.border = '1px solid #ccc';
+        this.fitWidthBtn.style.background = 'white';
+        this.fitWidthBtn.style.cursor = 'pointer';
+        this.fitWidthBtn.style.borderRadius = '3px';
+        this.fitWidthBtn.style.marginLeft = '10px';
+        
+        // Add zoom event listeners
+        this.zoomOutBtn.onclick = () => this.adjustZoom(0.9);
+        this.zoomInBtn.onclick = () => this.adjustZoom(1.1);
+        this.fitWidthBtn.onclick = () => this.fitToWidth();
+        
+        this.typstControlsDiv.appendChild(zoomLabel);
+        this.typstControlsDiv.appendChild(this.zoomOutBtn);
+        this.typstControlsDiv.appendChild(this.zoomDisplay);
+        this.typstControlsDiv.appendChild(this.zoomInBtn);
+        this.typstControlsDiv.appendChild(this.fitWidthBtn);
+        this.typstPreviewContainer.appendChild(this.typstControlsDiv);
+        
         this.outputDiv = document.createElement('div');
         this.outputDiv.style.flex = '1';
         this.outputDiv.style.padding = '1rem';
-        this.outputDiv.style.overflowY = 'auto';
+        this.outputDiv.style.overflow = 'auto'; // Enable scrollbars for pan
         this.outputDiv.style.background = 'white';
+        this.outputDiv.style.textAlign = 'left'; // Left-aligned for fit-width default
         this.diagnosticsDiv = document.createElement('div');
         this.diagnosticsDiv.style.height = '100px';
         this.diagnosticsDiv.style.backgroundColor = '#212529';
@@ -753,7 +861,7 @@ class PreviewComponent {
             
             const success = await ensureTypstInitialized();
             if (success) {
-                await renderTypst(activePreviewFileId, this.outputDiv, this.diagnosticsDiv);
+                await renderTypst(activePreviewFileId, this.outputDiv, this.diagnosticsDiv, false);
             } else {
                 this.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load. Check console.';
             }
@@ -771,6 +879,39 @@ class PreviewComponent {
         }
     }
     
+    adjustZoom(factor) {
+        this.zoomLevel *= factor;
+        this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel)); // Clamp between 10% and 500%
+        this.updateZoomDisplay();
+        this.applyZoom();
+    }
+    
+    fitToWidth() {
+        const svg = this.outputDiv.querySelector('svg');
+        if (svg) {
+            const containerWidth = this.outputDiv.clientWidth - 32; // Account for padding
+            const svgWidth = svg.getBoundingClientRect().width / this.zoomLevel; // Get original width
+            this.zoomLevel = containerWidth / svgWidth;
+            this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel)); // Clamp
+            this.updateZoomDisplay();
+            this.applyZoom();
+        }
+    }
+    
+    updateZoomDisplay() {
+        this.zoomDisplay.textContent = Math.round(this.zoomLevel * 100) + '%';
+    }
+    
+    applyZoom() {
+        const svg = this.outputDiv.querySelector('svg');
+        if (svg) {
+            svg.style.transform = `scale(${this.zoomLevel})`;
+            svg.style.transformOrigin = 'top center';
+            // Reset text-align when zoomed to allow proper scrolling
+            this.outputDiv.style.textAlign = this.zoomLevel === 1.0 ? 'center' : 'left';
+        }
+    }
+
     updateFileOptions() {
         this.fileSelect.innerHTML = '';
         Object.values(projectFiles).forEach(file => {
