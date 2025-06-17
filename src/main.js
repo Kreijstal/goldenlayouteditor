@@ -7,13 +7,22 @@ require('ace-builds/src-min-noconflict/ext-language_tools');
 require('ace-builds/src-min-noconflict/mode-css');
 require('ace-builds/src-min-noconflict/mode-javascript');
 
+// Helper to generate unique IDs for files/dirs
+function generateUniqueId() {
+    return 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+}
+
 // --- Central Application State ---
-let projectFiles = {
-    "htmlFile": {
-        id: "htmlFile",
-        name: "index.html",
-        type: "html",
-        content: `<!DOCTYPE html>
+let projectStructure = {
+    id: generateUniqueId(),
+    name: "root",
+    type: "directory",
+    children: [
+        {
+            id: "htmlFile",
+            name: "index.html",
+            type: "file",
+            content: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -26,14 +35,14 @@ let projectFiles = {
     <script src="script.js" defer></script>
 </body>
 </html>`,
-        cursor: { row: 0, column: 0 },
-        selection: null
-    },
-    "cssFile": {
-        id: "cssFile",
-        name: "style.css",
-        type: "css",
-        content: `body {
+            cursor: { row: 0, column: 0 },
+            selection: null
+        },
+        {
+            id: "cssFile",
+            name: "style.css",
+            type: "file",
+            content: `body {
     font-family: sans-serif;
     background-color: #f0f0f0;
     padding: 20px;
@@ -43,14 +52,14 @@ h1 {
     color: navy;
     text-align: center;
 }`,
-        cursor: { row: 0, column: 0 },
-        selection: null
-    },
-    "jsFile": {
-        id: "jsFile",
-        name: "script.js",
-        type: "javascript",
-        content: `console.log('Script loaded successfully!');
+            cursor: { row: 0, column: 0 },
+            selection: null
+        },
+        {
+            id: "jsFile",
+            name: "script.js",
+            type: "file",
+            content: `console.log('Script loaded successfully!');
 document.addEventListener('DOMContentLoaded', () => {
     const h1 = document.querySelector('h1');
     if (h1) {
@@ -59,19 +68,58 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });`,
-        cursor: { row: 0, column: 0 },
-        selection: null
-    }
+            cursor: { row: 0, column: 0 },
+            selection: null
+        }
+    ]
 };
+
+// Helper to find files in the project structure
+function findFileById(id, node = projectStructure) {
+    if (node.id === id && node.type === 'file') {
+        return node;
+    }
+    if (node.children) {
+        for (let child of node.children) {
+            const found = findFileById(id, child);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+// Helper to get all files from the project structure
+function getAllFiles(node = projectStructure, files = []) {
+    if (node.type === 'file') {
+        files.push(node);
+    }
+    if (node.children) {
+        for (let child of node.children) {
+            getAllFiles(child, files);
+        }
+    }
+    return files;
+}
+
+// Legacy compatibility - expose files as flat object
+let projectFiles = {};
+function updateProjectFilesCache() {
+    projectFiles = {};
+    const allFiles = getAllFiles();
+    allFiles.forEach(file => {
+        projectFiles[file.id] = file;
+    });
+}
+updateProjectFilesCache();
 
 let previewFrame;
 let goldenLayoutInstance;
 let projectFilesComponentInstance; // To access its methods
 let activeEditorFileId = null; // To track the currently active file in the editor
 
-// Helper to generate unique IDs for new files
-function generateUniqueFileId() {
-    return 'file-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+// Helper to generate unique IDs for files and directories
+function generateUniqueId(prefix = 'item') {
+    return prefix + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 }
 
 // Helper to determine file type for Ace mode
@@ -95,7 +143,7 @@ let serviceWorkerRegistration = null;
 
 // Register service worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./worker.js')
+    navigator.serviceWorker.register('/worker.js')
         .then(registration => {
             console.log('[ServiceWorker] Registered successfully');
             serviceWorkerRegistration = registration;
@@ -106,35 +154,6 @@ if ('serviceWorker' in navigator) {
 }
 
 // --- Preview Rendering ---
-async function updatePreviewFiles() {
-    try {
-        // Update all files in the service worker
-        if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
-            Object.values(projectFiles).forEach(file => {
-                serviceWorkerRegistration.active.postMessage({
-                    type: 'updateFile',
-                    fileName: file.name,
-                    content: file.content
-                });
-            });
-        }
-        
-        if (previewFrame) {
-            // Add a cache-busting parameter to ensure fresh content
-            const timestamp = Date.now();
-            const previewUrl = `/preview/index.html?t=${timestamp}`;
-            
-            // Reload the preview iframe to fetch fresh files from service worker
-            previewFrame.src = previewUrl;
-            console.log('[RenderPreview] All files updated in service worker and preview reloaded.');
-        }
-        
-        return true;
-    } catch (error) {
-        console.error('[RenderPreview] Failed to update files in service worker:', error);
-        return false;
-    }
-}
 
 function updatePreviewFiles() {
     try {
@@ -143,7 +162,7 @@ function updatePreviewFiles() {
             Object.values(projectFiles).forEach(file => {
                 serviceWorkerRegistration.active.postMessage({
                     type: 'updateFile',
-                    fileName: file.name,
+                    fileName: file.name, // This now includes the full path like "tomato/style.css"
                     content: file.content
                 });
             });

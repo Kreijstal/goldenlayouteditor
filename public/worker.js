@@ -58,12 +58,15 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     const pathname = url.pathname;
-    const fileName = pathname.split('/').pop(); // Get just the filename
+    
+    // Remove leading slash and preview prefix to get the file path
+    let filePath = pathname.startsWith('/preview/') ? pathname.slice(9) : pathname.slice(1);
     
     // Check if this is a request for a file we're managing
-    if ((pathname.includes('/preview/') || pathname.startsWith('/')) && files.has(fileName)) {
+    if ((pathname.includes('/preview/') || pathname.startsWith('/')) && files.has(filePath)) {
+        const fileName = filePath.split('/').pop(); // Get just the filename for MIME type
         event.respondWith(
-            new Response(files.get(fileName), {
+            new Response(files.get(filePath), {
                 headers: {
                     'Content-Type': getMimeType(fileName),
                     'Cache-Control': 'no-cache'
