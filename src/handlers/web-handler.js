@@ -240,4 +240,4 @@ module.exports = {
     getAceMode,
     // This handler doesn't need special rendering logic beyond the preview
     render: null
-};
+}; 
