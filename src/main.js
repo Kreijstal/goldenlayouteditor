@@ -7,6 +7,108 @@ require('ace-builds/src-min-noconflict/ext-language_tools');
 require('ace-builds/src-min-noconflict/mode-css');
 require('ace-builds/src-min-noconflict/mode-javascript');
 
+// --- Typst Integration Variables ---
+let typstModule, typstCompiler, typstRenderer;
+let isTypstInitializing = false;
+
+/**
+ * Lazily loads and initializes the Typst library from a CDN.
+ * Ensures that the initialization only happens once.
+ * @returns {Promise<boolean>} - True if initialization is successful, false otherwise.
+ */
+async function ensureTypstInitialized() {
+    // If it's already initialized, we're done.
+    if (typstCompiler) {
+        return true;
+    }
+
+    // If it's currently initializing in another async call, wait for it to finish.
+    if (isTypstInitializing) {
+        // A simple polling mechanism to wait for the other process to finish
+        return new Promise(resolve => {
+            const interval = setInterval(() => {
+                if (typstCompiler) {
+                    clearInterval(interval);
+                    resolve(true);
+                } else if (!isTypstInitializing) {
+                    // It failed elsewhere
+                    clearInterval(interval);
+                    resolve(false);
+                }
+            }, 100);
+        });
+    }
+
+    isTypstInitializing = true;
+    console.log('Initializing Typst.ts (lazy-loaded)...');
+
+    try {
+        // Dynamically import the library from esm.sh
+        typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc1");
+        
+        typstCompiler = typstModule.createTypstCompiler();
+        typstRenderer = typstModule.createTypstRenderer();
+
+        await Promise.all([
+          typstCompiler.init({
+            getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc1/pkg/typst_ts_web_compiler_bg.wasm",
+            beforeBuild: [
+              typstModule.preloadRemoteFonts([
+                'https://raw.githubusercontent.com/Myriad-Dreamin/typst.ts/main/assets/data/LibertinusSerif-Regular-subset.otf',
+              ]),
+            ]
+          }),
+          typstRenderer.init({
+            getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc1/pkg/typst_ts_renderer_bg.wasm',
+          })
+        ]);
+
+        console.log('Typst.ts Initialized successfully.');
+        isTypstInitializing = false;
+        return true;
+
+    } catch(err) {
+        console.error("Failed to initialize Typst.ts", err);
+        isTypstInitializing = false;
+        return false;
+    }
+}
+
+/**
+ * Renders a Typst file to SVG
+ * @param {string} mainFileId - The ID of the main Typst file
+ * @param {HTMLElement} outputContainer - Container to display the rendered output
+ * @param {HTMLElement} diagnosticsContainer - Container to display diagnostics
+ */
+async function renderTypst(mainFileId, outputContainer, diagnosticsContainer) {
+    const mainFile = projectFiles[mainFileId];
+    diagnosticsContainer.textContent = 'Compiling...';
+
+    // Add all project files to the compiler's virtual file system.
+    // For Typst, the main file is usually identified by its path.
+    typstCompiler.addSource(`/main.typ`, mainFile.content);
+
+    try {
+        const artifact = await typstCompiler.compile({
+          mainFilePath: "/main.typ",
+        });
+
+        diagnosticsContainer.textContent = 'No errors or warnings.'; // Simplified for demo
+
+        if (artifact && artifact.result) {
+          const svg = await typstRenderer.renderSvg({
+            artifactContent: artifact.result,
+          });
+          outputContainer.innerHTML = svg;
+        } else {
+          outputContainer.innerHTML = '<p style="color: red;">Compilation failed.</p>';
+        }
+    } catch (err) {
+        console.error("Typst Compilation/Rendering failed:", err);
+        diagnosticsContainer.textContent = `CRITICAL ERROR: ${err.message}`;
+    }
+}
+
 // Preview handlers for different file types
 function generatePreviewContent(fileName, fileContent, fileType) {
     const extension = fileName.split('.').pop().toLowerCase();
@@ -244,6 +346,43 @@ document.addEventListener('DOMContentLoaded', () => {
 });`,
             cursor: { row: 0, column: 0 },
             selection: null
+        },
+        {
+            id: "typstFile",
+            name: "main.typ",
+            type: "typst",
+            content: `#set page(width: auto, height: auto)
+#set text(font: "Libertinus Serif")
+
+= My Typst Document
+
+This document is rendered inside the GoldenLayout editor!
+The value of (1 + 2) is #(1 + 2).
+
+== Mathematical Expressions
+
+Here's a simple equation:
+$ x = (-b ± sqrt(b^2 - 4a c)) / (2a) $
+
+== Code Blocks
+
+\`\`\`javascript
+function hello() {
+    console.log("Hello from Typst!");
+}
+\`\`\`
+
+== Lists
+
+- First item
+- Second item
+- Third item
+
+1. Numbered list
+2. Another item
+3. Final item`,
+            cursor: { row: 0, column: 0 },
+            selection: null
         }
     ]
 };
@@ -309,6 +448,8 @@ function getFileTypeFromExtension(fileName) {
             return 'css';
         case 'js':
             return 'javascript';
+        case 'typ':
+            return 'typst';
         default:
             return 'text'; // Default to plain text if unknown
     }
@@ -411,7 +552,15 @@ class EditorComponent {
 
         this.editor = ace.edit(this.rootElement);
         this.editor.setTheme("ace/theme/github");
-        this.editor.session.setMode(`ace/mode/${fileData.type}`);
+        
+        // Set editor mode based on file type
+        let aceMode = fileData.type;
+        if (fileData.type === 'typst') {
+            // Ace doesn't have a native Typst mode, use text mode for now
+            aceMode = 'text';
+        }
+        this.editor.session.setMode(`ace/mode/${aceMode}`);
+        
         this.editor.setOptions({
             enableBasicAutocompletion: true,
             enableLiveAutocompletion: true,
@@ -425,9 +574,28 @@ class EditorComponent {
         this.editor.focus();
 
         this.editor.session.on('change', async () => {
-            projectFiles[this.fileId].content = this.editor.getValue();
-            console.log(`[EditorComponent] Content changed for ${fileData.name}, triggering preview render.`);
-            await updatePreviewFiles();
+            const fileData = projectFiles[this.fileId];
+            fileData.content = this.editor.getValue();
+
+            // Check the file type to decide which renderer to call
+            if (fileData.type === 'typst') {
+                console.log(`Typst content changed for ${fileData.name}, triggering typst render.`);
+                
+                // First, ensure the library is loaded and ready
+                const success = await ensureTypstInitialized();
+
+                if (success && previewComponentInstance) {
+                    // Now that we know it's ready, call the render function
+                    await renderTypst(this.fileId, previewComponentInstance.outputDiv, previewComponentInstance.diagnosticsDiv);
+                } else if (!success) {
+                    if (previewComponentInstance) previewComponentInstance.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load.';
+                }
+
+            } else {
+                // The existing logic for web previews
+                console.log(`Web content changed for ${fileData.name}, triggering web preview render.`);
+                await updatePreviewFiles();
+            }
         });
 
         this.editor.on('changeSelection', () => {
@@ -448,10 +616,19 @@ class EditorComponent {
 class PreviewComponent {
     constructor(container) {
         this.rootElement = container.element;
+        this.rootElement.style.overflow = 'hidden';
+        this.rootElement.style.height = '100%';
         this.rootElement.style.display = 'flex';
         this.rootElement.style.flexDirection = 'column';
+
+        // --- UI for Web Preview ---
+        this.webPreviewContainer = document.createElement('div');
+        this.webPreviewContainer.style.width = '100%';
+        this.webPreviewContainer.style.height = '100%';
+        this.webPreviewContainer.style.display = 'flex';
+        this.webPreviewContainer.style.flexDirection = 'column';
         
-        // Create preview controls
+        // Create preview controls for web preview
         const controlsDiv = document.createElement('div');
         controlsDiv.style.padding = '10px';
         controlsDiv.style.borderBottom = '1px solid #ccc';
@@ -474,12 +651,12 @@ class PreviewComponent {
         this.fileSelect.onchange = () => {
             activePreviewFileId = this.fileSelect.value;
             console.log('[PreviewComponent] Preview file changed to:', activePreviewFileId);
-            updatePreviewFiles();
+            this.updatePreviewMode();
         };
 
         controlsDiv.appendChild(label);
         controlsDiv.appendChild(this.fileSelect);
-        this.rootElement.appendChild(controlsDiv);
+        this.webPreviewContainer.appendChild(controlsDiv);
 
         // Create iframe container
         const iframeContainer = document.createElement('div');
@@ -496,16 +673,72 @@ class PreviewComponent {
         previewFrame.src = './preview/preview.html';
         
         iframeContainer.appendChild(previewFrame);
-        this.rootElement.appendChild(iframeContainer);
+        this.webPreviewContainer.appendChild(iframeContainer);
+
+        // --- UI for Typst Preview ---
+        this.typstPreviewContainer = document.createElement('div');
+        this.typstPreviewContainer.style.display = 'flex';
+        this.typstPreviewContainer.style.flexDirection = 'column';
+        this.typstPreviewContainer.style.height = '100%';
+        this.outputDiv = document.createElement('div');
+        this.outputDiv.style.flex = '1';
+        this.outputDiv.style.padding = '1rem';
+        this.outputDiv.style.overflowY = 'auto';
+        this.outputDiv.style.background = 'white';
+        this.diagnosticsDiv = document.createElement('div');
+        this.diagnosticsDiv.style.height = '100px';
+        this.diagnosticsDiv.style.backgroundColor = '#212529';
+        this.diagnosticsDiv.style.color = '#f8f9fa';
+        this.diagnosticsDiv.style.fontFamily = 'monospace';
+        this.diagnosticsDiv.style.whiteSpace = 'pre-wrap';
+        this.diagnosticsDiv.style.padding = '1rem';
+        this.diagnosticsDiv.style.overflowY = 'auto';
+        this.typstPreviewContainer.appendChild(this.outputDiv);
+        this.typstPreviewContainer.appendChild(this.diagnosticsDiv);
         
-        console.log('[PreviewComponent] Initializing with file selector.');
+        this.rootElement.appendChild(this.webPreviewContainer);
+        this.rootElement.appendChild(this.typstPreviewContainer);
+        
         previewComponentInstance = this;
         
-        // Write files and reload after a short delay to ensure iframe is ready
-        setTimeout(async () => {
-            console.log('[PreviewComponent] Executing initial updatePreviewFiles.');
-            await updatePreviewFiles();
+        this.updatePreviewMode();
+
+        // Listen for changes in the active editor to switch preview modes
+        const editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
+        if (editorStack) {
+            editorStack.on('activeContentItemChanged', () => {
+                this.updatePreviewMode();
+            });
+        }
+        
+        // Initial preview update
+        setTimeout(() => {
+            this.updatePreviewMode();
         }, 200);
+    }
+    
+    async updatePreviewMode() {
+        const activeFile = projectFiles[activeEditorFileId];
+        
+        if (activeFile && activeFile.type === 'typst') {
+            this.webPreviewContainer.style.display = 'none';
+            this.typstPreviewContainer.style.display = 'flex';
+            this.diagnosticsDiv.textContent = "Loading Typst renderer...";
+            
+            const success = await ensureTypstInitialized();
+            if (success) {
+                await renderTypst(activeEditorFileId, this.outputDiv, this.diagnosticsDiv);
+            } else {
+                this.diagnosticsDiv.textContent = 'Error: Typst compiler failed to load. Check console.';
+            }
+
+        } else {
+            this.webPreviewContainer.style.display = 'flex';
+            this.typstPreviewContainer.style.display = 'none';
+            
+            // Trigger a render for the web project
+            updatePreviewFiles();
+        }
     }
     
     updateFileOptions() {
@@ -800,8 +1033,12 @@ class ProjectFilesComponent {
                     if (oldType !== currentFile.type) {
                         const editorComponent = openTab.container.componentReference; // componentReference should still point to our EditorComponent instance
                         if (editorComponent && editorComponent.editor) {
-                            editorComponent.editor.session.setMode(`ace/mode/${currentFile.type}`);
-                            console.log(`[ProjectFilesComponent] Editor mode updated for fileId "${fileId}" to ${currentFile.type}.`);
+                            let aceMode = currentFile.type;
+                            if (currentFile.type === 'typst') {
+                                aceMode = 'text'; // Ace doesn't have native Typst support
+                            }
+                            editorComponent.editor.session.setMode(`ace/mode/${aceMode}`);
+                            console.log(`[ProjectFilesComponent] Editor mode updated for fileId "${fileId}" to ${aceMode}.`);
                         } else {
                              console.warn(`[ProjectFilesComponent] Could not directly access editor instance via componentReference to update mode for fileId "${fileId}".`);
                         }
@@ -879,108 +1116,100 @@ class ProjectFilesComponent {
             return;
         }
 
-        // Attempt to find stack using getAllStacks() and filtering by ID
-        const allStacks = goldenLayoutInstance.getAllStacks();
-        if (!allStacks) {
-            console.error('[ProjectFilesComponent] goldenLayoutInstance.getAllStacks() returned null or undefined.');
+        if (!projectFiles[fileId]) {
+            console.error(`[ProjectFilesComponent] No file data found for fileId: "${fileId}"`);
             return;
         }
 
-        let editorStack = allStacks.find(stack => stack.id === 'editorStack');
+        // Try to find existing editor stack
+        const allStacks = goldenLayoutInstance.getAllStacks();
+        let editorStack = allStacks ? allStacks.find(stack => stack.id === 'editorStack') : null;
         
         if (!editorStack) {
-            console.warn('[ProjectFilesComponent] Editor stack with ID "editorStack" not found. Attempting to recreate it.');
-            console.log('[ProjectFilesComponent] Available stack IDs before recreation attempt:', allStacks.map(s => s.id));
-
+            console.warn('[ProjectFilesComponent] Editor stack not found. Creating new one.');
+            
             try {
-                const rootContentItem = goldenLayoutInstance.root;
-                if (!rootContentItem || !rootContentItem.contentItems || rootContentItem.contentItems.length < 2) {
-                    throw new Error('Root content item or its children are not structured as expected for editorStack recreation.');
+                // Find the column that should contain the editor stack (usually the second column)
+                const root = goldenLayoutInstance.root;
+                let targetColumn = null;
+                
+                // Look for the column that has the preview component
+                function findColumnWithPreview(item) {
+                    if (item.type === 'column' && item.contentItems) {
+                        for (const child of item.contentItems) {
+                            if (child.isComponent && child.componentType === 'preview') {
+                                return item;
+                            }
+                            if (child.isStack && child.contentItems) {
+                                for (const stackChild of child.contentItems) {
+                                    if (stackChild.isComponent && stackChild.componentType === 'preview') {
+                                        return item;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (item.contentItems) {
+                        for (const child of item.contentItems) {
+                            const result = findColumnWithPreview(child);
+                            if (result) return result;
+                        }
+                    }
+                    return null;
                 }
-
-                // Expected path: root (row) -> contentItems[1] (column for editor+preview) -> contentItems[0] (row for editorStack+preview)
-                const editorAndPreviewColumn = rootContentItem.contentItems[1];
-                if (!editorAndPreviewColumn || editorAndPreviewColumn.type !== 'column' || !editorAndPreviewColumn.contentItems || editorAndPreviewColumn.contentItems.length === 0) {
-                    throw new Error('Editor/Preview column not found, not a column, or has no children, during editorStack recreation.');
+                
+                targetColumn = findColumnWithPreview(root);
+                
+                if (!targetColumn) {
+                    // Fallback: try to find the second column
+                    if (root.contentItems && root.contentItems.length > 1 && root.contentItems[1].type === 'column') {
+                        targetColumn = root.contentItems[1];
+                    }
                 }
-
-                const editorPreviewRow = editorAndPreviewColumn.contentItems[0];
-                if (!editorPreviewRow || editorPreviewRow.type !== 'row') {
-                    throw new Error('Editor/Preview row (parent of editorStack) not found or not a row during editorStack recreation.');
+                
+                if (!targetColumn) {
+                    console.error('[ProjectFilesComponent] Could not find suitable column for editor stack');
+                    return;
                 }
-
-                if (typeof editorPreviewRow.addChild !== 'function') {
-                    throw new Error('Identified parent (editorPreviewRow) for editorStack does not have an addChild method.');
-                }
-
+                
+                // Create new editor stack at the beginning of the target column
                 const editorStackConfig = {
                     type: 'stack',
                     id: 'editorStack',
-                    isClosable: true,
                     content: []
                 };
                 
-                editorPreviewRow.addChild(editorStackConfig, 0); // Add as the first child in that row
-                console.log('[ProjectFilesComponent] editorStack configuration added to parent row.');
-
-                // Re-fetch the stack from the live layout
+                targetColumn.addChild(editorStackConfig, 0);
+                
+                // Get the newly created stack
                 editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
                 
                 if (!editorStack) {
-                    console.error('[ProjectFilesComponent] Failed to find editorStack after attempting recreation. It might not have been added correctly or GL state is inconsistent.');
-                    console.log('[ProjectFilesComponent] Available stack IDs after recreation attempt:', goldenLayoutInstance.getAllStacks().map(s => s.id));
-                    return; 
+                    console.error('[ProjectFilesComponent] Failed to create editor stack');
+                    return;
                 }
-                console.log('[ProjectFilesComponent] editorStack successfully recreated and found.');
-
-            } catch (e) {
-                console.error('[ProjectFilesComponent] Error during editorStack recreation:', e);
-                // Log current layout structure for debugging if recreation fails.
-                try {
-                    const currentLayoutConfig = goldenLayoutInstance.toConfig(goldenLayoutInstance.root);
-                    console.error('[ProjectFilesComponent] Current GoldenLayout root structure for debugging:', JSON.stringify(currentLayoutConfig, null, 2));
-                } catch (configError) {
-                    console.error('[ProjectFilesComponent] Could not serialize current layout to config for debugging:', configError);
-                }
+                
+                console.log('[ProjectFilesComponent] Successfully created new editor stack');
+                
+            } catch (error) {
+                console.error('[ProjectFilesComponent] Error creating editor stack:', error);
                 return;
             }
         }
-        
-        if (!editorStack) { // Should not happen if recreation was successful or it was found initially
-             console.error('[ProjectFilesComponent] Editor stack is still not available after all attempts.');
-             return;
-        }
 
-        if (typeof editorStack.setActiveContentItem !== 'function') {
-             console.error('[ProjectFilesComponent] Found item with ID "editorStack" is not a valid Stack object (missing setActiveContentItem).', editorStack);
-             return;
-        }
-        console.log('[ProjectFilesComponent] Editor stack retrieved by getAllStacks() and filtering by ID:', editorStack.id);
-        
-        editorStack.contentItems.forEach((item, index) => {
-            const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
-            const stateFileId = state && state.fileId ? state.fileId : 'undefined';
-            console.log(`[ProjectFilesComponent] Stack item ${index} - Title: ${item.title}, container.getState().fileId: ${stateFileId}, GL item.id: ${item.id || '<none>'}`);
-        });
-
+        // Check if file is already open
         const existingItem = editorStack.contentItems.find(item => {
             const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
             return state && state.fileId === fileId;
         });
 
         if (existingItem) {
-            console.log(`[ProjectFilesComponent] Activating existing item for fileId "${fileId}", Title: ${existingItem.title}`);
+            console.log(`[ProjectFilesComponent] Activating existing tab for: ${projectFiles[fileId].name}`);
             editorStack.setActiveContentItem(existingItem);
         } else {
-            if (!projectFiles[fileId]) {
-                console.error(`[ProjectFilesComponent] No file data found for fileId: "${fileId}"`);
-                return;
-            }
+            console.log(`[ProjectFilesComponent] Creating new tab for: ${projectFiles[fileId].name}`);
             const newTitle = projectFiles[fileId].name;
             const contentItemId = 'editor-' + fileId;
-            console.log(`[ProjectFilesComponent] Adding new component for fileId: "${fileId}", title: "${newTitle}", contentItemId: "${contentItemId}"`);
-            // Pass { fileId: fileId } as componentState. EditorComponent constructor will use this.
-            // GoldenLayout should make this state retrievable via item.container.getState().
             editorStack.addComponent('editor', { fileId: fileId }, newTitle, contentItemId);
         }
     }
