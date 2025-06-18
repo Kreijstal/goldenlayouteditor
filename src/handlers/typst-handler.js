@@ -46,34 +46,41 @@ async function ensureTypstInitialized() {
     console.log('Initializing Typst.ts (lazy-loaded)...');
 
     try {
-        // Dynamically import the library from esm.sh
-        typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc1");
-        
-        typstCompiler = typstModule.createTypstCompiler();
-        typstRenderer = typstModule.createTypstRenderer();
+    // Dynamically import the library from esm.sh
+    typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc1");
+    
+    // Create compiler, renderer, and package management components
+    typstCompiler = typstModule.createTypstCompiler();
+    typstRenderer = typstModule.createTypstRenderer();
+    
+    // Create access model and package registry for package management
+    const accessModel = new typstModule.MemoryAccessModel();
+    const packageRegistry = new typstModule.FetchPackageRegistry(accessModel);
 
-        await Promise.all([
-          typstCompiler.init({
-            getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc1/pkg/typst_ts_web_compiler_bg.wasm",
-            beforeBuild: [
-              typstModule.preloadRemoteFonts([
-                'https://raw.githubusercontent.com/Myriad-Dreamin/typst.ts/main/assets/data/LibertinusSerif-Regular-subset.otf',
-              ]),
-            ]
-          }),
-          typstRenderer.init({
-            getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc1/pkg/typst_ts_renderer_bg.wasm',
-          })
-        ]);
+    await Promise.all([
+      typstCompiler.init({
+        getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc1/pkg/typst_ts_web_compiler_bg.wasm",
+        beforeBuild: [
+          typstModule.withAccessModel(accessModel),
+          typstModule.withPackageRegistry(packageRegistry),
+          typstModule.preloadRemoteFonts([
+            'https://raw.githubusercontent.com/Myriad-Dreamin/typst.ts/main/assets/data/LibertinusSerif-Regular-subset.otf',
+          ]),
+        ]
+      }),
+      typstRenderer.init({
+        getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc1/pkg/typst_ts_renderer_bg.wasm',
+      })
+    ]);
 
-        console.log('Typst.ts Initialized successfully.');
-        isTypstInitializing = false;
-        return true;
+    console.log('Typst.ts Initialized successfully with package support.');
+    isTypstInitializing = false;
+    return true;
 
     } catch(err) {
-        console.error("Failed to initialize Typst.ts", err);
-        isTypstInitializing = false;
-        return false;
+    console.error("Failed to initialize Typst.ts", err);
+    isTypstInitializing = false;
+    return false;
     }
 }
 
