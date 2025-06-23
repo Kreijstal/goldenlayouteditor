@@ -96,6 +96,7 @@ async function ensureTypstInitialized() {
 async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, projectFiles, preserveZoom = false, previewComponentInstance = null) {
   const mainFile = projectFiles[mainFileId];
   diagnosticsContainer.textContent = 'Compiling...';
+  diagnosticsContainer.style.color = '#f8f9fa'; // Reset to default color
 
   // Add all project files to the compiler's virtual file system for dependencies
   // Typst can import JSON, text, SVG, and other file types
@@ -112,9 +113,27 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
       mainFilePath: mainFilePath,
     });
 
-    diagnosticsContainer.textContent = 'No errors or warnings.'; // Simplified for demo
+    // **FIX START**: Always process diagnostics, whether it's a success or failure.
+    if (artifact.diagnostics && artifact.diagnostics.length > 0) {
+      // Format diagnostics for readability
+      const formattedDiagnostics = artifact.diagnostics.map(d =>
+        `[${d.severity.toUpperCase()}] at ${d.path.replace(/^\//, '')} (range ${d.range}):\n  ${d.message}`
+      ).join('\n\n'); // Use double newline for better separation
+
+      diagnosticsContainer.textContent = formattedDiagnostics;
+
+      // Add visual hint for errors
+      const hasErrors = artifact.diagnostics.some(d => d.severity === 'error');
+      if (hasErrors) {
+        diagnosticsContainer.style.color = '#ff9e9e'; // Light red for better readability on dark bg
+      }
+    } else {
+      diagnosticsContainer.textContent = 'No errors or warnings.';
+    }
+    // **FIX END**
 
     if (artifact && artifact.result) {
+      // SUCCESS PATH: Compilation was successful, render the SVG.
       const svg = await typstRenderer.renderSvg({
         artifactContent: artifact.result,
       });
@@ -158,11 +177,17 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
         }
       }
     } else {
-      outputContainer.innerHTML = '<p style="color: red;">Compilation failed.</p>';
+      // FAILURE PATH: Compilation failed. The diagnostics are already displayed.
+      // Update the output pane with a helpful message.
+      outputContainer.innerHTML = `<div style="color: #ccc; text-align: center; padding: 40px; font-family: sans-serif;">
+          <h2>Compilation Failed</h2>
+          <p>See diagnostics in the panel below for details.</p>
+      </div>`;
     }
   } catch (err) {
     console.error("Typst Compilation/Rendering failed:", err);
     diagnosticsContainer.textContent = `CRITICAL ERROR: ${err.message}`;
+    diagnosticsContainer.style.color = '#ff6b6b';
   }
 }
 
