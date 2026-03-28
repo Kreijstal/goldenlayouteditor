@@ -2,6 +2,7 @@ const { GoldenLayout, Stack, LayoutConfig } = require('golden-layout');
 const ace = require('ace-builds/src-min-noconflict/ace');
 const handlerRegistry = require('./handlers');
 const { getPlugins } = require('./plugins');
+const { renderTree } = require('./tree-renderer');
 const debug = require('./debug');
 const log = debug.createLogger('App');
 
@@ -137,6 +138,7 @@ updateProjectFilesCache();
 let previewFrame;
 let goldenLayoutInstance;
 let projectFilesComponentInstance; // To access its methods
+let _pendingExplorerState = null; // Saved explorer state to apply on next construction
 let previewComponentInstance; // To access preview methods
 let activeEditorFileId = null; // To track the currently active file in the editor
 let activePreviewFileId = 'htmlFile'; // To track which file is being previewed
@@ -192,6 +194,8 @@ let currentWorkspacePath = null;
 let persistenceMode = (typeof localStorage !== 'undefined' && localStorage.getItem('gl-persistence-mode')) || 'draft';
 const dirtyFiles = new Set();
 const _autoPersistTimers = {};
+// Track files we recently saved so the fs watcher ignores our own writes
+const _recentlySavedFiles = new Map(); // relativePath -> timestamp
 
 async function saveFileToDisk(fileId) {
     if (!currentWorkspacePath || !wsClient || !wsClient.isConnected()) return false;
@@ -209,6 +213,9 @@ async function saveFileToDisk(fileId) {
         if (result.success) {
             dirtyFiles.delete(fileId);
             updateDirtyIndicator(fileId);
+            // Mark as recently saved so fs watcher ignores our own write
+            _recentlySavedFiles.set(relativePath, Date.now());
+            setTimeout(() => _recentlySavedFiles.delete(relativePath), 2000);
             return true;
         }
         log.error('Save failed:', result.error);
@@ -235,8 +242,10 @@ function markDirty(fileId) {
     if (!currentWorkspacePath) return;
     const wasClean = !dirtyFiles.has(fileId);
     dirtyFiles.add(fileId);
-    if (wasClean) updateDirtyIndicator(fileId);
-    updateSyncButton();
+    if (wasClean) {
+        updateDirtyIndicator(fileId);
+        updateSyncButton();
+    }
 
     if (persistenceMode === 'auto') {
         clearTimeout(_autoPersistTimers[fileId]);
@@ -343,12 +352,39 @@ function saveSessionState() {
         }
         if (layoutConfig.root) tagFilePaths(layoutConfig.root);
 
+        // Save explorer state
+        let explorerState = null;
+        if (projectFilesComponentInstance) {
+            const pfc = projectFilesComponentInstance;
+            // Collect collapsed directory paths
+            const collapsedDirs = [];
+            function findCollapsed(node, prefix) {
+                if (node.children) {
+                    for (const child of node.children) {
+                        if (child.type === 'directory') {
+                            const dirPath = prefix + child.name;
+                            if (child.collapsed) collapsedDirs.push(dirPath);
+                            findCollapsed(child, dirPath + '/');
+                        }
+                    }
+                }
+            }
+            findCollapsed(projectStructure, '');
+            explorerState = {
+                viewMode: pfc.viewMode,
+                gridCurrentPath: pfc.gridCurrentPath,
+                selectedFileId: pfc._selectedFileId || null,
+                collapsedDirs,
+            };
+        }
+
         const state = {
             workspacePath: currentWorkspacePath,
             activePreviewFilePath: activePreviewFileId ? getRelativePath(activePreviewFileId) : null,
             activeEditorFilePath: activeEditorFileId ? getRelativePath(activeEditorFileId) : null,
             layoutConfig,
-            editorStates
+            editorStates,
+            explorerState,
         };
         localStorage.setItem(SESSION_KEY, JSON.stringify(state));
     } catch (e) {
@@ -461,6 +497,115 @@ function handleWorkspaceLoaded(result) {
     log.log(`Workspace opened: ${result.path} (${allFiles.length} files)`);
 }
 
+// --- File System Change Handling ---
+// Listen for server-side file changes and refresh affected files
+wsClient.addMessageListener(async (msg) => {
+    if (msg.type !== 'fsChanges' || !currentWorkspacePath) return;
+
+    log.log(`FS changes detected: ${msg.changes.length} change(s)`);
+    let treeChanged = false;
+
+    for (const change of msg.changes) {
+        const relativePath = change.path.replace(/\\/g, '/');
+
+        // Skip files we recently saved ourselves
+        if (_recentlySavedFiles.has(relativePath)) continue;
+
+        const file = findFileByPath(relativePath);
+
+        if (file && file.content !== undefined && file.content !== null) {
+            // File exists in our project — check if it was modified externally
+            // Skip if the file is dirty (user has unsaved local changes)
+            if (dirtyFiles.has(file.id)) continue;
+
+            // Re-read the file content from server
+            try {
+                const result = await wsClient.wsRequest({
+                    type: 'readFile',
+                    workspacePath: currentWorkspacePath,
+                    relativePath,
+                });
+                if (result.content !== undefined && result.content !== file.content) {
+                    file.content = result.content;
+                    log.log(`FS: Updated content for ${relativePath}`);
+                    // Refresh editor if this file is open
+                    if (goldenLayoutInstance) {
+                        const editorStack = goldenLayoutInstance.getAllStacks().find(s => s.id === 'editorStack');
+                        if (editorStack) {
+                            const tab = editorStack.contentItems.find(item => {
+                                const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
+                                return state && state.fileId === file.id;
+                            });
+                            if (tab && tab.container && tab.container.componentReference) {
+                                const editor = tab.container.componentReference.editor;
+                                if (editor) {
+                                    const cursorPos = editor.getCursorPosition();
+                                    editor.setValue(file.content, -1);
+                                    editor.moveCursorToPosition(cursorPos);
+                                }
+                            }
+                        }
+                    }
+                    // Refresh preview if this file is being previewed
+                    if (activePreviewFileId === file.id && previewComponentInstance) {
+                        previewComponentInstance.updatePreviewMode();
+                    }
+                }
+            } catch (err) {
+                log.warn(`FS: Failed to re-read ${relativePath}:`, err);
+            }
+        } else if (!file) {
+            // File doesn't exist — might be new, or a directory change
+            treeChanged = true;
+        }
+    }
+
+    // If new files/dirs were created or deleted, re-read the workspace tree
+    if (treeChanged) {
+        try {
+            const result = await wsClient.wsRequest({ type: 'openWorkspace', path: currentWorkspacePath });
+            if (!result.error) {
+                const savedCollapsed = {};
+                function collectCollapsed(node, prefix) {
+                    if (node.children) {
+                        for (const child of node.children) {
+                            if (child.type === 'directory') {
+                                const p = prefix + child.name;
+                                if (child.collapsed) savedCollapsed[p] = true;
+                                collectCollapsed(child, p + '/');
+                            }
+                        }
+                    }
+                }
+                collectCollapsed(projectStructure, '');
+
+                projectStructure.children = mapWorkspaceTree(result.children || []);
+
+                // Restore collapsed state
+                function applyCollapsed(node, prefix) {
+                    if (node.children) {
+                        for (const child of node.children) {
+                            if (child.type === 'directory') {
+                                const p = prefix + child.name;
+                                if (p in savedCollapsed) child.collapsed = true;
+                                applyCollapsed(child, p + '/');
+                            }
+                        }
+                    }
+                }
+                applyCollapsed(projectStructure, '');
+
+                updateProjectFilesCache();
+                if (projectFilesComponentInstance) projectFilesComponentInstance.updateFileListDisplay();
+                if (previewComponentInstance) previewComponentInstance.updateFileOptions();
+                log.log('FS: Workspace tree refreshed');
+            }
+        } catch (err) {
+            log.warn('FS: Failed to refresh workspace tree:', err);
+        }
+    }
+});
+
 // --- Preview Rendering ---
 
 async function updatePreviewFiles() {
@@ -562,28 +707,29 @@ class EditorComponent {
             const previewFile = projectFiles[activePreviewFileId];
             
             if (previewFile && handlerRegistry.requiresCustomRender(previewFile.name)) {
-                // Update custom preview (like Typst) if ANY file changes and we're previewing such a file
-                // (Typst can import JSON, text, SVG, and other file types, not just .typ files)
-                log.log(`File content changed for ${fileData.name}, triggering custom render for ${previewFile.name}.`);
-                
-                try {
-                    if (previewComponentInstance) {
-                        await handlerRegistry.renderFile(
-                            previewFile.name,
-                            activePreviewFileId,
-                            previewComponentInstance.outputDiv,
-                            previewComponentInstance.diagnosticsDiv,
-                            projectFiles,
-                            true, // preserveZoom
-                            previewComponentInstance
-                        );
+                // Debounce custom preview renders to avoid lag while typing
+                clearTimeout(this._customRenderTimer);
+                this._customRenderTimer = setTimeout(async () => {
+                    log.log(`File content changed for ${fileData.name}, triggering custom render for ${previewFile.name}.`);
+                    try {
+                        if (previewComponentInstance) {
+                            await handlerRegistry.renderFile(
+                                previewFile.name,
+                                activePreviewFileId,
+                                previewComponentInstance.outputDiv,
+                                previewComponentInstance.diagnosticsDiv,
+                                projectFiles,
+                                true, // preserveZoom
+                                previewComponentInstance
+                            );
+                        }
+                    } catch (error) {
+                        log.error('Custom render failed:', error);
+                        if (previewComponentInstance) {
+                            previewComponentInstance.diagnosticsDiv.textContent = `Error: ${error.message}`;
+                        }
                     }
-                } catch (error) {
-                    log.error('Custom render failed:', error);
-                    if (previewComponentInstance) {
-                        previewComponentInstance.diagnosticsDiv.textContent = `Error: ${error.message}`;
-                    }
-                }
+                }, 500);
 
             } else if (!handlerRegistry.requiresCustomRender(fileData.name) && activePreviewFileId === this.fileId) {
                 // Only update web preview if this file is the one being previewed
@@ -751,6 +897,7 @@ class PreviewComponent {
         // Create preview content container
         this.previewContentContainer = document.createElement('div');
         this.previewContentContainer.style.flex = '1';
+        this.previewContentContainer.style.minHeight = '0';
         this.previewContentContainer.style.display = 'flex';
         this.previewContentContainer.style.flexDirection = 'column';
         this.rootElement.appendChild(this.previewContentContainer);
@@ -765,13 +912,12 @@ class PreviewComponent {
         // Create iframe container
         const iframeContainer = document.createElement('div');
         iframeContainer.style.flex = '1';
+        iframeContainer.style.minHeight = '0';
         iframeContainer.style.position = 'relative';
-        
+
         previewFrame = document.createElement('iframe');
         previewFrame.classList.add('preview-iframe');
-        previewFrame.style.width = '100%';
-        previewFrame.style.height = '100%';
-        previewFrame.style.border = 'none';
+        previewFrame.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
         
         // Set initial src
         previewFrame.src = './preview/preview.html';
@@ -784,6 +930,7 @@ class PreviewComponent {
         this.customPreviewContainer.style.display = 'flex';
         this.customPreviewContainer.style.flexDirection = 'column';
         this.customPreviewContainer.style.height = '100%';
+        this.customPreviewContainer.style.minHeight = '0';
         
         // Add both preview containers to the content container
         this.previewContentContainer.appendChild(this.webPreviewContainer);
@@ -1195,6 +1342,32 @@ class ProjectFilesComponent {
         this._resizeObserver.observe(this.rootElement);
 
         projectFilesComponentInstance = this;
+
+        // Restore explorer state from saved session
+        if (_pendingExplorerState) {
+            const es = _pendingExplorerState;
+            _pendingExplorerState = null;
+            if (es.viewMode) this.viewMode = es.viewMode;
+            if (es.gridCurrentPath) this.gridCurrentPath = es.gridCurrentPath;
+            // Restore collapsed directories
+            if (es.collapsedDirs && es.collapsedDirs.length > 0) {
+                const collapsedSet = new Set(es.collapsedDirs);
+                function applyCollapsed(node, prefix) {
+                    if (node.children) {
+                        for (const child of node.children) {
+                            if (child.type === 'directory') {
+                                const dirPath = prefix + child.name;
+                                child.collapsed = collapsedSet.has(dirPath);
+                                applyCollapsed(child, dirPath + '/');
+                            }
+                        }
+                    }
+                }
+                applyCollapsed(projectStructure, '');
+            }
+            this._updateToggleIcon();
+            this.updateFileListDisplay();
+        }
     }
 
     // --- Icon helpers ---
@@ -1846,104 +2019,38 @@ class ProjectFilesComponent {
     // --- Tree view rendering ---
 
     _renderTree(items, container, depth) {
-        items.forEach(item => {
-            const li = document.createElement('li');
-            li.style.cssText = 'padding:2px 4px;padding-left:' + (depth * 16 + 8) + 'px;display:flex;align-items:center;user-select:none;border-radius:3px;cursor:pointer;';
-            li.onmouseenter = () => { if (!li.classList.contains('active-file')) li.style.background = 'rgba(255,255,255,0.08)'; };
-            li.onmouseleave = () => { if (!li.classList.contains('active-file')) li.style.background = ''; };
-
-            if (item.type === 'directory') {
-                const toggle = document.createElement('span');
-                toggle.textContent = item.collapsed ? '\u25B6' : '\u25BC';
-                toggle.style.cssText = 'cursor:pointer;width:14px;font-size:9px;flex-shrink:0;';
-
-                const icon = document.createElement('span');
-                icon.textContent = item.collapsed ? '\uD83D\uDCC1' : '\uD83D\uDCC2';
-                icon.style.cssText = 'margin-right:4px;font-size:13px;flex-shrink:0;';
-
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = item.name;
-                nameSpan.style.cssText = 'cursor:pointer;font-weight:bold;flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-
-                const childUl = document.createElement('ul');
-                childUl.style.cssText = 'list-style:none;padding:0;margin:0;';
-                childUl.style.display = item.collapsed ? 'none' : 'block';
-
-                const toggleDir = () => {
-                    item.collapsed = !item.collapsed;
-                    toggle.textContent = item.collapsed ? '\u25B6' : '\u25BC';
-                    icon.textContent = item.collapsed ? '\uD83D\uDCC1' : '\uD83D\uDCC2';
-                    childUl.style.display = item.collapsed ? 'none' : 'block';
-                    this._syncFocusToElement(li);
-                };
-
-                toggle.onclick = toggleDir;
-                nameSpan.onclick = toggleDir;
-                icon.onclick = toggleDir;
-
-                li.oncontextmenu = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this._showContextMenu(e.clientX, e.clientY, null, nameSpan, li, item);
-                };
-
-                li.appendChild(toggle);
-                li.appendChild(icon);
-                li.appendChild(nameSpan);
-                container.appendChild(li);
-
-                childUl.setAttribute('data-dir-id', item.id || item.name);
-                this._renderTree(item.children || [], childUl, depth + 1);
-                container.appendChild(childUl);
-            } else {
-                // File
-                if (item.id === activeEditorFileId) {
-                    li.classList.add('active-file');
+        const self = this;
+        renderTree({
+            items,
+            container,
+            depth,
+            darkMode: true,
+            activeFileId: activeEditorFileId,
+            getFileIcon: (name) => self._getFileIcon(name),
+            onToggleDir: (item, expanded) => {
+                item.collapsed = !expanded;
+                self._syncFocusToElement(container);
+            },
+            onClickDir: (item, li) => {
+                // toggle handled by shared renderer
+            },
+            onContextMenu: (e, item, nameSpan, li) => {
+                if (item.type === 'directory') {
+                    self._showContextMenu(e.clientX, e.clientY, null, nameSpan, li, item);
+                } else {
+                    self._showContextMenu(e.clientX, e.clientY, item.id, nameSpan, li);
                 }
-
-                const icon = document.createElement('span');
-                icon.textContent = this._getFileIcon(item.name);
-                icon.style.cssText = 'margin-right:4px;font-size:13px;flex-shrink:0;width:18px;text-align:center;';
-
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = item.name;
-                nameSpan.style.cssText = 'cursor:pointer;flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-                nameSpan.setAttribute('data-file-id', item.id);
-
-                li.onclick = () => {
-                    log.log(`ProjectFiles: Clicked on file: ${item.name} (ID: ${item.id})`);
-                    this._selectFile(item.id);
-                    this._syncFocusToElement(li);
-                };
-                li.ondblclick = () => {
-                    log.log(`ProjectFiles: Double-clicked on file: ${item.name} (ID: ${item.id})`);
-                    this.openOrFocusEditor(item.id);
-                };
-
-                // Right-click context menu
-                li.oncontextmenu = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this._showContextMenu(e.clientX, e.clientY, item.id, nameSpan, li);
-                };
-
-                // Hover actions (show on hover, hide on leave)
-                const hoverActions = document.createElement('span');
-                hoverActions.style.cssText = 'display:none;flex-shrink:0;margin-left:4px;';
-                const delBtn = document.createElement('span');
-                delBtn.textContent = '\uD83D\uDDD1\uFE0F';
-                delBtn.title = 'Delete ' + item.name;
-                delBtn.style.cssText = 'cursor:pointer;font-size:11px;opacity:0.6;';
-                delBtn.onclick = (e) => { e.stopPropagation(); this.deleteFile(item.id); };
-                delBtn.onmouseenter = () => delBtn.style.opacity = '1';
-                delBtn.onmouseleave = () => delBtn.style.opacity = '0.6';
-                hoverActions.appendChild(delBtn);
-
-                li.onmouseenter = () => hoverActions.style.display = '';
-                li.onmouseleave = () => hoverActions.style.display = 'none';
-
-                li.appendChild(icon);
-                li.appendChild(nameSpan);
+            },
+            onClickFile: (item, li) => {
+                log.log(`ProjectFiles: Clicked on file: ${item.name} (ID: ${item.id})`);
+                self._selectFile(item.id);
+                self._syncFocusToElement(li);
+            },
+            onDblClickFile: (item, li) => {
+                log.log(`ProjectFiles: Double-clicked on file: ${item.name} (ID: ${item.id})`);
+                self.openOrFocusEditor(item.id);
+            },
+            renderFileExtras: (item, li) => {
                 // Dirty indicator
                 if (dirtyFiles.has(item.id)) {
                     const dot = document.createElement('span');
@@ -1952,10 +2059,21 @@ class ProjectFilesComponent {
                     dot.style.cssText = 'color:#e8a317;font-size:10px;margin-left:2px;flex-shrink:0;';
                     li.appendChild(dot);
                 }
+                // Hover actions
+                const hoverActions = document.createElement('span');
+                hoverActions.style.cssText = 'display:none;flex-shrink:0;margin-left:4px;';
+                const delBtn = document.createElement('span');
+                delBtn.textContent = '\uD83D\uDDD1\uFE0F';
+                delBtn.title = 'Delete ' + item.name;
+                delBtn.style.cssText = 'cursor:pointer;font-size:11px;opacity:0.6;';
+                delBtn.onclick = (e) => { e.stopPropagation(); self.deleteFile(item.id); };
+                delBtn.onmouseenter = () => delBtn.style.opacity = '1';
+                delBtn.onmouseleave = () => delBtn.style.opacity = '0.6';
+                hoverActions.appendChild(delBtn);
+                li.onmouseenter = () => hoverActions.style.display = '';
+                li.onmouseleave = () => hoverActions.style.display = 'none';
                 li.appendChild(hoverActions);
-                li.setAttribute('data-tree-file-id', item.id);
-                container.appendChild(li);
-            }
+            },
         });
     }
 
@@ -2528,6 +2646,11 @@ async function restoreSession(savedState) {
                 if (f) activeEditorFileId = f.id;
             }
 
+            // Queue explorer state for restore when ProjectFilesComponent constructs
+            if (savedState.explorerState) {
+                _pendingExplorerState = savedState.explorerState;
+            }
+
             goldenLayoutInstance.loadLayout(layoutConfig);
             log.log('Init: Session restored from saved state.');
             return true;
@@ -2549,6 +2672,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     goldenLayoutInstance = new GoldenLayout(layoutContainer);
 
+    // Fix: GoldenLayout sets pointer-events:none on iframes during drag but
+    // only clears it on the first iframe (querySelector). Ensure all iframes
+    // are restored after any drag/resize operation ends.
+    document.addEventListener('pointerup', () => {
+        requestAnimationFrame(() => {
+            if (!document.body.classList.contains('lm_dragging')) {
+                document.querySelectorAll('iframe[style*="pointer-events"]').forEach(iframe => {
+                    iframe.style.removeProperty('pointer-events');
+                });
+            }
+        });
+    });
+
     goldenLayoutInstance.registerComponentConstructor('editor', EditorComponent);
     goldenLayoutInstance.registerComponentConstructor('preview', PreviewComponent);
     goldenLayoutInstance.registerComponentConstructor('projectFiles', ProjectFilesComponent);
@@ -2565,7 +2701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (previewComponentInstance) previewComponentInstance.updateFileOptions();
         return id;
     }
-    const pluginCtx = { wsClient, goldenLayoutInstance, projectFiles, log, openPluginPanel, createFile: pluginCreateFile };
+    const pluginCtx = { wsClient, goldenLayoutInstance, get projectFiles() { return projectFiles; }, log, openPluginPanel, createFile: pluginCreateFile };
     for (const plugin of getPlugins()) {
         if (plugin.init) plugin.init(pluginCtx);
         if (plugin.components) {

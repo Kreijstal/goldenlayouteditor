@@ -1,5 +1,6 @@
 // --- WebSocket Client (optional, for server-enhanced mode) ---
 const { createLogger, setWsSender, setEnabled } = require('./debug');
+const { renderTree } = require('./tree-renderer');
 const logger = createLogger('WS');
 const log = logger.log.bind(logger);
 const warn = logger.warn.bind(logger);
@@ -287,53 +288,90 @@ function showWorkspaceSelector(onOpen) {
         return row;
     }
 
+    async function loadDirItems(dirPath) {
+        const result = await wsRequest({ type: 'listDir', path: dirPath });
+        if (result.error) return [];
+        // Convert listDir items to tree-renderer format (dirs only, files as count)
+        const dirs = result.items.filter(i => i.isDirectory).map(i => ({
+            name: i.name,
+            type: 'directory',
+            collapsed: true,
+            children: [], // lazy-loaded
+            _fullPath: result.path + '/' + i.name,
+        }));
+        const fileCount = result.items.filter(i => !i.isDirectory).length;
+        return { dirs, fileCount, resolvedPath: result.path };
+    }
+
+    function renderDirLevel(parentUl, items, fileCount, depth) {
+        renderTree({
+            items,
+            container: parentUl,
+            depth,
+            darkMode: false,
+            onToggleDir: (item, expanded, childUl) => {
+                if (expanded && !item._loaded) {
+                    item._loaded = true;
+                    childUl.innerHTML = '<li style="list-style:none;padding:4px 16px;color:#999;font-size:12px;">Loading...</li>';
+                    loadDirItems(item._fullPath).then(result => {
+                        childUl.innerHTML = '';
+                        if (result.dirs) {
+                            renderDirLevel(childUl, result.dirs, result.fileCount, depth + 1);
+                        }
+                    });
+                }
+            },
+            onClickDir: (item, li) => {
+                currentDir = item._fullPath;
+                pathInput.value = item._fullPath;
+                updateFavBtn();
+                // Highlight
+                listContainer.querySelectorAll('.selected-dir').forEach(el => {
+                    el.classList.remove('selected-dir');
+                    el.style.background = '';
+                });
+                li.classList.add('selected-dir');
+                li.style.background = '#e0e7ff';
+            },
+        });
+        // Show file count hint
+        if (fileCount > 0) {
+            const hint = document.createElement('li');
+            hint.style.cssText = `list-style:none;padding:2px 4px;padding-left:${depth * 16 + 32}px;color:#999;font-size:11px;font-family:monospace;`;
+            hint.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+            parentUl.appendChild(hint);
+        }
+    }
+
     async function navigateTo(dirPath) {
         browsing = true;
         listContainer.innerHTML = '<div style="padding:16px;color:#999;">Loading...</div>';
         try {
-            const result = await wsRequest({ type: 'listDir', path: dirPath });
-            currentDir = result.path;
-            pathInput.value = result.path;
+            const data = await loadDirItems(dirPath);
+            if (!data.resolvedPath) {
+                listContainer.innerHTML = '<div style="padding:16px;color:red;">Failed to load directory</div>';
+                return;
+            }
+            currentDir = data.resolvedPath;
+            pathInput.value = data.resolvedPath;
             updateFavBtn();
 
             listContainer.innerHTML = '';
-            if (result.error) {
-                listContainer.innerHTML = `<div style="padding:16px;color:red;">${result.error}</div>`;
-                return;
-            }
 
             // Parent directory entry
             const parentItem = document.createElement('div');
-            parentItem.textContent = '..';
+            parentItem.textContent = '\u2190 ..';
             parentItem.style.cssText = 'padding:6px 16px;cursor:pointer;font-family:monospace;font-size:13px;color:#666;';
             parentItem.onmouseenter = () => parentItem.style.background = '#f0f0f0';
             parentItem.onmouseleave = () => parentItem.style.background = '';
             parentItem.onclick = () => navigateTo(currentDir + '/..');
             listContainer.appendChild(parentItem);
 
-            result.items.forEach(item => {
-                const row = document.createElement('div');
-                row.style.cssText = 'padding:6px 16px;cursor:pointer;font-family:monospace;font-size:13px;display:flex;align-items:center;gap:6px;';
-                row.onmouseenter = () => row.style.background = '#f0f0f0';
-                row.onmouseleave = () => row.style.background = '';
-
-                const icon = document.createElement('span');
-                icon.textContent = item.isDirectory ? '\uD83D\uDCC1' : '\uD83D\uDCC4';
-                icon.style.fontSize = '14px';
-
-                const name = document.createElement('span');
-                name.textContent = item.name;
-                if (item.isDirectory) name.style.fontWeight = 'bold';
-
-                row.appendChild(icon);
-                row.appendChild(name);
-
-                if (item.isDirectory) {
-                    row.onclick = () => navigateTo(currentDir + '/' + item.name);
-                }
-
-                listContainer.appendChild(row);
-            });
+            // Render as expandable tree
+            const treeUl = document.createElement('ul');
+            treeUl.style.cssText = 'list-style:none;padding:0;margin:0;';
+            listContainer.appendChild(treeUl);
+            renderDirLevel(treeUl, data.dirs, data.fileCount, 0);
         } catch (err) {
             listContainer.innerHTML = `<div style="padding:16px;color:red;">${err.message}</div>`;
         }

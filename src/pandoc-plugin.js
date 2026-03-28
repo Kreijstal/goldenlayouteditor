@@ -6,19 +6,26 @@ const log = createLogger('Pandoc');
 
 const PANDOC_VERSION = '1.0.1';
 
-let pandocConvert = null;
+let pandocInstance = null;
 let _loadPromise = null;
 
 async function ensurePandocLoaded() {
-    if (pandocConvert) return true;
+    if (pandocInstance) return true;
     if (_loadPromise) return _loadPromise;
 
     _loadPromise = (async () => {
-        log.log('Loading pandoc-wasm from esm.sh...');
+        log.log('Loading pandoc-wasm...');
         try {
-            const mod = await import(`https://esm.sh/pandoc-wasm@${PANDOC_VERSION}`);
-            pandocConvert = mod.convert;
-            log.log('pandoc-wasm loaded:', PANDOC_VERSION);
+            // esm.sh can't serve .wasm as JS module, so import core.js separately
+            // and fetch the WASM binary from jsdelivr
+            const coreMod = await import(`https://esm.sh/pandoc-wasm@${PANDOC_VERSION}/src/core.js`);
+            log.log('pandoc-wasm core loaded, fetching WASM binary (~55MB)...');
+
+            const wasmResponse = await fetch(`https://unpkg.com/pandoc-wasm@${PANDOC_VERSION}/src/pandoc.wasm`);
+            const wasmBinary = await wasmResponse.arrayBuffer();
+
+            pandocInstance = await coreMod.createPandocInstance(wasmBinary);
+            log.log('pandoc-wasm initialized:', PANDOC_VERSION);
             return true;
         } catch (err) {
             log.error('Failed to load pandoc-wasm:', err);
@@ -93,13 +100,15 @@ class PandocConvertComponent {
         this.rootElement = container.element;
         this.rootElement.style.cssText = 'display:flex;flex-direction:column;height:100%;background:#1e1e1e;color:#ddd;font-family:sans-serif;overflow:hidden;';
 
-        const ctx = PandocConvertComponent._ctx;
-        this.projectFiles = ctx ? ctx.projectFiles : {};
-        this.openPluginPanel = ctx ? ctx.openPluginPanel : null;
+        this._ctx = PandocConvertComponent._ctx;
 
         this._lastOutput = null;
         this._lastOutputFormat = null;
         this._build(state);
+    }
+
+    get projectFiles() {
+        return this._ctx ? this._ctx.projectFiles : {};
     }
 
     _build(state) {
@@ -241,7 +250,7 @@ class PandocConvertComponent {
             if (this.standaloneCb.checked) opts.standalone = true;
             if (this.tocCb.checked) opts['table-of-contents'] = true;
 
-            const result = await pandocConvert(opts, file.content, files);
+            const result = await pandocInstance.convert(opts, file.content, files);
 
             this._lastOutput = result.stdout || '';
             this._lastOutputFormat = to;
