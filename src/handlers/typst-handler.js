@@ -1,5 +1,7 @@
 // --- Typst Integration Handler ---
 
+const TYPST_VERSION = '0.6.1-rc5';
+
 // Typst Integration Variables
 let typstModule, typstCompiler, typstRenderer;
 let isTypstInitializing = false;
@@ -47,7 +49,7 @@ async function ensureTypstInitialized() {
 
   try {
     // Dynamically import the library from esm.sh
-    typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc1");
+    typstModule = await import(`https://esm.sh/@myriaddreamin/typst.ts@${TYPST_VERSION}`);
 
     // Create compiler, renderer, and package management components
     typstCompiler = typstModule.createTypstCompiler();
@@ -59,7 +61,7 @@ async function ensureTypstInitialized() {
 
     await Promise.all([
       typstCompiler.init({
-        getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc1/pkg/typst_ts_web_compiler_bg.wasm",
+        getModule: () => `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${TYPST_VERSION}/pkg/typst_ts_web_compiler_bg.wasm`,
         beforeBuild: [
           typstModule.initOptions.withAccessModel(accessModel),
           typstModule.initOptions.withPackageRegistry(packageRegistry),
@@ -69,7 +71,7 @@ async function ensureTypstInitialized() {
         ]
       }),
       typstRenderer.init({
-        getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc1/pkg/typst_ts_renderer_bg.wasm',
+        getModule: () => `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@${TYPST_VERSION}/pkg/typst_ts_renderer_bg.wasm`,
       })
     ]);
 
@@ -152,28 +154,15 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
       // Set up the SVG for proper scaling
       const svgElement = outputContainer.querySelector('svg');
       if (svgElement) {
-        // Make SVG responsive and set initial size
-        svgElement.style.maxWidth = '100%';
-        svgElement.style.height = 'auto';
         svgElement.style.display = 'block';
-        svgElement.style.margin = '0 auto';
 
-        // Apply zoom logic if preview component exists
         if (previewComponentInstance) {
           if (preserveZoom && existingZoomLevel) {
-            // Immediately apply preserved zoom to avoid flicker
-            svgElement.style.transform = `scale(${existingZoomLevel})`;
-            svgElement.style.transformOrigin = 'top center';
-            outputContainer.style.textAlign = existingTextAlign || (existingZoomLevel === 1.0 ? 'center' : 'left');
             previewComponentInstance.updateZoomDisplay();
           } else {
-            // Use hardcoded 228% zoom for initial render
-            previewComponentInstance.zoomLevel = 2.28;
-            svgElement.style.transform = `scale(${previewComponentInstance.zoomLevel})`;
-            svgElement.style.transformOrigin = 'top center';
-            outputContainer.style.textAlign = 'left';
-            previewComponentInstance.updateZoomDisplay();
+            previewComponentInstance.fitToWidth();
           }
+          previewComponentInstance.applyZoom();
         }
       }
     } else {
@@ -201,7 +190,9 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
 function generatePreview(fileName, fileContent) {
   return {
     type: 'typst',
-    requiresCustomRender: true
+    requiresCustomRender: true,
+    previewLabel: 'Typst',
+    previewColor: '#239dad'
   };
 }
 
@@ -302,10 +293,8 @@ function createPreviewUI(container, previewComponentInstance) {
 
   const outputDiv = document.createElement('div');
   outputDiv.style.flex = '1';
-  outputDiv.style.padding = '1rem';
-  outputDiv.style.overflow = 'auto'; // Enable scrollbars for pan
+  outputDiv.style.overflow = 'auto';
   outputDiv.style.background = 'white';
-  outputDiv.style.textAlign = 'left'; // Left-aligned for fit-width default
 
   const diagnosticsDiv = document.createElement('div');
   diagnosticsDiv.style.height = '100px';

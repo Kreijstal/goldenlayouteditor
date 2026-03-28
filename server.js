@@ -1,43 +1,41 @@
 const express = require('express');
+const http = require('http');
 const path = require('path');
-const fs = require('fs');
+const { WebSocketServer } = require('ws');
+const wsHandler = require('./ws-handler');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware for parsing JSON requests  
-app.use(express.json());
+// In-memory store for preview files (shared with WS handler)
+const previewFiles = new Map();
+
+function getMimeType(fileName) {
+  const ext = fileName.split('.').pop().toLowerCase();
+  const types = {
+    html: 'text/html', htm: 'text/html',
+    css: 'text/css',
+    js: 'application/javascript',
+    json: 'application/json',
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  };
+  return types[ext] || 'text/plain';
+}
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API to write files to disk
-app.post('/api/writeFiles', (req, res) => {
-  const { htmlContent, cssContent, jsContent } = req.body;
-  
-  try {
-    // Create preview directory if it doesn't exist
-    const previewDir = path.join(__dirname, 'public', 'preview');
-    if (!fs.existsSync(previewDir)) {
-      fs.mkdirSync(previewDir, { recursive: true });
-    }
-    
-    // Write files to preview directory
-    if (htmlContent !== undefined) {
-      fs.writeFileSync(path.join(previewDir, 'index.html'), htmlContent);
-    }
-    if (cssContent !== undefined) {
-      fs.writeFileSync(path.join(previewDir, 'style.css'), cssContent);  
-    }
-    if (jsContent !== undefined) {
-      fs.writeFileSync(path.join(previewDir, 'script.js'), jsContent);
-    }
-    
-    console.log('Files written to preview directory');
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error writing files:', error);
-    res.status(500).json({ success: false, error: error.message });
+// Serve preview files from in-memory store
+app.get('/preview-output/*filePath', (req, res) => {
+  const filePath = req.params.filePath[0] || 'preview.html';
+  if (previewFiles.has(filePath)) {
+    res.set('Content-Type', getMimeType(filePath));
+    res.set('Cache-Control', 'no-cache');
+    res.send(previewFiles.get(filePath));
+  } else {
+    res.status(404).send('Not found');
   }
 });
 
@@ -78,11 +76,27 @@ app.get('/snippets/javascript.js', (req, res) => {
   });
 });
 
-// Optional: A simple route to confirm the server is running
+// Serve raw files from the workspace directory
+app.get('/workspace-file', (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath) return res.status(400).send('Missing path parameter');
+
+  const resolved = path.resolve(filePath);
+  res.sendFile(resolved, (err) => {
+    if (err) res.status(404).send('Not found');
+  });
+});
+
 app.get('/ping', (req, res) => {
   res.send('pong');
 });
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+// Create HTTP server and attach WebSocket
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws' });
+
+wss.on('connection', (ws) => wsHandler.handleConnection(ws, previewFiles));
+
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Server listening at http://0.0.0.0:${port}`);
 });
