@@ -195,58 +195,82 @@ if ('serviceWorker' in navigator) {
 
 // --- Preview Rendering ---
 
+async function updatePreviewFilesViaServer() {
+    const previewFile = projectFiles[activePreviewFileId];
+    if (!previewFile) {
+        console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
+        return false;
+    }
+
+    const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
+
+    // Build a map of all files to write, keyed by filename
+    const filesToWrite = {};
+    Object.values(projectFiles).forEach(file => {
+        filesToWrite[file.name] = file.content;
+    });
+    filesToWrite['preview.html'] = previewContent.content;
+
+    try {
+        const res = await fetch('./api/writeFiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: filesToWrite })
+        });
+        if (!res.ok) throw new Error('Server responded with ' + res.status);
+
+        if (previewFrame) {
+            const timestamp = Date.now();
+            previewFrame.src = `./preview/preview.html?t=${timestamp}`;
+            console.log(`[RenderPreview] Preview updated via server for file: ${previewFile.name}`);
+        }
+        return true;
+    } catch (error) {
+        console.error('[RenderPreview] Failed to update files via server:', error);
+        return false;
+    }
+}
+
 function updatePreviewFiles() {
     return new Promise((resolve) => {
         try {
-            // Wait for service worker to be ready
-            const waitForServiceWorker = () => {
-                if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
-                    // Get the file to preview
-                    const previewFile = projectFiles[activePreviewFileId];
-                    if (!previewFile) {
-                        console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
-                        resolve(false);
-                        return;
-                    }
+            if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
+                // Use service worker path
+                const previewFile = projectFiles[activePreviewFileId];
+                if (!previewFile) {
+                    console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
+                    resolve(false);
+                    return;
+                }
 
-                    // Generate preview content using handlers
-                    const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
-                    
-                    // Update all files in the service worker (for CSS/JS dependencies)
-                    Object.values(projectFiles).forEach(file => {
-                        serviceWorkerRegistration.active.postMessage({
-                            type: 'updateFile',
-                            fileName: file.name,
-                            content: file.content
-                        });
-                    });
+                const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
 
-                    // Update the preview content specifically
+                Object.values(projectFiles).forEach(file => {
                     serviceWorkerRegistration.active.postMessage({
                         type: 'updateFile',
-                        fileName: 'preview.html',
-                        content: previewContent.content
+                        fileName: file.name,
+                        content: file.content
                     });
-                    
-                    if (previewFrame) {
-                        // Add a cache-busting parameter to ensure fresh content
-                        const timestamp = Date.now();
-                        const previewUrl = `./preview/preview.html?t=${timestamp}`;
-                        
-                        // Reload the preview iframe
-                        previewFrame.src = previewUrl;
-                        console.log(`[RenderPreview] Preview updated for file: ${previewFile.name}`);
-                    }
-                    resolve(true);
-                } else {
-                    // Retry after a short delay
-                    setTimeout(waitForServiceWorker, 100);
+                });
+
+                serviceWorkerRegistration.active.postMessage({
+                    type: 'updateFile',
+                    fileName: 'preview.html',
+                    content: previewContent.content
+                });
+
+                if (previewFrame) {
+                    const timestamp = Date.now();
+                    previewFrame.src = `./preview/preview.html?t=${timestamp}`;
+                    console.log(`[RenderPreview] Preview updated for file: ${previewFile.name}`);
                 }
-            };
-            
-            waitForServiceWorker();
+                resolve(true);
+            } else {
+                // Fallback: write files to disk via server API
+                updatePreviewFilesViaServer().then(resolve);
+            }
         } catch (error) {
-            console.error('[RenderPreview] Failed to update files in service worker:', error);
+            console.error('[RenderPreview] Failed to update preview:', error);
             resolve(false);
         }
     });

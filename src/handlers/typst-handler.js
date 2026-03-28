@@ -47,7 +47,7 @@ async function ensureTypstInitialized() {
 
   try {
     // Dynamically import the library from esm.sh
-    typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc1");
+    typstModule = await import("https://esm.sh/@myriaddreamin/typst.ts@0.6.1-rc5");
 
     // Create compiler, renderer, and package management components
     typstCompiler = typstModule.createTypstCompiler();
@@ -59,7 +59,7 @@ async function ensureTypstInitialized() {
 
     await Promise.all([
       typstCompiler.init({
-        getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc1/pkg/typst_ts_web_compiler_bg.wasm",
+        getModule: () => "https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@0.6.1-rc5/pkg/typst_ts_web_compiler_bg.wasm",
         beforeBuild: [
           typstModule.initOptions.withAccessModel(accessModel),
           typstModule.initOptions.withPackageRegistry(packageRegistry),
@@ -69,7 +69,7 @@ async function ensureTypstInitialized() {
         ]
       }),
       typstRenderer.init({
-        getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc1/pkg/typst_ts_renderer_bg.wasm',
+        getModule: () => 'https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@0.6.1-rc5/pkg/typst_ts_renderer_bg.wasm',
       })
     ]);
 

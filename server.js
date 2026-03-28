@@ -13,26 +13,35 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // API to write files to disk
 app.post('/api/writeFiles', (req, res) => {
-  const { htmlContent, cssContent, jsContent } = req.body;
-  
+  const { files, htmlContent, cssContent, jsContent } = req.body;
+
   try {
     // Create preview directory if it doesn't exist
     const previewDir = path.join(__dirname, 'public', 'preview');
     if (!fs.existsSync(previewDir)) {
       fs.mkdirSync(previewDir, { recursive: true });
     }
-    
-    // Write files to preview directory
-    if (htmlContent !== undefined) {
-      fs.writeFileSync(path.join(previewDir, 'index.html'), htmlContent);
+
+    if (files) {
+      // New format: write all files by name
+      for (const [fileName, content] of Object.entries(files)) {
+        // Sanitize filename to prevent path traversal
+        const safeName = path.basename(fileName);
+        fs.writeFileSync(path.join(previewDir, safeName), content);
+      }
+    } else {
+      // Legacy format
+      if (htmlContent !== undefined) {
+        fs.writeFileSync(path.join(previewDir, 'index.html'), htmlContent);
+      }
+      if (cssContent !== undefined) {
+        fs.writeFileSync(path.join(previewDir, 'style.css'), cssContent);
+      }
+      if (jsContent !== undefined) {
+        fs.writeFileSync(path.join(previewDir, 'script.js'), jsContent);
+      }
     }
-    if (cssContent !== undefined) {
-      fs.writeFileSync(path.join(previewDir, 'style.css'), cssContent);  
-    }
-    if (jsContent !== undefined) {
-      fs.writeFileSync(path.join(previewDir, 'script.js'), jsContent);
-    }
-    
+
     console.log('Files written to preview directory');
     res.json({ success: true });
   } catch (error) {
@@ -83,6 +92,6 @@ app.get('/ping', (req, res) => {
   res.send('pong');
 });
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server listening at http://0.0.0.0:${port}`);
 });
