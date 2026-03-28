@@ -2,13 +2,26 @@
 // Central registry for all file type handlers
 
 const webHandler = require('./web-handler');
-const typstHandler = require('./typst-handler');
 
 // Registry of all available handlers
+// webHandler is always present as the default fallback
 const handlers = [
     webHandler,
-    typstHandler
 ];
+
+/**
+ * Registers a new file type handler.
+ * Handlers are inserted before webHandler so they take priority.
+ * @param {object} handler - Handler object with canHandle, generatePreview, etc.
+ */
+function registerHandler(handler) {
+    if (!handler || typeof handler.canHandle !== 'function') {
+        throw new Error('Handler must implement canHandle(fileName)');
+    }
+    // Insert before webHandler (last entry) so custom handlers get priority
+    const webIdx = handlers.indexOf(webHandler);
+    handlers.splice(webIdx, 0, handler);
+}
 
 /**
  * Gets the appropriate handler for a given file.
@@ -165,6 +178,7 @@ function getAceModeForFile(fileName) {
 }
 
 module.exports = {
+    registerHandler,
     getHandlerForFile,
     generatePreviewContent,
     requiresCustomRender,

@@ -190,7 +190,9 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
 function generatePreview(fileName, fileContent) {
   return {
     type: 'typst',
-    requiresCustomRender: true
+    requiresCustomRender: true,
+    previewLabel: 'Typst',
+    previewColor: '#239dad'
   };
 }
 
