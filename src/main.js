@@ -175,105 +175,89 @@ function getFileTypeFromExtension(fileName) {
 
 // --- Service Worker Setup ---
 let serviceWorkerRegistration = null;
+// Resolves when we know whether the SW is usable; value is the registration or null
+const serviceWorkerReady = new Promise((resolve) => {
+    if ('serviceWorker' in navigator) {
+        const currentPath = window.location.pathname;
+        const basePath = currentPath.endsWith('/') ? currentPath : currentPath + '/';
+        const workerPath = basePath + 'worker.js';
 
-// Register service worker
-if ('serviceWorker' in navigator) {
-    // Detect if we're running in a subdirectory (like GitHub Pages)
-    const currentPath = window.location.pathname;
-    const basePath = currentPath.endsWith('/') ? currentPath : currentPath + '/';
-    const workerPath = basePath + 'worker.js';
-    
-    navigator.serviceWorker.register(workerPath)
-        .then(registration => {
-            console.log('[ServiceWorker] Registered successfully');
-            serviceWorkerRegistration = registration;
-        })
-        .catch(error => {
-            console.error('[ServiceWorker] Registration failed:', error);
-        });
-}
+        navigator.serviceWorker.register(workerPath)
+            .then(registration => {
+                console.log('[ServiceWorker] Registered successfully');
+                serviceWorkerRegistration = registration;
+                // Wait for the SW to become active
+                if (registration.active) {
+                    resolve(registration);
+                } else {
+                    const sw = registration.installing || registration.waiting;
+                    sw.addEventListener('statechange', () => {
+                        if (sw.state === 'activated') resolve(registration);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('[ServiceWorker] Registration failed:', error);
+                resolve(null);
+            });
+    } else {
+        resolve(null);
+    }
+});
 
 // --- Preview Rendering ---
 
-async function updatePreviewFilesViaServer() {
-    const previewFile = projectFiles[activePreviewFileId];
-    if (!previewFile) {
-        console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
-        return false;
-    }
-
-    const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
-
-    // Build a map of all files to write, keyed by filename
-    const filesToWrite = {};
-    Object.values(projectFiles).forEach(file => {
-        filesToWrite[file.name] = file.content;
-    });
-    filesToWrite['preview.html'] = previewContent.content;
-
+async function updatePreviewFiles() {
     try {
-        const res = await fetch('./api/writeFiles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ files: filesToWrite })
-        });
-        if (!res.ok) throw new Error('Server responded with ' + res.status);
+        const previewFile = projectFiles[activePreviewFileId];
+        if (!previewFile) {
+            console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
+            return false;
+        }
+
+        const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
+        const reg = await serviceWorkerReady;
+
+        if (reg && reg.active) {
+            // Send files to service worker
+            Object.values(projectFiles).forEach(file => {
+                reg.active.postMessage({
+                    type: 'updateFile',
+                    fileName: file.name,
+                    content: file.content
+                });
+            });
+            reg.active.postMessage({
+                type: 'updateFile',
+                fileName: 'preview.html',
+                content: previewContent.content
+            });
+        } else {
+            // Fallback: write files to disk via server API
+            const filesToWrite = {};
+            Object.values(projectFiles).forEach(file => {
+                filesToWrite[file.name] = file.content;
+            });
+            filesToWrite['preview.html'] = previewContent.content;
+
+            const res = await fetch('./api/writeFiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: filesToWrite })
+            });
+            if (!res.ok) throw new Error('Server responded with ' + res.status);
+        }
 
         if (previewFrame) {
             const timestamp = Date.now();
             previewFrame.src = `./preview/preview.html?t=${timestamp}`;
-            console.log(`[RenderPreview] Preview updated via server for file: ${previewFile.name}`);
+            console.log(`[RenderPreview] Preview updated for file: ${previewFile.name}`);
         }
         return true;
     } catch (error) {
-        console.error('[RenderPreview] Failed to update files via server:', error);
+        console.error('[RenderPreview] Failed to update preview:', error);
         return false;
     }
-}
-
-function updatePreviewFiles() {
-    return new Promise((resolve) => {
-        try {
-            if (serviceWorkerRegistration && serviceWorkerRegistration.active) {
-                // Use service worker path
-                const previewFile = projectFiles[activePreviewFileId];
-                if (!previewFile) {
-                    console.warn('[RenderPreview] Preview file not found:', activePreviewFileId);
-                    resolve(false);
-                    return;
-                }
-
-                const previewContent = generatePreviewContent(previewFile.name, previewFile.content, previewFile.type);
-
-                Object.values(projectFiles).forEach(file => {
-                    serviceWorkerRegistration.active.postMessage({
-                        type: 'updateFile',
-                        fileName: file.name,
-                        content: file.content
-                    });
-                });
-
-                serviceWorkerRegistration.active.postMessage({
-                    type: 'updateFile',
-                    fileName: 'preview.html',
-                    content: previewContent.content
-                });
-
-                if (previewFrame) {
-                    const timestamp = Date.now();
-                    previewFrame.src = `./preview/preview.html?t=${timestamp}`;
-                    console.log(`[RenderPreview] Preview updated for file: ${previewFile.name}`);
-                }
-                resolve(true);
-            } else {
-                // Fallback: write files to disk via server API
-                updatePreviewFilesViaServer().then(resolve);
-            }
-        } catch (error) {
-            console.error('[RenderPreview] Failed to update preview:', error);
-            resolve(false);
-        }
-    });
 }
 
 // --- Editor Component ---
@@ -529,38 +513,58 @@ class PreviewComponent {
     adjustZoom(factor) {
         if (!this.outputDiv) return;
         this.zoomLevel *= factor;
-        this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel)); // Clamp between 10% and 500%
+        this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel));
         this.updateZoomDisplay();
         this.applyZoom();
     }
-    
+
     fitToWidth() {
         if (!this.outputDiv) return;
         const svg = this.outputDiv.querySelector('svg');
         if (svg) {
-            const containerWidth = this.outputDiv.clientWidth - 32; // Account for padding
-            const svgWidth = svg.getBoundingClientRect().width / this.zoomLevel; // Get original width
-            this.zoomLevel = containerWidth / svgWidth;
-            this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel)); // Clamp
+            const containerWidth = this.outputDiv.clientWidth - 32;
+            // Get the SVG's intrinsic width from its viewBox or attributes
+            const viewBox = svg.getAttribute('viewBox');
+            let intrinsicWidth;
+            if (viewBox) {
+                intrinsicWidth = parseFloat(viewBox.split(/[\s,]+/)[2]);
+            } else {
+                intrinsicWidth = parseFloat(svg.getAttribute('width')) || svg.getBoundingClientRect().width;
+            }
+            this.zoomLevel = containerWidth / intrinsicWidth;
+            this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel));
             this.updateZoomDisplay();
             this.applyZoom();
         }
     }
-    
+
     updateZoomDisplay() {
         if (this.zoomDisplay) {
             this.zoomDisplay.textContent = Math.round(this.zoomLevel * 100) + '%';
         }
     }
-    
+
     applyZoom() {
         if (!this.outputDiv) return;
         const svg = this.outputDiv.querySelector('svg');
         if (svg) {
-            svg.style.transform = `scale(${this.zoomLevel})`;
-            svg.style.transformOrigin = 'top center';
-            // Reset text-align when zoomed to allow proper scrolling
-            this.outputDiv.style.textAlign = this.zoomLevel === 1.0 ? 'center' : 'left';
+            // Use width-based scaling so the SVG's layout box matches its visual size.
+            // This ensures the scroll container works correctly, unlike transform: scale().
+            const viewBox = svg.getAttribute('viewBox');
+            if (viewBox) {
+                const parts = viewBox.split(/[\s,]+/);
+                const intrinsicWidth = parseFloat(parts[2]);
+                const intrinsicHeight = parseFloat(parts[3]);
+                const newWidth = intrinsicWidth * this.zoomLevel;
+                const newHeight = intrinsicHeight * this.zoomLevel;
+                svg.style.width = newWidth + 'px';
+                svg.style.height = newHeight + 'px';
+            } else {
+                svg.style.width = (this.zoomLevel * 100) + '%';
+                svg.style.height = 'auto';
+            }
+            svg.style.transform = '';
+            svg.style.display = 'block';
         }
     }
 
@@ -1168,6 +1172,12 @@ document.addEventListener('DOMContentLoaded', () => {
             goldenLayoutInstance.updateSize();
         }
     });
+
+    new ResizeObserver(() => {
+        if (goldenLayoutInstance) {
+            goldenLayoutInstance.updateSize();
+        }
+    }).observe(document.getElementById('layoutContainer'));
 
     // Expose editor state globally for debugging
     const editorDebugInterface = {

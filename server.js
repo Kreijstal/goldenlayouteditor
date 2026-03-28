@@ -27,7 +27,17 @@ app.post('/api/writeFiles', (req, res) => {
       for (const [fileName, content] of Object.entries(files)) {
         // Sanitize filename to prevent path traversal
         const safeName = path.basename(fileName);
-        fs.writeFileSync(path.join(previewDir, safeName), content);
+        if (safeName === '..' || safeName === '.') {
+          console.warn(`Path traversal attempt blocked for filename: ${fileName}`);
+          continue;
+        }
+        const targetPath = path.join(previewDir, safeName);
+        // Verify resolved path is still inside previewDir
+        if (!targetPath.startsWith(previewDir)) {
+          console.warn(`Path traversal attempt blocked for filename: ${fileName}`);
+          continue;
+        }
+        fs.writeFileSync(targetPath, content);
       }
     } else {
       // Legacy format
