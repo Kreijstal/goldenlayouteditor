@@ -3,6 +3,7 @@ const ace = require('ace-builds/src-min-noconflict/ace');
 const handlerRegistry = require('./handlers');
 const { getPlugins } = require('./plugins');
 const { renderTree } = require('./tree-renderer');
+const { isMobile, MobileLayout, createContainerAdapter } = require('./mobile-layout');
 const debug = require('./debug');
 const log = debug.createLogger('App');
 
@@ -2662,14 +2663,225 @@ async function restoreSession(savedState) {
     return false;
 }
 
+// --- Mobile Layout Initialization ---
+function initMobileLayout(layoutContainer) {
+    const mobile = new MobileLayout(layoutContainer);
+
+    // -- File Tree Panel --
+    const fileTreePanel = mobile.panels.fileTree;
+    const fileTreeEl = fileTreePanel.element;
+    fileTreeEl.style.cssText += 'flex-direction:column;background:#1e1e1e;color:#ddd;';
+    fileTreeEl._displayStyle = 'flex';
+
+    // Toolbar
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;gap:4px;padding:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #333;flex-shrink:0;';
+
+    const newFileBtn = document.createElement('button');
+    newFileBtn.textContent = '+ File';
+    newFileBtn.style.cssText = 'padding:6px 12px;font-size:13px;cursor:pointer;border:1px solid #555;background:#2a2a2a;color:#ddd;border-radius:4px;';
+    newFileBtn.onclick = () => {
+        const name = prompt('File name:');
+        if (!name) return;
+        const id = generateUniqueId('file');
+        const type = getFileTypeFromExtension(name);
+        const fileObj = { id, name, type, content: '', cursor: { row: 0, column: 0 }, selection: null };
+        projectFiles[id] = fileObj;
+        projectStructure.children.push(fileObj);
+        renderMobileFileTree();
+    };
+    toolbar.appendChild(newFileBtn);
+
+    // Open workspace button (shown when WS connected)
+    const openWsBtn = document.createElement('button');
+    openWsBtn.textContent = '\uD83D\uDCC2 Open';
+    openWsBtn.style.cssText = 'padding:6px 12px;font-size:13px;cursor:pointer;border:1px solid #555;background:#2a2a2a;color:#ddd;border-radius:4px;display:none;';
+    openWsBtn.onclick = () => wsClient.showWorkspaceSelector(handleWorkspaceLoaded);
+    toolbar.appendChild(openWsBtn);
+
+    wsClient.wsReady.then(socket => {
+        if (socket) openWsBtn.style.display = '';
+    });
+
+    fileTreeEl.appendChild(toolbar);
+
+    // File list
+    const fileListEl = document.createElement('div');
+    fileListEl.style.cssText = 'flex:1;overflow-y:auto;padding:4px 0;-webkit-overflow-scrolling:touch;';
+    fileTreeEl.appendChild(fileListEl);
+
+    function renderMobileFileTree() {
+        fileListEl.innerHTML = '';
+        const ul = document.createElement('ul');
+        ul.style.cssText = 'list-style:none;padding:0;margin:0;';
+
+        renderTree({
+            items: projectStructure.children,
+            container: ul,
+            depth: 0,
+            darkMode: true,
+            activeFileId: activeEditorFileId,
+            onClickFile: (item) => {
+                activeEditorFileId = item.id;
+                mobile.openFile(item.id, item.name);
+            },
+            onToggleDir: () => {},
+            getFileIcon: (name) => {
+                const ext = name.split('.').pop().toLowerCase();
+                const icons = { html: '\uD83C\uDF10', css: '\uD83C\uDFA8', js: '\u26A1', typ: '\uD83D\uDCDD', md: '\uD83D\uDCDD', json: '{}' };
+                return icons[ext] || '\uD83D\uDCC4';
+            },
+        });
+
+        fileListEl.appendChild(ul);
+    }
+
+    // -- Editor Panel --
+    const editorPanel = mobile.panels.editor;
+    const editorEl = editorPanel.element;
+    let mobileEditor = null;
+    let mobileEditorFileId = null;
+
+    function setupMobileEditor(fileId) {
+        const file = projectFiles[fileId];
+        if (!file) return;
+
+        // Save previous file content
+        if (mobileEditor && mobileEditorFileId && projectFiles[mobileEditorFileId]) {
+            projectFiles[mobileEditorFileId].content = mobileEditor.getValue();
+            const cursor = mobileEditor.getCursorPosition();
+            projectFiles[mobileEditorFileId].cursor = { row: cursor.row, column: cursor.column };
+        }
+
+        mobileEditorFileId = fileId;
+
+        if (!mobileEditor) {
+            mobileEditor = ace.edit(editorEl);
+            mobileEditor.setTheme("ace/theme/github");
+            mobileEditor.setOptions({
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                fontSize: '14px',
+            });
+
+            mobileEditor.session.on('change', () => {
+                if (mobileEditorFileId && projectFiles[mobileEditorFileId]) {
+                    projectFiles[mobileEditorFileId].content = mobileEditor.getValue();
+                    markDirty(mobileEditorFileId);
+                }
+            });
+        }
+
+        const aceMode = handlerRegistry.getAceModeForFile(file.name);
+        mobileEditor.session.setMode(`ace/mode/${aceMode}`);
+        mobileEditor.setValue(file.content, -1);
+        if (file.cursor) {
+            mobileEditor.moveCursorTo(file.cursor.row, file.cursor.column);
+        }
+        mobileEditor.resize();
+        mobileEditor.focus();
+    }
+
+    mobile._onOpenFile = (fileId) => {
+        setupMobileEditor(fileId);
+    };
+
+    // Resize editor when panel becomes visible
+    editorPanel.container.on('resize', () => {
+        if (mobileEditor) {
+            setTimeout(() => mobileEditor.resize(), 50);
+        }
+    });
+
+    // -- Preview Panel --
+    const previewPanel = mobile.panels.preview;
+    const previewEl = previewPanel.element;
+    previewEl.style.cssText += 'background:white;';
+
+    // Use a dedicated iframe for mobile preview, and wire it into the global previewFrame
+    const mobilePreviewFrame = document.createElement('iframe');
+    mobilePreviewFrame.classList.add('preview-iframe');
+    mobilePreviewFrame.style.cssText = 'width:100%;height:100%;border:none;';
+    mobilePreviewFrame.src = './preview/preview.html';
+    previewEl.appendChild(mobilePreviewFrame);
+    previewFrame = mobilePreviewFrame; // Wire into global so updatePreviewFiles() works
+
+    // Preview button handler — renders current project into iframe
+    const originalShowPreview = mobile.showPreview.bind(mobile);
+    mobile.showPreview = () => {
+        // Save current editor content before preview
+        if (mobileEditor && mobileEditorFileId && projectFiles[mobileEditorFileId]) {
+            projectFiles[mobileEditorFileId].content = mobileEditor.getValue();
+        }
+
+        // Set activePreviewFileId to current editor file if not set
+        if (!activePreviewFileId && mobileEditorFileId) {
+            activePreviewFileId = mobileEditorFileId;
+        }
+
+        const previewFileId = activePreviewFileId || mobileEditorFileId;
+        const previewFile = projectFiles[previewFileId];
+        if (previewFile && handlerRegistry.requiresCustomRender(previewFile.name)) {
+            // Custom render (Typst, etc.) — use a simple output container
+            previewEl.innerHTML = '';
+            const outputDiv = document.createElement('div');
+            outputDiv.style.cssText = 'flex:1;overflow:auto;background:white;min-height:0;';
+            const diagDiv = document.createElement('div');
+            diagDiv.style.cssText = 'height:60px;background:#212529;color:#f8f9fa;font-family:monospace;font-size:11px;padding:6px;overflow-y:auto;flex-shrink:0;';
+            previewEl.style.display = 'flex';
+            previewEl.style.flexDirection = 'column';
+            previewEl.appendChild(outputDiv);
+            previewEl.appendChild(diagDiv);
+
+            handlerRegistry.renderFile(
+                previewFile.name,
+                previewFileId,
+                outputDiv, diagDiv,
+                projectFiles, false, null
+            ).catch(err => {
+                diagDiv.textContent = `Error: ${err.message}`;
+            });
+        } else {
+            // Web preview — reuse existing updatePreviewFiles() which handles SW and WS
+            previewEl.innerHTML = '';
+            previewEl.appendChild(mobilePreviewFrame);
+            previewFrame = mobilePreviewFrame;
+            updatePreviewFiles();
+        }
+
+        originalShowPreview();
+    };
+
+    // Initial render
+    renderMobileFileTree();
+    handlerRegistry.initializeAllAceModes();
+
+    // Handle orientation changes
+    window.addEventListener('resize', () => mobile.updateSize());
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => mobile.updateSize(), 100);
+    });
+
+    log.log('Init: Mobile layout ready.');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-    log.log('Init: Initializing GoldenLayout.');
     const layoutContainer = document.getElementById('layoutContainer');
     if (!layoutContainer) {
         log.error('Init: Layout container #layoutContainer not found!');
         return;
     }
 
+    // --- Mobile Layout Path ---
+    if (isMobile()) {
+        log.log('Init: Mobile device detected, using mobile layout.');
+        initMobileLayout(layoutContainer);
+        return;
+    }
+
+    // --- Desktop Layout Path (GoldenLayout) ---
+    log.log('Init: Initializing GoldenLayout.');
     goldenLayoutInstance = new GoldenLayout(layoutContainer);
 
     // Fix: GoldenLayout sets pointer-events:none on iframes during drag but
