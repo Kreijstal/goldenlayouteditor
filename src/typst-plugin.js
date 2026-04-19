@@ -50,7 +50,4 @@ registerPlugin({
     id: 'typst',
     name: 'Typst',
     defaultFiles: [defaultTypstFile],
-    toolbarButtons: [
-        { label: 'Typ', title: 'New Typst File', style: 'font-weight:bold;' },
-    ],
 });

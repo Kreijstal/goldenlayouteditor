@@ -4,6 +4,8 @@ const handlerRegistry = require('./handlers');
 const { getPlugins } = require('./plugins');
 const { renderTree } = require('./tree-renderer');
 const { isMobile, MobileLayout, createContainerAdapter } = require('./mobile-layout');
+const { createClientApi } = require('./client-api');
+const { installClientRpc } = require('./client-rpc');
 const debug = require('./debug');
 const log = debug.createLogger('App');
 
@@ -11,10 +13,13 @@ const log = debug.createLogger('App');
 require('./terminal');
 require('./typst-plugin');
 require('./pandoc-plugin');
+require('./hex-editor-plugin');
+require('./thumbnails-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
 require('ace-builds/src-min-noconflict/ext-language_tools');
+require('ace-builds/src-min-noconflict/ext-searchbox');
 require('ace-builds/src-min-noconflict/mode-css');
 require('ace-builds/src-min-noconflict/mode-javascript');
 
@@ -143,6 +148,7 @@ let _pendingExplorerState = null; // Saved explorer state to apply on next const
 let previewComponentInstance; // To access preview methods
 let activeEditorFileId = null; // To track the currently active file in the editor
 let activePreviewFileId = 'htmlFile'; // To track which file is being previewed
+let _editorInstances = new Map(); // fileId -> EditorComponent instance
 
 // Helper to generate unique IDs for files and directories
 function generateUniqueId(prefix = 'item') {
@@ -346,7 +352,8 @@ function saveSessionState() {
 
         // Tag layout config editor components with filePath for restore
         function tagFilePaths(item) {
-            if (item.componentType === 'editor' && item.componentState && item.componentState.fileId) {
+            if ((item.componentType === 'editor' || item.componentType === 'hexEditor')
+                && item.componentState && item.componentState.fileId) {
                 item.componentState.filePath = fileIdToPath[item.componentState.fileId] || null;
             }
             if (item.content) item.content.forEach(tagFilePaths);
@@ -408,16 +415,24 @@ function clearSessionState() {
 
 function rewriteLayoutConfig(config) {
     function rewrite(item) {
-        if (item.componentType === 'editor' && item.componentState) {
+        const isFileComponent = item.componentType === 'editor' || item.componentType === 'hexEditor';
+        if (isFileComponent && item.componentState) {
             const filePath = item.componentState.filePath;
             if (!filePath) {
-                item._remove = true;
+                // hexEditor tabs may not carry filePath — try resolving via fileId lookup
+                const fileId = item.componentState.fileId;
+                if (!fileId || !projectFiles[fileId]) {
+                    item._remove = true;
+                }
             } else {
                 const file = findFileByPath(filePath);
                 if (file) {
                     item.componentState.fileId = file.id;
-                    item.id = 'editor-' + file.id;
-                    if (item.title) item.title = file.name;
+                    const idPrefix = item.componentType === 'hexEditor' ? 'hex-' : 'editor-';
+                    item.id = idPrefix + file.id;
+                    if (item.title) {
+                        item.title = item.componentType === 'hexEditor' ? `${file.name} [hex]` : file.name;
+                    }
                 } else {
                     item._remove = true;
                 }
@@ -428,6 +443,16 @@ function rewriteLayoutConfig(config) {
                 rewrite(child);
                 return !child._remove;
             });
+            // Clamp activeItemIndex so stacks don't point past the (now shorter) content array
+            if (item.type === 'stack' && typeof item.activeItemIndex === 'number') {
+                if (item.content.length === 0) {
+                    delete item.activeItemIndex;
+                } else if (item.activeItemIndex >= item.content.length) {
+                    item.activeItemIndex = item.content.length - 1;
+                } else if (item.activeItemIndex < 0) {
+                    item.activeItemIndex = 0;
+                }
+            }
         }
     }
     if (config.root) rewrite(config.root);
@@ -519,41 +544,39 @@ wsClient.addMessageListener(async (msg) => {
             // Skip if the file is dirty (user has unsaved local changes)
             if (dirtyFiles.has(file.id)) continue;
 
-            // Re-read the file content from server
-            try {
-                const result = await wsClient.wsRequest({
-                    type: 'readFile',
-                    workspacePath: currentWorkspacePath,
-                    relativePath,
-                });
-                if (result.content !== undefined && result.content !== file.content) {
-                    file.content = result.content;
-                    log.log(`FS: Updated content for ${relativePath}`);
-                    // Refresh editor if this file is open
-                    if (goldenLayoutInstance) {
-                        const editorStack = goldenLayoutInstance.getAllStacks().find(s => s.id === 'editorStack');
-                        if (editorStack) {
-                            const tab = editorStack.contentItems.find(item => {
-                                const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
-                                return state && state.fileId === file.id;
-                            });
-                            if (tab && tab.container && tab.container.componentReference) {
-                                const editor = tab.container.componentReference.editor;
-                                if (editor) {
-                                    const cursorPos = editor.getCursorPosition();
-                                    editor.setValue(file.content, -1);
-                                    editor.moveCursorToPosition(cursorPos);
-                                }
-                            }
-                        }
-                    }
-                    // Refresh preview if this file is being previewed
-                    if (activePreviewFileId === file.id && previewComponentInstance) {
-                        previewComponentInstance.updatePreviewMode();
-                    }
+            // Use content from server if provided, otherwise re-read
+            let newContent = change.content;
+            if (newContent === undefined || newContent === null) {
+                try {
+                    const result = await wsClient.wsRequest({
+                        type: 'readFile',
+                        workspacePath: currentWorkspacePath,
+                        relativePath,
+                    });
+                    newContent = result.content;
+                } catch (err) {
+                    log.warn(`FS: Failed to re-read ${relativePath}:`, err);
+                    continue;
                 }
-            } catch (err) {
-                log.warn(`FS: Failed to re-read ${relativePath}:`, err);
+            }
+
+            if (newContent !== undefined && newContent !== file.content) {
+                file.content = newContent;
+                log.log(`FS: Updated content for ${relativePath}`);
+                // Refresh editor if this file is open
+                const editorComponent = _editorInstances.get(file.id);
+                if (editorComponent && editorComponent.editor) {
+                    const cursorPos = editorComponent.editor.getCursorPosition();
+                    editorComponent._suppressChangeEvents = true;
+                    editorComponent.editor.setValue(file.content, -1);
+                    editorComponent.editor.moveCursorToPosition(cursorPos);
+                    editorComponent._suppressChangeEvents = false;
+                    log.log(`FS: Editor refreshed for ${relativePath}`);
+                }
+                // Refresh preview if this file is being previewed
+                if (activePreviewFileId === file.id && previewComponentInstance) {
+                    previewComponentInstance.updatePreviewMode();
+                }
             }
         } else if (!file) {
             // File doesn't exist — might be new, or a directory change
@@ -687,6 +710,9 @@ class EditorComponent {
         const aceMode = handlerRegistry.getAceModeForFile(fileData.name);
         this.editor.session.setMode(`ace/mode/${aceMode}`);
 
+        // Register this editor instance so WS refresh can find it
+        _editorInstances.set(this.fileId, this);
+
         this.editor.setOptions({
             enableBasicAutocompletion: true,
             enableLiveAutocompletion: true,
@@ -699,11 +725,13 @@ class EditorComponent {
         }
         this.editor.focus();
 
+        this._suppressChangeEvents = false;
+
         this.editor.session.on('change', async () => {
+            if (this._suppressChangeEvents) return;
             const fileData = projectFiles[this.fileId];
             fileData.content = this.editor.getValue();
             markDirty(this.fileId);
-
             // Check if this file change should trigger a preview update
             const previewFile = projectFiles[activePreviewFileId];
             
@@ -747,8 +775,10 @@ class EditorComponent {
         });
 
         container.on('resize', () => this.editor.resize());
+        container.on('show', () => this.editor.resize());
         container.on('destroy', () => {
             log.log(`Editor: Destroying editor for ${fileData.name}`);
+            _editorInstances.delete(this.fileId);
             this.editor.destroy();
         });
     }
@@ -788,8 +818,10 @@ class EditorComponent {
             this.rootElement.appendChild(audio);
         } else if (ext === 'binary') {
             this._initHexViewer(url);
+        } else if (ext === 'pdf') {
+            this._initPdfViewer(url);
         } else {
-            // PDF and other types: use iframe
+            // Other types: use iframe
             const iframe = document.createElement('iframe');
             iframe.src = url;
             iframe.style.cssText = 'width:100%;height:100%;border:none;';
@@ -797,46 +829,78 @@ class EditorComponent {
         }
     }
 
+    async _initPdfViewer(url) {
+        this.rootElement.style.cssText += 'overflow:auto;background:#525659;';
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;';
+        this.rootElement.appendChild(container);
+
+        try {
+            const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.9.155/build/pdf.mjs');
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.9.155/build/pdf.worker.mjs';
+
+            const pdf = await pdfjsLib.getDocument(url).promise;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                canvas.style.cssText = 'max-width:100%;height:auto;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+                container.appendChild(canvas);
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            }
+        } catch (err) {
+            container.innerHTML = `<div style="color:#f88;padding:20px;">Failed to load PDF: ${err.message}</div>`;
+        }
+    }
+
     _initHexViewer(url) {
-        this.rootElement.style.cssText += 'overflow:auto;font-family:monospace;font-size:13px;padding:8px;background:#1e1e1e;color:#d4d4d4;';
-        const info = document.createElement('div');
-        info.style.cssText = 'padding:8px;color:#888;';
+        const info = this._setupHexViewerStyle();
         info.textContent = 'Loading...';
-        this.rootElement.appendChild(info);
-
         fetch(url).then(r => r.arrayBuffer()).then(buffer => {
-            const bytes = new Uint8Array(buffer);
-            info.textContent = `${bytes.length} bytes`;
-
-            const pre = document.createElement('pre');
-            pre.style.cssText = 'margin:0;line-height:1.4;';
-            const BYTES_PER_LINE = 16;
-            const lines = [];
-            const len = Math.min(bytes.length, 0x10000); // Show first 64KB
-            for (let i = 0; i < len; i += BYTES_PER_LINE) {
-                const offset = i.toString(16).padStart(8, '0');
-                const hexParts = [];
-                let ascii = '';
-                for (let j = 0; j < BYTES_PER_LINE; j++) {
-                    if (i + j < bytes.length) {
-                        hexParts.push(bytes[i + j].toString(16).padStart(2, '0'));
-                        const c = bytes[i + j];
-                        ascii += (c >= 0x20 && c <= 0x7e) ? String.fromCharCode(c) : '.';
-                    } else {
-                        hexParts.push('  ');
-                        ascii += ' ';
-                    }
-                }
-                lines.push(`${offset}  ${hexParts.slice(0, 8).join(' ')}  ${hexParts.slice(8).join(' ')}  |${ascii}|`);
-            }
-            if (bytes.length > len) {
-                lines.push(`... (${bytes.length - len} more bytes)`);
-            }
-            pre.textContent = lines.join('\n');
-            this.rootElement.appendChild(pre);
+            this._renderHexBytes(new Uint8Array(buffer), info);
         }).catch(err => {
             info.textContent = `Error loading file: ${err.message}`;
         });
+    }
+
+    _setupHexViewerStyle() {
+        this.rootElement.style.cssText += 'overflow:auto;font-family:monospace;font-size:13px;padding:8px;background:#1e1e1e;color:#d4d4d4;';
+        const info = document.createElement('div');
+        info.style.cssText = 'padding:8px;color:#888;';
+        this.rootElement.appendChild(info);
+        return info;
+    }
+
+    _renderHexBytes(bytes, info) {
+        info.textContent = `${bytes.length} bytes`;
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'margin:0;line-height:1.4;';
+        const BYTES_PER_LINE = 16;
+        const lines = [];
+        const len = Math.min(bytes.length, 0x10000); // Show first 64KB
+        for (let i = 0; i < len; i += BYTES_PER_LINE) {
+            const offset = i.toString(16).padStart(8, '0');
+            const hexParts = [];
+            let ascii = '';
+            for (let j = 0; j < BYTES_PER_LINE; j++) {
+                if (i + j < bytes.length) {
+                    hexParts.push(bytes[i + j].toString(16).padStart(2, '0'));
+                    const c = bytes[i + j];
+                    ascii += (c >= 0x20 && c <= 0x7e) ? String.fromCharCode(c) : '.';
+                } else {
+                    hexParts.push('  ');
+                    ascii += ' ';
+                }
+            }
+            lines.push(`${offset}  ${hexParts.slice(0, 8).join(' ')}  ${hexParts.slice(8).join(' ')}  |${ascii}|`);
+        }
+        if (bytes.length > len) {
+            lines.push(`... (${bytes.length - len} more bytes)`);
+        }
+        pre.textContent = lines.join('\n');
+        this.rootElement.appendChild(pre);
     }
 
     _getRelativePath(fileId) {
@@ -853,27 +917,35 @@ class PreviewComponent {
         this.rootElement.style.display = 'flex';
         this.rootElement.style.flexDirection = 'column';
 
-        // Create external preview controls (always visible at top)
+        // Create collapsible preview controls
+        this._controlsExpanded = true;
+
         this.controlsDiv = document.createElement('div');
-        this.controlsDiv.style.padding = '10px';
+        this.controlsDiv.style.padding = '4px 10px';
         this.controlsDiv.style.borderBottom = '1px solid #ccc';
         this.controlsDiv.style.background = '#f5f5f5';
         this.controlsDiv.style.display = 'flex';
         this.controlsDiv.style.alignItems = 'center';
-        this.controlsDiv.style.gap = '10px';
+        this.controlsDiv.style.gap = '8px';
         this.controlsDiv.style.flexShrink = '0';
 
+        // Toggle button
+        this._toggleBtn = document.createElement('span');
+        this._toggleBtn.textContent = '\u25BC';
+        this._toggleBtn.title = 'Collapse preview controls';
+        this._toggleBtn.style.cssText = 'cursor:pointer;font-size:10px;user-select:none;color:#666;flex-shrink:0;';
+        this._toggleBtn.onclick = () => this._toggleControls();
+
         const label = document.createElement('label');
-        label.textContent = 'Preview: ';
+        label.textContent = 'Preview:';
         label.style.fontWeight = 'bold';
+        label.style.fontSize = '12px';
 
         this.fileSelect = document.createElement('select');
-        this.fileSelect.style.padding = '5px';
-        this.fileSelect.style.border = '1px solid #ccc';
-        this.fileSelect.style.borderRadius = '3px';
-        
+        this.fileSelect.style.cssText = 'padding:3px;border:1px solid #ccc;border-radius:3px;font-size:12px;min-width:0;flex:1;';
+
         this.updateFileOptions();
-        
+
         this.fileSelect.onchange = () => {
             activePreviewFileId = this.fileSelect.value;
             log.log('PreviewComponent: Preview file changed to:', activePreviewFileId);
@@ -882,16 +954,21 @@ class PreviewComponent {
 
         // Preview mode indicator
         this.modeIndicator = document.createElement('span');
-        this.modeIndicator.style.padding = '4px 8px';
+        this.modeIndicator.style.padding = '2px 6px';
         this.modeIndicator.style.borderRadius = '3px';
-        this.modeIndicator.style.fontSize = '12px';
+        this.modeIndicator.style.fontSize = '11px';
         this.modeIndicator.style.fontWeight = 'bold';
-        this.modeIndicator.style.marginLeft = '10px';
 
-        this.controlsDiv.appendChild(label);
-        this.controlsDiv.appendChild(this.fileSelect);
-        this.controlsDiv.appendChild(this.modeIndicator);
-        
+        // Inner content that gets hidden on collapse
+        this._controlsContent = document.createElement('div');
+        this._controlsContent.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden;';
+        this._controlsContent.appendChild(label);
+        this._controlsContent.appendChild(this.fileSelect);
+        this._controlsContent.appendChild(this.modeIndicator);
+
+        this.controlsDiv.appendChild(this._toggleBtn);
+        this.controlsDiv.appendChild(this._controlsContent);
+
         // Add controls to the root element
         this.rootElement.appendChild(this.controlsDiv);
         
@@ -1043,8 +1120,35 @@ document.getElementById('fit').onclick=function(){if(nw)doFit();};
             } else if (AUDIO_EXTS.has(ext)) {
                 previewHtml = `<html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;"><audio src="${url}" controls></audio></body></html>`;
             } else if (ext === 'pdf') {
-                if (previewFrame) { previewFrame.removeAttribute('srcdoc'); previewFrame.src = url; }
-                return;
+                previewHtml = `<html><head><style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{overflow:auto;background:#525659;}
+#container{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;}
+#error{color:#f88;padding:20px;display:none;}
+</style></head><body>
+<div id="container"></div>
+<div id="error"></div>
+<script type="module">
+import * as pdfjsLib from 'https://esm.sh/pdfjs-dist@4.9.155/build/pdf.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.9.155/build/pdf.worker.mjs';
+try {
+  const pdf = await pdfjsLib.getDocument('${url}').promise;
+  const container = document.getElementById('container');
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.style.cssText = 'max-width:100%;height:auto;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+    container.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  }
+} catch(e) {
+  document.getElementById('error').style.display='block';
+  document.getElementById('error').textContent='Failed to load PDF: '+e.message;
+}
+</script></body></html>`;
             } else {
                 previewHtml = `<html><body style="margin:20px;font-family:monospace;color:#666;">No preview for .${ext} files</body></html>`;
             }
@@ -1123,6 +1227,21 @@ document.getElementById('fit').onclick=function(){if(nw)doFit();};
         }
     }
 
+    _toggleControls() {
+        this._controlsExpanded = !this._controlsExpanded;
+        if (this._controlsExpanded) {
+            this._controlsContent.style.display = 'flex';
+            this._toggleBtn.textContent = '\u25BC';
+            this._toggleBtn.title = 'Collapse preview controls';
+            this.controlsDiv.style.padding = '4px 10px';
+        } else {
+            this._controlsContent.style.display = 'none';
+            this._toggleBtn.textContent = '\u25B6';
+            this._toggleBtn.title = 'Expand preview controls';
+            this.controlsDiv.style.padding = '2px 10px';
+        }
+    }
+
     updateFileOptions() {
         this.fileSelect.innerHTML = '';
 
@@ -1196,35 +1315,6 @@ class ProjectFilesComponent {
         newFileBtn.onclick = () => this.createNewFile();
         this.toolbar.appendChild(newFileBtn);
 
-        this.openWorkspaceBtn = document.createElement('button');
-        this.openWorkspaceBtn.textContent = '\uD83D\uDCC2 Open';
-        this.openWorkspaceBtn.title = 'Open Workspace';
-        this.openWorkspaceBtn.style.cssText = 'padding:2px 8px;font-size:12px;cursor:pointer;display:none;';
-        this.openWorkspaceBtn.onclick = () => wsClient.showWorkspaceSelector(handleWorkspaceLoaded);
-        this.toolbar.appendChild(this.openWorkspaceBtn);
-
-        // Plugin toolbar buttons
-        for (const plugin of getPlugins()) {
-            if (plugin.toolbarButtons) {
-                for (const btnDef of plugin.toolbarButtons) {
-                    const btn = document.createElement('button');
-                    btn.textContent = btnDef.label;
-                    btn.title = btnDef.title || '';
-                    btn.style.cssText = 'padding:2px 8px;font-size:12px;cursor:pointer;' + (btnDef.style || '');
-                    btn.onclick = () => {
-                        if (btnDef.onclick) {
-                            btnDef.onclick();
-                        } else {
-                            // Default: open the first component from this plugin
-                            const compType = plugin.components ? Object.keys(plugin.components)[0] : null;
-                            if (compType) openPluginPanel(compType, plugin.name);
-                        }
-                    };
-                    this.toolbar.appendChild(btn);
-                }
-            }
-        }
-
         // Persistence mode toggle
         this.modeToggleBtn = document.createElement('button');
         this.modeToggleBtn.style.cssText = 'padding:2px 8px;font-size:11px;cursor:pointer;display:none;border-radius:3px;';
@@ -1249,7 +1339,6 @@ class ProjectFilesComponent {
 
         wsClient.wsReady.then(socket => {
             if (socket) {
-                this.openWorkspaceBtn.style.display = '';
                 this._updatePersistenceUI();
             }
         });
@@ -1777,6 +1866,31 @@ class ProjectFilesComponent {
         if (fileId) {
             menu.appendChild(menuItem('Rename', '#ddd', () => this.enterRenameMode(fileId, nameSpan, li)));
             menu.appendChild(menuItem('Delete', '#f88', () => this.deleteFile(fileId)));
+            const relPath = getRelativePath(fileId);
+            if (relPath && currentWorkspacePath) {
+                menu.appendChild(menuItem('Download', '#ddd', () => {
+                    const fullPath = currentWorkspacePath + '/' + relPath;
+                    const a = document.createElement('a');
+                    a.href = '/download-file?path=' + encodeURIComponent(fullPath);
+                    a.download = '';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }));
+            }
+        }
+
+        if (!fileId && dirNode && currentWorkspacePath) {
+            const dirPath = this._getDirPath(dirNode);
+            const fullDirPath = currentWorkspacePath + (dirPath ? '/' + dirPath : '');
+            menu.appendChild(menuItem('Download as Zip', '#ddd', () => {
+                const a = document.createElement('a');
+                a.href = '/download-dir?path=' + encodeURIComponent(fullDirPath);
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }));
         }
 
         // Plugin context menu items
@@ -2081,6 +2195,11 @@ class ProjectFilesComponent {
     // --- Grid view rendering ---
 
     _renderGrid() {
+        // Disconnect any previous thumbnail observer — cards are about to be destroyed
+        if (this._thumbIO) {
+            this._thumbIO.disconnect();
+        }
+        this._thumbTargets = new Map();
         this.gridContainer.innerHTML = '';
         const node = this._getGridCurrentNode();
         const items = node.children || [];
@@ -2110,7 +2229,7 @@ class ProjectFilesComponent {
                 this.gridContainer.appendChild(card);
             } else {
                 const icon = this._getFileIcon(item.name);
-                const card = this._createGridCard(icon, item.name, false);
+                const card = this._createGridCard(icon, item.name, false, item);
                 if (item.id === activeEditorFileId) {
                     card.style.border = '1px solid #5b9bd5';
                     card.style.background = 'rgba(91,155,213,0.15)';
@@ -2133,15 +2252,15 @@ class ProjectFilesComponent {
         });
     }
 
-    _createGridCard(iconText, name, isDir) {
+    _createGridCard(iconText, name, isDir, file = null) {
         const card = document.createElement('div');
-        card.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-radius:6px;cursor:pointer;border:1px solid transparent;text-align:center;min-height:70px;transition:background 0.1s;';
+        card.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border-radius:6px;cursor:pointer;border:1px solid transparent;text-align:center;min-height:88px;transition:background 0.1s;';
         card.onmouseenter = () => { if (!card.style.border.includes('#5b9bd5')) card.style.background = 'rgba(255,255,255,0.06)'; };
         card.onmouseleave = () => { if (!card.style.border.includes('#5b9bd5')) card.style.background = ''; };
 
         const iconEl = document.createElement('div');
         iconEl.textContent = iconText;
-        iconEl.style.cssText = 'font-size:28px;line-height:1.2;';
+        iconEl.style.cssText = 'font-size:28px;line-height:1;width:56px;height:56px;display:flex;align-items:center;justify-content:center;overflow:hidden;';
         card.appendChild(iconEl);
 
         const nameEl = document.createElement('div');
@@ -2150,7 +2269,50 @@ class ProjectFilesComponent {
         nameEl.style.cssText = 'font-size:11px;margin-top:4px;word-break:break-all;max-height:2.6em;overflow:hidden;line-height:1.3;' + (isDir ? 'font-weight:bold;' : '');
         card.appendChild(nameEl);
 
+        if (file && !isDir) {
+            const renderer = this._findThumbnailRenderer(file);
+            if (renderer) this._observeThumbnail(iconEl, file, renderer);
+        }
+
         return card;
+    }
+
+    _findThumbnailRenderer(file) {
+        for (const plugin of getPlugins()) {
+            if (!plugin.thumbnailRenderers) continue;
+            for (const r of plugin.thumbnailRenderers) {
+                try {
+                    if (r.canHandle(file)) return r;
+                } catch (e) {
+                    log.warn('Thumbnail canHandle threw:', e);
+                }
+            }
+        }
+        return null;
+    }
+
+    _observeThumbnail(container, file, renderer) {
+        if (!this._thumbIO) {
+            this._thumbTargets = this._thumbTargets || new Map();
+            this._thumbIO = new IntersectionObserver((entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting) continue;
+                    const target = entry.target;
+                    const data = this._thumbTargets.get(target);
+                    if (!data) continue;
+                    this._thumbTargets.delete(target);
+                    this._thumbIO.unobserve(target);
+                    try {
+                        const r = data.renderer.render(data.file, target);
+                        if (r && typeof r.catch === 'function') r.catch(err => log.warn('Thumbnail render rejected:', err));
+                    } catch (err) {
+                        log.warn('Thumbnail render threw:', err);
+                    }
+                }
+            }, { root: this.gridContainer, rootMargin: '120px' });
+        }
+        this._thumbTargets.set(container, { file, renderer });
+        this._thumbIO.observe(container);
     }
 
     // --- Public API methods (unchanged signatures) ---
@@ -2348,104 +2510,329 @@ class ProjectFilesComponent {
 
     openOrFocusEditor(fileId) {
         log.log('ProjectFiles: openOrFocusEditor called with fileId:', fileId);
-        if (!goldenLayoutInstance) {
-            log.error('ProjectFiles: goldenLayoutInstance is not available.');
-            return;
-        }
-
         if (!projectFiles[fileId]) {
             log.error(`ProjectFiles: No file data found for fileId: "${fileId}"`);
             return;
         }
-
-        const allStacks = goldenLayoutInstance.getAllStacks();
-        let editorStack = allStacks ? allStacks.find(stack => stack.id === 'editorStack') : null;
-
-        if (!editorStack) {
-            log.warn('ProjectFiles: Editor stack not found. Creating new one.');
-
-            try {
-                const root = goldenLayoutInstance.root;
-                let targetColumn = null;
-
-                function findColumnWithPreview(item) {
-                    if (item.type === 'column' && item.contentItems) {
-                        for (const child of item.contentItems) {
-                            if (child.isComponent && child.componentType === 'preview') {
-                                return item;
-                            }
-                            if (child.isStack && child.contentItems) {
-                                for (const stackChild of child.contentItems) {
-                                    if (stackChild.isComponent && stackChild.componentType === 'preview') {
-                                        return item;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (item.contentItems) {
-                        for (const child of item.contentItems) {
-                            const result = findColumnWithPreview(child);
-                            if (result) return result;
-                        }
-                    }
-                    return null;
-                }
-
-                targetColumn = findColumnWithPreview(root);
-
-                if (!targetColumn) {
-                    if (root.contentItems && root.contentItems.length > 1 && root.contentItems[1].type === 'column') {
-                        targetColumn = root.contentItems[1];
-                    }
-                }
-
-                if (!targetColumn) {
-                    log.error('ProjectFiles: Could not find suitable column for editor stack');
-                    return;
-                }
-
-                const editorStackConfig = {
-                    type: 'stack',
-                    id: 'editorStack',
-                    content: []
-                };
-
-                targetColumn.addChild(editorStackConfig, 0);
-
-                editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
-
-                if (!editorStack) {
-                    log.error('ProjectFiles: Failed to create editor stack');
-                    return;
-                }
-
-                log.log('ProjectFiles: Successfully created new editor stack');
-
-            } catch (error) {
-                log.error('ProjectFiles: Error creating editor stack:', error);
-                return;
-            }
-        }
-
-        const existingItem = editorStack.contentItems.find(item => {
-            const state = item.container && typeof item.container.getState === 'function' ? item.container.getState() : null;
-            return state && state.fileId === fileId;
-        });
-
-        if (existingItem) {
-            log.log(`ProjectFiles: Activating existing tab for: ${projectFiles[fileId].name}`);
-            editorStack.setActiveContentItem(existingItem);
-        } else {
-            log.log(`ProjectFiles: Creating new tab for: ${projectFiles[fileId].name}`);
-            const newTitle = projectFiles[fileId].name;
-            const contentItemId = 'editor-' + fileId;
-            editorStack.addComponent('editor', { fileId: fileId, filePath: getRelativePath(fileId) }, newTitle, contentItemId);
-        }
+        const title = projectFiles[fileId].name;
+        const contentItemId = 'editor-' + fileId;
+        const state = { fileId, filePath: getRelativePath(fileId) };
+        openEditorTab('editor', state, title, contentItemId);
     }
 }
 
 // --- GoldenLayout Initialization ---
+
+function findOrCreateEditorStack() {
+    if (!goldenLayoutInstance) return null;
+    const allStacks = goldenLayoutInstance.getAllStacks();
+    let editorStack = allStacks ? allStacks.find(stack => stack.id === 'editorStack') : null;
+    if (editorStack) return editorStack;
+
+    log.warn('openEditorTab: Editor stack not found. Creating new one.');
+    try {
+        const root = goldenLayoutInstance.root;
+
+        function findColumnWithPreview(item) {
+            if (item.type === 'column' && item.contentItems) {
+                for (const child of item.contentItems) {
+                    if (child.isComponent && child.componentType === 'preview') return item;
+                    if (child.isStack && child.contentItems) {
+                        for (const sc of child.contentItems) {
+                            if (sc.isComponent && sc.componentType === 'preview') return item;
+                        }
+                    }
+                }
+            }
+            if (item.contentItems) {
+                for (const child of item.contentItems) {
+                    const r = findColumnWithPreview(child);
+                    if (r) return r;
+                }
+            }
+            return null;
+        }
+
+        let targetColumn = findColumnWithPreview(root);
+        if (!targetColumn && root.contentItems && root.contentItems.length > 1 && root.contentItems[1].type === 'column') {
+            targetColumn = root.contentItems[1];
+        }
+        if (!targetColumn) {
+            log.error('openEditorTab: Could not find suitable column for editor stack');
+            return null;
+        }
+
+        targetColumn.addChild({ type: 'stack', id: 'editorStack', content: [] }, 0);
+        editorStack = goldenLayoutInstance.getAllStacks().find(stack => stack.id === 'editorStack');
+        if (!editorStack) log.error('openEditorTab: Failed to create editor stack');
+        return editorStack;
+    } catch (err) {
+        log.error('openEditorTab: Error creating editor stack:', err);
+        return null;
+    }
+}
+
+function openEditorTab(componentType, state, title, contentItemId) {
+    const editorStack = findOrCreateEditorStack();
+    if (!editorStack) return null;
+
+    const existingItem = editorStack.contentItems.find(item => {
+        if (!item.id) return false;
+        if (Array.isArray(item.id)) return item.id.includes(contentItemId);
+        return item.id === contentItemId;
+    });
+
+    if (existingItem) {
+        editorStack.setActiveContentItem(existingItem);
+        return existingItem;
+    }
+    editorStack.addComponent(componentType, state, title, contentItemId);
+    return editorStack.contentItems.find(item => {
+        if (!item.id) return false;
+        if (Array.isArray(item.id)) return item.id.includes(contentItemId);
+        return item.id === contentItemId;
+    });
+}
+
+function openSearchDialog(mode) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding-top:80px;';
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:6px;width:640px;max-width:90vw;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,0.5);font-family:sans-serif;font-size:13px;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'padding:8px 12px;border-bottom:1px solid #444;font-weight:bold;';
+    header.textContent = mode === 'grep' ? 'Grep file contents' : 'Search files by name';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = mode === 'grep' ? 'Content pattern…' : 'File name…';
+    input.style.cssText = 'margin:8px 12px;padding:6px 8px;background:#1e1e1e;color:#ddd;border:1px solid #555;border-radius:3px;font-size:13px;outline:none;';
+
+    const status = document.createElement('div');
+    status.style.cssText = 'padding:0 12px 6px;color:#888;font-size:11px;';
+
+    const results = document.createElement('div');
+    results.style.cssText = 'flex:1;overflow-y:auto;border-top:1px solid #333;';
+
+    dialog.appendChild(header);
+    dialog.appendChild(input);
+    dialog.appendChild(status);
+    dialog.appendChild(results);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    function close() {
+        overlay.remove();
+        document.removeEventListener('keydown', escHandler);
+    }
+    function escHandler(e) {
+        if (e.key === 'Escape') close();
+    }
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', escHandler);
+
+    let selectedIndex = -1;
+    let currentRows = [];
+
+    function setSelection(idx) {
+        if (currentRows[selectedIndex]) currentRows[selectedIndex].style.background = 'none';
+        selectedIndex = idx;
+        if (currentRows[selectedIndex]) {
+            currentRows[selectedIndex].style.background = '#3a4a6a';
+            currentRows[selectedIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function openItem(item) {
+        close();
+        const fileData = projectFiles[item.file.id];
+        if (!fileData) return;
+        if (item.line) fileData.cursor = { row: item.line - 1, column: 0 };
+        if (projectFilesComponentInstance) {
+            projectFilesComponentInstance.openOrFocusEditor(item.file.id);
+        }
+        if (item.line) {
+            const inst = _editorInstances.get(item.file.id);
+            if (inst && inst.editor) {
+                inst.editor.gotoLine(item.line, 0, true);
+                inst.editor.focus();
+            }
+        }
+    }
+
+    function render(query) {
+        results.innerHTML = '';
+        currentRows = [];
+        selectedIndex = -1;
+        if (!query) {
+            status.textContent = '';
+            return;
+        }
+
+        const allFiles = getAllFiles();
+        const items = [];
+        const q = query.toLowerCase();
+
+        if (mode === 'name') {
+            for (const f of allFiles) {
+                const path = getRelativePath(f.id) || f.name;
+                if (path.toLowerCase().includes(q)) {
+                    items.push({ file: f, path });
+                }
+            }
+        } else {
+            for (const f of allFiles) {
+                if (f.viewType) continue; // skip binary
+                const content = f.content || '';
+                if (!content.toLowerCase().includes(q)) continue;
+                const path = getRelativePath(f.id) || f.name;
+                const lines = content.split('\n');
+                lines.forEach((line, idx) => {
+                    if (line.toLowerCase().includes(q)) {
+                        items.push({ file: f, path, line: idx + 1, lineText: line });
+                    }
+                });
+            }
+        }
+
+        const MAX = 200;
+        const shown = items.slice(0, MAX);
+        status.textContent = items.length > MAX
+            ? `${shown.length} of ${items.length} matches (refine query for more)`
+            : `${items.length} match${items.length === 1 ? '' : 'es'}`;
+
+        for (const item of shown) {
+            const row = document.createElement('div');
+            row.style.cssText = 'padding:6px 12px;cursor:pointer;border-bottom:1px solid #333;';
+            if (mode === 'grep') {
+                const fileLabel = document.createElement('div');
+                fileLabel.style.cssText = 'color:#88aaff;font-size:11px;';
+                fileLabel.textContent = `${item.path}:${item.line}`;
+                const lineLabel = document.createElement('div');
+                lineLabel.style.cssText = 'font-family:monospace;font-size:12px;white-space:pre;overflow:hidden;text-overflow:ellipsis;';
+                lineLabel.textContent = item.lineText.length > 200 ? item.lineText.slice(0, 200) + '…' : item.lineText;
+                row.appendChild(fileLabel);
+                row.appendChild(lineLabel);
+            } else {
+                row.textContent = item.path;
+            }
+            row.addEventListener('mouseenter', () => setSelection(currentRows.indexOf(row)));
+            row.addEventListener('click', () => openItem(item));
+            results.appendChild(row);
+            currentRows.push(row);
+        }
+
+        if (currentRows.length > 0) setSelection(0);
+    }
+
+    let renderTimer = null;
+    input.addEventListener('input', () => {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(() => render(input.value.trim()), 80);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (currentRows.length) setSelection((selectedIndex + 1) % currentRows.length);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (currentRows.length) setSelection((selectedIndex - 1 + currentRows.length) % currentRows.length);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0 && currentRows[selectedIndex]) currentRows[selectedIndex].click();
+        }
+    });
+
+    input.focus();
+}
+
+function createTopToolbar() {
+    const toolbarEl = document.getElementById('topToolbar');
+    if (!toolbarEl) return;
+    toolbarEl.innerHTML = '';
+
+    function makeMenu(label) {
+        const item = document.createElement('div');
+        item.className = 'menu-item';
+        item.textContent = label;
+        const dropdown = document.createElement('div');
+        dropdown.className = 'menu-dropdown';
+        item.appendChild(dropdown);
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const wasOpen = item.classList.contains('open');
+            toolbarEl.querySelectorAll('.menu-item.open').forEach(el => el.classList.remove('open'));
+            if (!wasOpen) item.classList.add('open');
+        });
+        item.addEventListener('mouseenter', () => {
+            if (toolbarEl.querySelector('.menu-item.open')) {
+                toolbarEl.querySelectorAll('.menu-item.open').forEach(el => el.classList.remove('open'));
+                item.classList.add('open');
+            }
+        });
+        toolbarEl.appendChild(item);
+        return dropdown;
+    }
+
+    function makeEntry(dropdown, label, onClick, opts = {}) {
+        const entry = document.createElement('div');
+        entry.className = 'menu-entry';
+        entry.textContent = label;
+        if (opts.disabled) entry.classList.add('disabled');
+        entry.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toolbarEl.querySelectorAll('.menu-item.open').forEach(el => el.classList.remove('open'));
+            onClick();
+        });
+        dropdown.appendChild(entry);
+        return entry;
+    }
+
+    // File menu
+    const fileMenu = makeMenu('File');
+    const openEntry = makeEntry(fileMenu, 'Open Workspace…', () => {
+        wsClient.showWorkspaceSelector(handleWorkspaceLoaded);
+    }, { disabled: true });
+    wsClient.wsReady.then(socket => {
+        if (socket) openEntry.classList.remove('disabled');
+    });
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid #444;margin:4px 0;';
+    fileMenu.appendChild(sep);
+    makeEntry(fileMenu, 'Search Files…', () => openSearchDialog('name'));
+    makeEntry(fileMenu, 'Grep Contents…', () => openSearchDialog('grep'));
+
+    // Plugins menu
+    const pluginEntries = [];
+    for (const plugin of getPlugins()) {
+        if (!plugin.toolbarButtons) continue;
+        for (const btnDef of plugin.toolbarButtons) {
+            pluginEntries.push({ plugin, btnDef });
+        }
+    }
+    if (pluginEntries.length > 0) {
+        const pluginMenu = makeMenu('Plugins');
+        for (const { plugin, btnDef } of pluginEntries) {
+            const label = btnDef.menuLabel || `${plugin.name} — ${btnDef.title || btnDef.label}`;
+            makeEntry(pluginMenu, label, () => {
+                if (btnDef.onclick) {
+                    btnDef.onclick();
+                } else {
+                    const compType = plugin.components ? Object.keys(plugin.components)[0] : null;
+                    if (compType) openPluginPanel(compType, plugin.name);
+                }
+            });
+        }
+    }
+
+    // Dismiss menus on outside click
+    document.addEventListener('click', () => {
+        toolbarEl.querySelectorAll('.menu-item.open').forEach(el => el.classList.remove('open'));
+    });
+}
 
 function openPluginPanel(componentType, title, state) {
     if (!goldenLayoutInstance) return;
@@ -2913,7 +3300,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (previewComponentInstance) previewComponentInstance.updateFileOptions();
         return id;
     }
-    const pluginCtx = { wsClient, goldenLayoutInstance, get projectFiles() { return projectFiles; }, log, openPluginPanel, createFile: pluginCreateFile };
+    const pluginCtx = {
+        wsClient,
+        goldenLayoutInstance,
+        get projectFiles() { return projectFiles; },
+        get currentWorkspacePath() { return currentWorkspacePath; },
+        getRelativePath,
+        markDirty,
+        log,
+        openPluginPanel,
+        openEditorTab,
+        createFile: pluginCreateFile,
+    };
     for (const plugin of getPlugins()) {
         if (plugin.init) plugin.init(pluginCtx);
         if (plugin.components) {
@@ -2923,6 +3321,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
+
+    createTopToolbar();
 
     // Check for saved session
     const savedState = loadSessionState();
@@ -2957,7 +3357,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }).observe(document.getElementById('layoutContainer'));
 
-    // Expose editor state globally for debugging
+    // --- Public client API (window.app) ---
+    window.app = createClientApi({
+        get goldenLayoutInstance() { return goldenLayoutInstance; },
+        get projectFiles() { return projectFiles; },
+        get projectStructure() { return projectStructure; },
+        get currentWorkspacePath() { return currentWorkspacePath; },
+        get projectFilesComponentInstance() { return projectFilesComponentInstance; },
+        get previewComponentInstance() { return previewComponentInstance; },
+        wsClient,
+        dirtyFiles,
+        _editorInstances,
+        getAllFiles,
+        getRelativePath,
+        findFileByPath,
+        generateUniqueId,
+        getFileTypeFromExtension,
+        markDirty,
+        updatePreviewFiles,
+        saveFileToDisk,
+        syncAllDirtyFiles,
+        handleWorkspaceLoaded,
+        openEditorTab,
+        findOrCreateEditorStack,
+        getDefaultLayoutConfig,
+        log,
+    });
+    log.log('Init: Client API exposed at window.app (v' + window.app.version + ').');
+
+    // Expose the ws client on window so you can send clientAction/clientEval
+    // from the DevTools console (e.g. across tabs). Prefer window.app for
+    // regular use; this is the raw transport.
+    window.wsClient = wsClient;
+
+    // Wire up the RPC relay so agents can drive the editor over WebSocket
+    installClientRpc(wsClient, log);
+
+    // Expose editor state globally for debugging (legacy alias)
     const editorDebugInterface = {
         get projectFiles() { return projectFiles; },
         set projectFiles(newProjectFiles) {

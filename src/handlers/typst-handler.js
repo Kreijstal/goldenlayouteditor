@@ -123,14 +123,14 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
       ).join('\n\n'); // Use double newline for better separation
 
       diagnosticsContainer.textContent = formattedDiagnostics;
+      diagnosticsContainer.style.display = 'block';
 
       // Add visual hint for errors
       const hasErrors = artifact.diagnostics.some(d => d.severity === 'error');
-      if (hasErrors) {
-        diagnosticsContainer.style.color = '#ff9e9e'; // Light red for better readability on dark bg
-      }
+      diagnosticsContainer.style.color = hasErrors ? '#ff9e9e' : '#f8f9fa';
     } else {
-      diagnosticsContainer.textContent = 'No errors or warnings.';
+      diagnosticsContainer.textContent = '';
+      diagnosticsContainer.style.display = 'none';
     }
     // **FIX END**
 
@@ -177,6 +177,7 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
     console.error("Typst Compilation/Rendering failed:", err);
     diagnosticsContainer.textContent = `CRITICAL ERROR: ${err.message}`;
     diagnosticsContainer.style.color = '#ff6b6b';
+    diagnosticsContainer.style.display = 'block';
   }
 }
 
@@ -297,6 +298,7 @@ function createPreviewUI(container, previewComponentInstance) {
   outputDiv.style.background = 'white';
 
   const diagnosticsDiv = document.createElement('div');
+  diagnosticsDiv.style.display = 'none';
   diagnosticsDiv.style.height = '100px';
   diagnosticsDiv.style.backgroundColor = '#212529';
   diagnosticsDiv.style.color = '#f8f9fa';
@@ -314,24 +316,32 @@ function createPreviewUI(container, previewComponentInstance) {
 
 /**
  * Initializes a custom Ace mode for Typst syntax highlighting.
- * This dynamically loads the custom mode at runtime.
+ * Registers the mode URL with Ace's config so Ace can load it on demand.
  */
+let aceModeLoaded = false;
+
 function initializeAceMode() {
   if (typeof window === 'undefined' || typeof window.ace === 'undefined') {
     console.warn('[TypstHandler] Ace editor not available, skipping mode initialization');
     return;
   }
 
-  // Dynamically load the custom Typst mode
-  const script = document.createElement('script');
-  script.src = './ace-modes/typst.js';
-  script.onload = () => {
-    console.log('[TypstHandler] Custom Typst Ace mode loaded successfully');
-  };
-  script.onerror = () => {
-    console.error('[TypstHandler] Failed to load custom Typst Ace mode');
-  };
-  document.head.appendChild(script);
+  // Check if mode is already loaded
+  if (aceModeLoaded) {
+    return;
+  }
+
+  // Register the custom mode URL with Ace config.
+  // This tells Ace where to find the mode when setMode('ace/mode/typst') is called.
+  // Ace will dynamically load it via its own loader, avoiding race conditions.
+  const modePath = window.location.origin + '/ace-modes/typst.js';
+  ace.config.setModuleUrl('ace/mode/typst', modePath);
+  aceModeLoaded = true;
+  console.log('[TypstHandler] Custom Typst Ace mode registered with Ace config');
+}
+
+function isAceModeLoaded() {
+  return aceModeLoaded;
 }
 
 /**

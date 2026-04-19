@@ -60,13 +60,42 @@ registerPlugin({
         },
     ],
 
+    contextMenuItems: [
+        {
+            label: string,                              // Menu entry label
+            canHandle: (fileName) => boolean,           // Optional filter
+            action: (fileId, projectFiles) => void,     // Invoked on click
+        },
+    ],
+
+    thumbnailRenderers: [
+        {
+            canHandle: (file) => boolean,
+            // file: { id, name, type: 'file', viewType?, … }
+            render: (file, container) => void | Promise<void>,
+            // Populate `container` (a ~56x56 div) with the thumbnail.
+            // Called lazily via IntersectionObserver when the card scrolls
+            // into view in the file browser's icon (grid) mode. For workspace
+            // files, build a URL with `ctx.currentWorkspacePath` +
+            // `ctx.getRelativePath(file.id)` and fetch via
+            // `/workspace-file?path=…`. If no renderer matches, the grid
+            // falls back to the default emoji icon.
+        },
+    ],
+
     init(ctx): void,
     // Called once after GoldenLayout is initialized.
     // ctx provides:
-    //   ctx.wsClient             - WebSocket client (wsRequest, wsRawSend, addMessageListener, etc.)
+    //   ctx.wsClient              - WebSocket client
     //   ctx.goldenLayoutInstance  - The GoldenLayout instance
-    //   ctx.projectFiles         - Current project files object
-    //   ctx.log                  - App logger
+    //   ctx.projectFiles          - Current project files object (live)
+    //   ctx.currentWorkspacePath  - Absolute path of open workspace, or null
+    //   ctx.getRelativePath(id)   - Workspace-relative path for a file id
+    //   ctx.markDirty(id)         - Mark a file as having unsaved changes
+    //   ctx.openEditorTab(type, state, title, contentItemId) - Add a tab
+    //   ctx.openPluginPanel(type, title, state) - Add a panel to main column
+    //   ctx.createFile(name, content) - Create an in-memory file
+    //   ctx.log                   - App logger
 });
 ```
 

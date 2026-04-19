@@ -18,13 +18,72 @@ const SERVED_EXTENSIONS = new Set([
   'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac',
 ]);
 
+// Maximum file size to read and send over WebSocket (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 /**
  * Attach WebSocket message handlers to a client socket.
  * @param {WebSocket} ws - The client WebSocket connection.
  * @param {Map} previewFiles - Shared in-memory preview file store.
  */
+// --- RPC relay state ---
+// Any connected client can send a `clientAction` / `clientEval` request and
+// the server forwards it to all OTHER connected clients. The first client
+// to reply with `clientActionResult` / `clientEvalResult` wins; the server
+// routes the response back to the original requester by id.
+const connectedClients = new Set();
+const rpcRequests = new Map(); // id -> { origin: ws, timeout: handle }
+const RPC_TIMEOUT_MS = 30_000;
+
+function relayRpcRequest(ws, msg) {
+  if (!msg.id) return;
+  // Register origin and set a cleanup timeout
+  const timeout = setTimeout(() => {
+    if (rpcRequests.has(msg.id)) {
+      rpcRequests.delete(msg.id);
+      try {
+        ws.send(JSON.stringify({
+          type: msg.type + 'Result',
+          id: msg.id,
+          error: 'RPC timeout — no client responded',
+        }));
+      } catch (_) { /* socket may be gone */ }
+    }
+  }, RPC_TIMEOUT_MS);
+  rpcRequests.set(msg.id, { origin: ws, timeout });
+
+  const payload = JSON.stringify(msg);
+  let delivered = 0;
+  for (const client of connectedClients) {
+    if (client === ws) continue;
+    if (client.readyState !== 1 /* OPEN */) continue;
+    try { client.send(payload); delivered++; } catch (_) { /* ignore */ }
+  }
+  if (delivered === 0) {
+    clearTimeout(timeout);
+    rpcRequests.delete(msg.id);
+    try {
+      ws.send(JSON.stringify({
+        type: msg.type + 'Result',
+        id: msg.id,
+        error: 'No other clients connected to handle RPC',
+      }));
+    } catch (_) { /* ignore */ }
+  }
+}
+
+function relayRpcResult(ws, msg) {
+  if (!msg.id) return;
+  const entry = rpcRequests.get(msg.id);
+  if (!entry) return; // late or unknown
+  clearTimeout(entry.timeout);
+  rpcRequests.delete(msg.id);
+  try { entry.origin.send(JSON.stringify(msg)); } catch (_) { /* ignore */ }
+}
+
 function handleConnection(ws, previewFiles) {
   log('Client connected');
+  connectedClients.add(ws);
 
   // Send server config to client on connect
   const config = { type: 'serverConfig', debug: process.env.NODE_ENV !== 'production' };
@@ -33,6 +92,18 @@ function handleConnection(ws, previewFiles) {
   ws.on('message', async (data) => {
     try {
       const msg = JSON.parse(data);
+
+      // RPC relay: requests go out to peers, results come back to origin
+      if (msg.type === 'clientAction' || msg.type === 'clientEval') {
+        log(`<- ${msg.type}`, msg.id ? `id=${msg.id}` : '', msg.method || '');
+        relayRpcRequest(ws, msg);
+        return;
+      }
+      if (msg.type === 'clientActionResult' || msg.type === 'clientEvalResult') {
+        relayRpcResult(ws, msg);
+        return;
+      }
+
       const handler = messageHandlers[msg.type];
       if (handler) {
         if (msg.type !== 'clientLog' && msg.type !== 'termInput' && msg.type !== 'termResize') {
@@ -56,6 +127,14 @@ function handleConnection(ws, previewFiles) {
 
   ws.on('close', () => {
     log('Client disconnected');
+    connectedClients.delete(ws);
+    // Fail any in-flight RPC requests that originated here
+    for (const [id, entry] of rpcRequests) {
+      if (entry.origin === ws) {
+        clearTimeout(entry.timeout);
+        rpcRequests.delete(id);
+      }
+    }
     // Clean up any PTY sessions for this client
     for (const [id, proc] of ptyProcesses) {
       if (proc._ws === ws) {
@@ -64,13 +143,8 @@ function handleConnection(ws, previewFiles) {
         log('PTY session killed:', id);
       }
     }
-    // Clean up file watcher
-    const watcher = fileWatchers.get(ws);
-    if (watcher) {
-      watcher.close();
-      fileWatchers.delete(ws);
-      log('File watcher closed');
-    }
+    // Clean up file watchers
+    stopWatching(ws);
   });
 }
 
@@ -79,52 +153,135 @@ function reply(ws, msg) {
   ws.send(JSON.stringify(msg));
 }
 
+/**
+ * Recursively collect all subdirectories for individual inotify watches.
+ * fs.watch({recursive: true}) is unreliable on Linux, so we watch each
+ * directory individually for proper inotify coverage.
+ */
+async function collectDirectories(dir) {
+  const dirs = [dir];
+  async function walk(current) {
+    try {
+      const entries = await fs.promises.readdir(current, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && !entry.name.startsWith('.')) {
+          const fullPath = path.join(current, entry.name);
+          dirs.push(fullPath);
+          await walk(fullPath);
+        }
+      }
+    } catch (err) {
+      warn('Error collecting directories:', err.message);
+    }
+  }
+  await walk(dir);
+  return dirs;
+}
+
 function startWatching(ws, workspacePath) {
   // Close any existing watcher for this client
-  const existing = fileWatchers.get(ws);
-  if (existing) {
-    existing.close();
-    fileWatchers.delete(ws);
-  }
+  stopWatching(ws);
 
   try {
+    const resolvedWorkspace = path.resolve(workspacePath);
     // Debounce: batch changes over 300ms
-    let pendingChanges = new Map(); // relativePath -> eventType
+    let pendingChanges = new Map(); // relativePath -> { eventType, content? }
     let debounceTimer = null;
 
-    const flush = () => {
+    const flush = async () => {
       if (pendingChanges.size === 0) return;
       const changes = [];
-      for (const [filePath, eventType] of pendingChanges) {
-        changes.push({ path: filePath, event: eventType });
+      for (const [relativePath, changeInfo] of pendingChanges) {
+        const entry = { path: relativePath, event: changeInfo.eventType };
+
+        // For modified/created files, read and include content
+        if ((changeInfo.eventType === 'change' || changeInfo.eventType === 'rename') && changeInfo.shouldReadContent) {
+          const fullPath = path.join(resolvedWorkspace, relativePath);
+          try {
+            const stat = await fs.promises.stat(fullPath);
+            if (stat.isFile() && stat.size <= MAX_FILE_SIZE) {
+              const ext = relativePath.split('.').pop().toLowerCase();
+              if (!SERVED_EXTENSIONS.has(ext)) {
+                entry.content = await fs.promises.readFile(fullPath, 'utf-8');
+              }
+            }
+          } catch (err) {
+            // File might have been deleted between event and read
+            warn('Failed to read changed file:', relativePath, err.message);
+          }
+        }
+
+        changes.push(entry);
       }
       pendingChanges.clear();
       if (ws.readyState === 1) { // WebSocket.OPEN
-        ws.send(JSON.stringify({ type: 'fsChanges', workspacePath, changes }));
+        ws.send(JSON.stringify({ type: 'fsChanges', workspacePath: resolvedWorkspace, changes }));
       }
     };
 
-    const watcher = fs.watch(workspacePath, { recursive: true }, (eventType, filename) => {
-      if (!filename) return;
-      // Skip dot-files and common noise
-      if (filename.split(path.sep).some(part => part.startsWith('.'))) return;
-      if (filename.includes('node_modules')) return;
+    // Track all individual inotify watchers for cleanup
+    const watchers = [];
 
-      pendingChanges.set(filename, eventType);
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(flush, 300);
+    const addWatcher = (dirPath) => {
+      try {
+        const watcher = fs.watch(dirPath, (eventType, filename) => {
+          if (!filename) return;
+          // Skip dot-files and common noise
+          if (filename.startsWith('.')) return;
+          if (filename.includes('node_modules')) return;
+
+          const fullPath = path.join(dirPath, filename);
+          const relativePath = path.relative(resolvedWorkspace, fullPath);
+
+          // Determine if we should read the content
+          let shouldReadContent = false;
+          if (eventType === 'change') {
+            shouldReadContent = true;
+          } else if (eventType === 'rename') {
+            // Check if file exists (created) or doesn't (deleted)
+            try {
+              fs.accessSync(fullPath);
+              shouldReadContent = true; // File exists = created
+            } catch {
+              shouldReadContent = false; // File doesn't exist = deleted
+            }
+          }
+
+          pendingChanges.set(relativePath, { eventType, shouldReadContent });
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(flush, 300);
+        });
+
+        watcher.on('error', (err) => {
+          warn('Watcher error on', dirPath, ':', err.message);
+        });
+
+        watchers.push(watcher);
+      } catch (err) {
+        warn('Failed to watch directory:', dirPath, err.message);
+      }
+    };
+
+    // Watch all directories individually for proper inotify coverage
+    collectDirectories(resolvedWorkspace).then((dirs) => {
+      dirs.forEach(addWatcher);
+      log(`Watching workspace: ${resolvedWorkspace} (${dirs.length} directories)`);
     });
 
-    watcher.on('error', (err) => {
-      warn('File watcher error:', err.message);
-      watcher.close();
-      fileWatchers.delete(ws);
-    });
-
-    fileWatchers.set(ws, watcher);
-    log(`Watching workspace: ${workspacePath}`);
+    // Store watchers for cleanup
+    fileWatchers.set(ws, { watchers, flush, debounceTimer });
   } catch (err) {
     warn('Failed to start file watcher:', err.message);
+  }
+}
+
+function stopWatching(ws) {
+  const watcherInfo = fileWatchers.get(ws);
+  if (watcherInfo) {
+    clearTimeout(watcherInfo.debounceTimer);
+    watcherInfo.watchers.forEach(w => w.close());
+    fileWatchers.delete(ws);
+    log('File watchers closed');
   }
 }
 
@@ -184,13 +341,28 @@ const messageHandlers = {
             children.push({ name: entry.name, type: 'file', viewType: ext, content: null });
             fileCount++;
           } else {
+            // Stat first — avoid slurping multi-GB files into memory
+            let stat;
+            try {
+              stat = await fs.promises.stat(fullPath);
+            } catch (statErr) {
+              warn(`Skipping ${fullPath}: ${statErr.message}`);
+              skipped++;
+              continue;
+            }
+            if (stat.size > MAX_FILE_SIZE) {
+              // Too large to load as text — reference-only, viewable via hex editor
+              children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
+              fileCount++;
+              continue;
+            }
             try {
               const content = await fs.promises.readFile(fullPath, 'utf-8');
               children.push({ name: entry.name, type: 'file', content });
               fileCount++;
             } catch (readErr) {
               // File can't be read as text — treat as binary, viewable via hex editor
-              children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null });
+              children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
               fileCount++;
             }
           }
@@ -331,11 +503,148 @@ const messageHandlers = {
     }
     try {
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.promises.writeFile(filePath, msg.content, 'utf-8');
+      if (msg.encoding === 'base64') {
+        await fs.promises.writeFile(filePath, Buffer.from(msg.content, 'base64'));
+      } else {
+        await fs.promises.writeFile(filePath, msg.content, 'utf-8');
+      }
       log(`Saved: ${filePath}`);
       reply(ws, { type: 'fileSaved', success: true, relativePath, id: msg.id });
     } catch (err) {
       reply(ws, { type: 'fileSaved', success: false, error: err.message, id: msg.id });
+    }
+  },
+
+  // Server-side thumbnail lookup.
+  // Request:  { type: 'getThumbnail', path: <abs>, size?: <px>, id }
+  // Response: { type: 'thumbnail', success: true, data: <base64>, mimeType, id }
+  //       or: { type: 'thumbnail', success: false, id }
+  //
+  // Current implementation is a stub that always answers "not available",
+  // so the client falls back to its own renderers. Plug a cache (Vinetto,
+  // sidecar sqlite, imagemagick, …) in here later without touching the
+  // client — just return { success: true, data, mimeType } when you have
+  // a thumbnail for the given path.
+  async getThumbnail(ws, msg) {
+    reply(ws, { type: 'thumbnail', success: false, id: msg.id });
+  },
+
+  async renameFile(ws, msg) {
+    if (!msg.workspacePath || !msg.oldRelativePath || !msg.newRelativePath) {
+      reply(ws, { type: 'fileRenamed', success: false, error: 'Missing required fields', id: msg.id });
+      return;
+    }
+    const workspaceRoot = path.resolve(msg.workspacePath);
+    const oldPath = path.resolve(workspaceRoot, path.normalize(msg.oldRelativePath));
+    const newPath = path.resolve(workspaceRoot, path.normalize(msg.newRelativePath));
+    const inside = (p) => p === workspaceRoot || p.startsWith(workspaceRoot + path.sep);
+    if (!inside(oldPath) || !inside(newPath)) {
+      warn(`Path traversal blocked in rename: ${msg.oldRelativePath} -> ${msg.newRelativePath}`);
+      reply(ws, { type: 'fileRenamed', success: false, error: 'Path traversal blocked', id: msg.id });
+      return;
+    }
+    try {
+      await fs.promises.access(oldPath);
+      try { await fs.promises.access(newPath); return reply(ws, { type: 'fileRenamed', success: false, error: 'Destination exists', id: msg.id }); } catch (_) { /* expected */ }
+      await fs.promises.mkdir(path.dirname(newPath), { recursive: true });
+      await fs.promises.rename(oldPath, newPath);
+      log(`Renamed: ${oldPath} -> ${newPath}`);
+      reply(ws, { type: 'fileRenamed', success: true, oldRelativePath: msg.oldRelativePath, newRelativePath: msg.newRelativePath, id: msg.id });
+    } catch (err) {
+      reply(ws, { type: 'fileRenamed', success: false, error: err.message, id: msg.id });
+    }
+  },
+
+  async refreshWatch(ws, msg) {
+    // Re-scan workspace directories and add watches for new ones
+    const watcherInfo = fileWatchers.get(ws);
+    if (!watcherInfo || !msg.workspacePath) {
+      reply(ws, { type: 'watchRefreshed', success: false, error: 'No active watcher', id: msg.id });
+      return;
+    }
+
+    const resolvedWorkspace = path.resolve(msg.workspacePath);
+    const newDirs = await collectDirectories(resolvedWorkspace);
+    const existingDirs = new Set(watcherInfo.watchers.map(w => w._dirPath).filter(Boolean));
+
+    let addedCount = 0;
+    for (const dir of newDirs) {
+      if (!existingDirs.has(dir)) {
+        // Add watcher for new directory
+        try {
+          const watcher = fs.watch(dir, (eventType, filename) => {
+            if (!filename) return;
+            if (filename.startsWith('.')) return;
+            if (filename.includes('node_modules')) return;
+
+            const fullPath = path.join(dir, filename);
+            const relativePath = path.relative(resolvedWorkspace, fullPath);
+            let shouldReadContent = eventType === 'change';
+            if (eventType === 'rename') {
+              try {
+                fs.accessSync(fullPath);
+                shouldReadContent = true;
+              } catch {
+                shouldReadContent = false;
+              }
+            }
+
+            watcherInfo.pendingChanges.set(relativePath, { eventType, shouldReadContent });
+            clearTimeout(watcherInfo.debounceTimer);
+            watcherInfo.debounceTimer = setTimeout(watcherInfo.flush, 300);
+          });
+          watcher._dirPath = dir;
+          watcher.on('error', (err) => {
+            warn('Watcher error on', dir, ':', err.message);
+          });
+          watcherInfo.watchers.push(watcher);
+          addedCount++;
+        } catch (err) {
+          warn('Failed to watch new directory:', dir, err.message);
+        }
+      }
+    }
+
+    log(`Watch refreshed: ${addedCount} new directories added`);
+    reply(ws, { type: 'watchRefreshed', success: true, added: addedCount, total: watcherInfo.watchers.length, id: msg.id });
+  },
+
+  async refreshFile(ws, msg) {
+    if (!msg.workspacePath || !msg.relativePath) {
+      reply(ws, { type: 'fileRefreshed', success: false, error: 'Missing required fields', id: msg.id });
+      return;
+    }
+
+    const workspaceRoot = path.resolve(msg.workspacePath);
+    const filePath = path.resolve(workspaceRoot, path.normalize(msg.relativePath));
+
+    if (!filePath.startsWith(workspaceRoot + path.sep) && filePath !== workspaceRoot) {
+      reply(ws, { type: 'fileRefreshed', success: false, error: 'Path traversal blocked', id: msg.id });
+      return;
+    }
+
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (!stat.isFile()) {
+        reply(ws, { type: 'fileRefreshed', success: false, error: 'Not a file', id: msg.id });
+        return;
+      }
+      if (stat.size > MAX_FILE_SIZE) {
+        reply(ws, { type: 'fileRefreshed', success: false, error: 'File too large', id: msg.id });
+        return;
+      }
+
+      const ext = msg.relativePath.split('.').pop().toLowerCase();
+      if (SERVED_EXTENSIONS.has(ext)) {
+        reply(ws, { type: 'fileRefreshed', success: true, relativePath: msg.relativePath, content: null, servedViaHttp: true, id: msg.id });
+        return;
+      }
+
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      log(`Refreshed file: ${filePath}`);
+      reply(ws, { type: 'fileRefreshed', success: true, relativePath: msg.relativePath, content, id: msg.id });
+    } catch (err) {
+      reply(ws, { type: 'fileRefreshed', success: false, error: err.message, id: msg.id });
     }
   },
 };

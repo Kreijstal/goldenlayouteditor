@@ -172,6 +172,7 @@ function getAceModeForFile(fileName) {
                 console.error(`[HandlerRegistry] Failed to lazily initialize Ace mode:`, error);
             }
         }
+        
         return handler.getAceMode(fileName);
     }
     return 'text'; // Default fallback

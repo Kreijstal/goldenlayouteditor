@@ -1,6 +1,8 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
+const archiver = require('archiver');
 const { WebSocketServer } = require('ws');
 const wsHandler = require('./ws-handler');
 
@@ -85,6 +87,36 @@ app.get('/workspace-file', (req, res) => {
   res.sendFile(resolved, (err) => {
     if (err) res.status(404).send('Not found');
   });
+});
+
+// Download a single file
+app.get('/download-file', (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath) return res.status(400).send('Missing path parameter');
+  const resolved = path.resolve(filePath);
+  res.download(resolved, path.basename(resolved), (err) => {
+    if (err && !res.headersSent) res.status(404).send('Not found');
+  });
+});
+
+// Download a directory as a zip
+app.get('/download-dir', (req, res) => {
+  const dirPath = req.query.path;
+  if (!dirPath) return res.status(400).send('Missing path parameter');
+  const resolved = path.resolve(dirPath);
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+    return res.status(404).send('Directory not found');
+  }
+  const zipName = path.basename(resolved) + '.zip';
+  res.set('Content-Type', 'application/zip');
+  res.set('Content-Disposition', `attachment; filename="${zipName}"`);
+  const archive = archiver('zip', { zlib: { level: 5 } });
+  archive.on('error', (err) => {
+    if (!res.headersSent) res.status(500).send('Archive error');
+  });
+  archive.pipe(res);
+  archive.directory(resolved, path.basename(resolved));
+  archive.finalize();
 });
 
 app.get('/ping', (req, res) => {
