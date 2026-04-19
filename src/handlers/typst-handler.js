@@ -122,7 +122,7 @@ async function renderArtifactAsSvgPages(artifactContent, outputContainer) {
     const pageY = parseFloat((sourcePage.getAttribute('transform') || '').match(/translate\([^,]+,\s*([^)]+)\)/)?.[1])
       || pageIndex * pageHeight;
     const pageWrap = document.createElement('div');
-    pageWrap.className = 'typst-page';
+    pageWrap.className = 'typst-page-frame';
     pageWrap.dataset.typstPageWidth = String(pageWidth);
     pageWrap.dataset.typstPageHeight = String(pageHeight);
     pageWrap.dataset.typstPageY = String(pageY);
@@ -136,7 +136,7 @@ async function renderArtifactAsSvgPages(artifactContent, outputContainer) {
     pageFrames.appendChild(pageWrap);
   });
 
-  pageFrames.querySelectorAll('.typst-page').forEach(page => {
+  pageFrames.querySelectorAll(':scope > .typst-page-frame').forEach(page => {
     const pageY = parseFloat(page.dataset.typstPageY) || 0;
     const clonedSvg = sourceSvg.cloneNode(true);
     clonedSvg.style.display = 'block';
@@ -208,7 +208,7 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
     if (artifact && artifact.result) {
       // Preserve existing zoom state if available
       let existingZoomLevel = null;
-      const existingPreview = outputContainer.querySelector('svg, .typst-page');
+      const existingPreview = outputContainer.querySelector('svg, .typst-page-frame');
       if (preserveZoom && existingPreview && previewComponentInstance) {
         existingZoomLevel = previewComponentInstance.zoomLevel;
       }
@@ -234,9 +234,17 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
         }
       }
 
-      outputContainer.querySelectorAll('svg, .typst-page').forEach(pageElement => {
-        pageElement.style.display = 'block';
-      });
+      if (renderedPages) {
+        outputContainer.querySelectorAll('.typst-page-frame, .typst-page-frame > svg').forEach(pageElement => {
+          pageElement.style.display = 'block';
+        });
+        const sourceSvg = outputContainer.querySelector('.typst-page-frames > svg');
+        if (sourceSvg) sourceSvg.style.display = 'none';
+      } else {
+        outputContainer.querySelectorAll('svg').forEach(svgElement => {
+          svgElement.style.display = 'block';
+        });
+      }
 
       if (previewComponentInstance) {
         if (preserveZoom && existingZoomLevel) {
@@ -247,10 +255,8 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
         previewComponentInstance.applyZoom();
       }
 
-      const svgElement = outputContainer.querySelector('svg');
-      if (svgElement) {
-        svgElement.style.display = 'block';
-      }
+      const sourceSvg = outputContainer.querySelector('.typst-page-frames > svg');
+      if (sourceSvg) sourceSvg.style.display = 'none';
     } else {
       // FAILURE PATH: Compilation failed. The diagnostics are already displayed.
       // Update the output pane with a helpful message.

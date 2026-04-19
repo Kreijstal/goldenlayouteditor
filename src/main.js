@@ -1180,7 +1180,7 @@ try {
 
     fitToWidth() {
         if (!this.outputDiv) return;
-        const typstPage = this.outputDiv.querySelector('.typst-page');
+        const typstPage = this.outputDiv.querySelector('.typst-page-frames > .typst-page-frame');
         if (typstPage) {
             const containerWidth = this.outputDiv.clientWidth - 48;
             const intrinsicWidth = parseFloat(typstPage.dataset.typstPageWidth) || typstPage.getBoundingClientRect().width;
@@ -1217,7 +1217,7 @@ try {
 
     applyZoom() {
         if (!this.outputDiv) return;
-        const typstPages = this.outputDiv.querySelectorAll('.typst-page');
+        const typstPages = this.outputDiv.querySelectorAll('.typst-page-frames > .typst-page-frame');
         if (typstPages.length > 0) {
             const fullSvg = this.outputDiv.querySelector('.typst-page-frames > svg');
             typstPages.forEach(page => {
