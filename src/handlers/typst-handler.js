@@ -155,6 +155,9 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
       const svgElement = outputContainer.querySelector('svg');
       if (svgElement) {
         svgElement.style.display = 'block';
+        svgElement.style.background = 'white';
+        svgElement.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
+        svgElement.style.margin = '0 auto 24px';
 
         if (previewComponentInstance) {
           if (preserveZoom && existingZoomLevel) {
@@ -295,7 +298,10 @@ function createPreviewUI(container, previewComponentInstance) {
   const outputDiv = document.createElement('div');
   outputDiv.style.flex = '1';
   outputDiv.style.overflow = 'auto';
-  outputDiv.style.background = 'white';
+  outputDiv.style.background = '#e9ecef';
+  outputDiv.style.padding = '24px';
+  outputDiv.style.boxSizing = 'border-box';
+  outputDiv.style.textAlign = 'center';
 
   const diagnosticsDiv = document.createElement('div');
   diagnosticsDiv.style.display = 'none';

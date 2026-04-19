@@ -916,6 +916,7 @@ class PreviewComponent {
         this.rootElement.style.height = '100%';
         this.rootElement.style.display = 'flex';
         this.rootElement.style.flexDirection = 'column';
+        this.zoomLevel = 1;
 
         // Create collapsible preview controls
         this._controlsExpanded = true;
