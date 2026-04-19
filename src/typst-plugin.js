@@ -12,7 +12,7 @@ const defaultTypstFile = {
     id: "typstFile",
     name: "main.typ",
     type: "typst",
-    content: `#set page(paper: "us-letter")
+    content: `#set page(paper: "a4")
 #set text(font: "Libertinus Serif")
 
 = My Typst Document
