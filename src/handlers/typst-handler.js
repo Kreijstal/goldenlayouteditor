@@ -83,55 +83,66 @@ async function ensureTypstInitialized() {
 }
 
 async function renderArtifactAsSvgPages(artifactContent, outputContainer) {
-  if (typeof typstRenderer.runWithSession !== 'function') {
+  const svg = await typstRenderer.renderSvg({ artifactContent });
+  const parser = new DOMParser();
+  const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+  const sourceSvg = svgDoc.documentElement;
+  const sourceChildren = Array.from(sourceSvg.children);
+  const sourcePages = sourceChildren.filter(child =>
+    child.tagName.toLowerCase() === 'g' && child.classList.contains('typst-page')
+  );
+
+  if (sourceSvg.nodeName.toLowerCase() !== 'svg' || sourcePages.length === 0) {
     return false;
   }
 
-  return typstRenderer.runWithSession({
-    format: 'vector',
-    artifactContent,
-  }, async (renderSession) => {
-    const pages = renderSession.retrievePagesInfo();
-    if (!pages || pages.length === 0) {
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+  const sharedNodes = sourceChildren
+    .filter(child => child.tagName.toLowerCase() === 'defs' || child.tagName.toLowerCase() === 'style');
+
+  outputContainer.innerHTML = '';
+
+  for (const sourcePage of sourcePages) {
+    const pageWidth = parseFloat(sourcePage.getAttribute('data-page-width')) || parseFloat(sourceSvg.getAttribute('width'));
+    const pageHeight = parseFloat(sourcePage.getAttribute('data-page-height')) || parseFloat(sourceSvg.getAttribute('height'));
+    if (!pageWidth || !pageHeight) {
       return false;
     }
 
-    outputContainer.innerHTML = '';
+    const pageWrap = document.createElement('div');
+    pageWrap.className = 'typst-page';
+    pageWrap.dataset.typstPageWidth = String(pageWidth);
+    pageWrap.dataset.typstPageHeight = String(pageHeight);
+    pageWrap.style.background = 'white';
+    pageWrap.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
+    pageWrap.style.margin = '0 auto 24px';
+    pageWrap.style.overflow = 'hidden';
+    pageWrap.style.width = pageWidth + 'px';
+    pageWrap.style.height = pageHeight + 'px';
 
-    for (const page of pages) {
-      const pageWrap = document.createElement('div');
-      pageWrap.className = 'typst-page';
-      pageWrap.dataset.typstPageWidth = String(page.width);
-      pageWrap.dataset.typstPageHeight = String(page.height);
-      pageWrap.style.background = 'white';
-      pageWrap.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
-      pageWrap.style.margin = '0 auto 24px';
-      pageWrap.style.overflow = 'hidden';
-      pageWrap.style.width = page.width + 'px';
-      pageWrap.style.height = page.height + 'px';
+    const pageSvg = document.createElementNS(svgNamespace, 'svg');
+    pageSvg.setAttribute('viewBox', `0 0 ${pageWidth} ${pageHeight}`);
+    pageSvg.setAttribute('width', String(pageWidth));
+    pageSvg.setAttribute('height', String(pageHeight));
+    pageSvg.setAttribute('xmlns', svgNamespace);
+    pageSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+    pageSvg.setAttribute('xmlns:h5', 'http://www.w3.org/1999/xhtml');
+    pageSvg.style.display = 'block';
+    pageSvg.style.width = '100%';
+    pageSvg.style.height = '100%';
 
-      const svg = renderSession.renderSvgDiff({
-        window: {
-          lo: { x: 0, y: page.pageOffset },
-          hi: { x: page.width, y: page.pageOffset + page.height },
-        },
-      });
-      const template = document.createElement('template');
-      template.innerHTML = svg.trim();
-      const svgElement = template.content.querySelector('svg');
-      if (!svgElement) {
-        return false;
-      }
+    sharedNodes.forEach(node => {
+      pageSvg.appendChild(document.importNode(node, true));
+    });
 
-      svgElement.style.display = 'block';
-      svgElement.style.width = '100%';
-      svgElement.style.height = '100%';
-      pageWrap.appendChild(svgElement);
-      outputContainer.appendChild(pageWrap);
-    }
+    const pageGroup = document.importNode(sourcePage, true);
+    pageGroup.setAttribute('transform', 'translate(0, 0)');
+    pageSvg.appendChild(pageGroup);
+    pageWrap.appendChild(pageSvg);
+    outputContainer.appendChild(pageWrap);
+  }
 
-    return true;
-  });
+  return true;
 }
 
 /**
