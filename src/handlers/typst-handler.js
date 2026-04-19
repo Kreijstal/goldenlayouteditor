@@ -1,6 +1,7 @@
 // --- Typst Integration Handler ---
 
 const TYPST_VERSION = '0.6.1-rc5';
+const TYPST_PAGE_GAP = 24;
 
 // Typst Integration Variables
 let typstModule, typstCompiler, typstRenderer;
@@ -87,72 +88,57 @@ async function renderArtifactAsSvgPages(artifactContent, outputContainer) {
   outputContainer.innerHTML = svg;
 
   const sourceSvg = outputContainer.querySelector('svg');
-  const sourcePages = sourceSvg
+  const pageGroups = sourceSvg
     ? Array.from(sourceSvg.children).filter(child =>
       child.tagName.toLowerCase() === 'g' && child.classList.contains('typst-page')
     )
     : [];
-  if (!sourceSvg || sourceSvg.nodeName.toLowerCase() !== 'svg' || sourcePages.length === 0) {
+  if (!sourceSvg || sourceSvg.nodeName.toLowerCase() !== 'svg' || pageGroups.length === 0) {
     return false;
   }
 
-  const pageWidth = parseFloat(sourcePages[0].getAttribute('data-page-width')) || parseFloat(sourceSvg.getAttribute('width'));
-  const pageHeight = parseFloat(sourcePages[0].getAttribute('data-page-height')) || parseFloat(sourceSvg.getAttribute('height'));
+  const pageWidth = parseFloat(pageGroups[0].getAttribute('data-page-width')) || parseFloat(sourceSvg.getAttribute('width'));
+  const pageHeight = parseFloat(pageGroups[0].getAttribute('data-page-height')) || parseFloat(sourceSvg.getAttribute('height'));
   if (!pageWidth || !pageHeight) {
     return false;
   }
 
-  sourceSvg.style.position = 'absolute';
-  sourceSvg.style.left = '0';
-  sourceSvg.style.top = '0';
-  sourceSvg.style.width = pageWidth + 'px';
-  sourceSvg.style.height = sourceSvg.getAttribute('height') || '';
-  sourceSvg.style.maxWidth = 'none';
+  sourceSvg.classList.add('typst-document-svg');
+  sourceSvg.dataset.typstPageWidth = String(pageWidth);
+  sourceSvg.dataset.typstPageHeight = String(pageHeight);
+  sourceSvg.style.display = 'block';
   sourceSvg.style.background = 'transparent';
   sourceSvg.style.boxShadow = 'none';
-  sourceSvg.style.margin = '0';
-  sourceSvg.style.pointerEvents = 'none';
+  sourceSvg.style.margin = '0 auto';
 
-  const pageFrames = document.createElement('div');
-  pageFrames.className = 'typst-page-frames';
-  sourceSvg.replaceWith(pageFrames);
-  pageFrames.appendChild(sourceSvg);
+  const sourceWidth = parseFloat(sourceSvg.getAttribute('data-width')) || parseFloat(sourceSvg.getAttribute('width')) || pageWidth;
+  const sourceHeight = parseFloat(sourceSvg.getAttribute('data-height')) || parseFloat(sourceSvg.getAttribute('height')) || (pageHeight * pageGroups.length);
+  const displayHeight = sourceHeight + TYPST_PAGE_GAP * (pageGroups.length - 1);
+  const viewBoxParts = (sourceSvg.getAttribute('viewBox') || `0 0 ${sourceWidth} ${sourceHeight}`).split(/[\s,]+/).map(Number);
+  if (viewBoxParts.length >= 4 && viewBoxParts.every(Number.isFinite)) {
+    viewBoxParts[3] = displayHeight;
+    sourceSvg.setAttribute('viewBox', viewBoxParts.join(' '));
+  }
+  sourceSvg.setAttribute('height', String(displayHeight));
+  sourceSvg.setAttribute('data-height', String(displayHeight));
 
-  sourcePages.forEach((sourcePage, pageIndex) => {
-    const pageY = parseFloat((sourcePage.getAttribute('transform') || '').match(/translate\([^,]+,\s*([^)]+)\)/)?.[1])
-      || pageIndex * pageHeight;
-    const pageWrap = document.createElement('div');
-    pageWrap.className = 'typst-page-frame';
-    pageWrap.dataset.typstPageWidth = String(pageWidth);
-    pageWrap.dataset.typstPageHeight = String(pageHeight);
-    pageWrap.dataset.typstPageY = String(pageY);
-    pageWrap.style.background = 'white';
-    pageWrap.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
-    pageWrap.style.margin = '0 auto 24px';
-    pageWrap.style.overflow = 'hidden';
-    pageWrap.style.position = 'relative';
-    pageWrap.style.width = pageWidth + 'px';
-    pageWrap.style.height = pageHeight + 'px';
-    pageFrames.appendChild(pageWrap);
+  pageGroups.forEach((pageGroup, pageIndex) => {
+    const transform = pageGroup.getAttribute('transform') || '';
+    const translateMatch = transform.match(/translate\(\s*([^) ,]+)(?:[,\s]+([^)]+))?\)/);
+    const x = translateMatch ? parseFloat(translateMatch[1]) || 0 : 0;
+    const y = translateMatch ? parseFloat(translateMatch[2]) || 0 : pageIndex * pageHeight;
+    pageGroup.setAttribute('transform', `translate(${x}, ${y + pageIndex * TYPST_PAGE_GAP})`);
+
+    const pageRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    pageRect.setAttribute('x', '0');
+    pageRect.setAttribute('y', '0');
+    pageRect.setAttribute('width', pageGroup.getAttribute('data-page-width') || String(pageWidth));
+    pageRect.setAttribute('height', pageGroup.getAttribute('data-page-height') || String(pageHeight));
+    pageRect.setAttribute('fill', 'white');
+    pageRect.setAttribute('stroke', '#d0d4da');
+    pageRect.setAttribute('stroke-width', '1');
+    pageGroup.insertBefore(pageRect, pageGroup.firstChild);
   });
-
-  pageFrames.querySelectorAll(':scope > .typst-page-frame').forEach(page => {
-    const pageY = parseFloat(page.dataset.typstPageY) || 0;
-    const clonedSvg = sourceSvg.cloneNode(true);
-    clonedSvg.style.display = 'block';
-    clonedSvg.style.position = 'absolute';
-    clonedSvg.style.left = '0';
-    clonedSvg.style.top = (-pageY) + 'px';
-    clonedSvg.style.width = pageWidth + 'px';
-    clonedSvg.style.height = 'auto';
-    clonedSvg.style.maxWidth = 'none';
-    clonedSvg.style.background = 'transparent';
-    clonedSvg.style.boxShadow = 'none';
-    clonedSvg.style.margin = '0';
-    clonedSvg.style.pointerEvents = 'none';
-    page.appendChild(clonedSvg);
-  });
-  sourceSvg.style.display = 'none';
 
   return true;
 }
@@ -208,7 +194,7 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
     if (artifact && artifact.result) {
       // Preserve existing zoom state if available
       let existingZoomLevel = null;
-      const existingPreview = outputContainer.querySelector('svg, .typst-page-frame');
+      const existingPreview = outputContainer.querySelector('svg');
       if (preserveZoom && existingPreview && previewComponentInstance) {
         existingZoomLevel = previewComponentInstance.zoomLevel;
       }
@@ -234,17 +220,9 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
         }
       }
 
-      if (renderedPages) {
-        outputContainer.querySelectorAll('.typst-page-frame, .typst-page-frame > svg').forEach(pageElement => {
-          pageElement.style.display = 'block';
-        });
-        const sourceSvg = outputContainer.querySelector('.typst-page-frames > svg');
-        if (sourceSvg) sourceSvg.style.display = 'none';
-      } else {
-        outputContainer.querySelectorAll('svg').forEach(svgElement => {
-          svgElement.style.display = 'block';
-        });
-      }
+      outputContainer.querySelectorAll('svg').forEach(svgElement => {
+        svgElement.style.display = 'block';
+      });
 
       if (previewComponentInstance) {
         if (preserveZoom && existingZoomLevel) {
@@ -254,9 +232,6 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
         }
         previewComponentInstance.applyZoom();
       }
-
-      const sourceSvg = outputContainer.querySelector('.typst-page-frames > svg');
-      if (sourceSvg) sourceSvg.style.display = 'none';
     } else {
       // FAILURE PATH: Compilation failed. The diagnostics are already displayed.
       // Update the output pane with a helpful message.

@@ -1180,10 +1180,10 @@ try {
 
     fitToWidth() {
         if (!this.outputDiv) return;
-        const typstPage = this.outputDiv.querySelector('.typst-page-frames > .typst-page-frame');
-        if (typstPage) {
+        const typstSvg = this.outputDiv.querySelector('svg.typst-document-svg');
+        if (typstSvg) {
             const containerWidth = this.outputDiv.clientWidth - 48;
-            const intrinsicWidth = parseFloat(typstPage.dataset.typstPageWidth) || typstPage.getBoundingClientRect().width;
+            const intrinsicWidth = parseFloat(typstSvg.dataset.typstPageWidth) || parseFloat(typstSvg.getAttribute('width')) || typstSvg.getBoundingClientRect().width;
             this.zoomLevel = containerWidth / intrinsicWidth;
             this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel));
             this.updateZoomDisplay();
@@ -1217,39 +1217,16 @@ try {
 
     applyZoom() {
         if (!this.outputDiv) return;
-        const typstPages = this.outputDiv.querySelectorAll('.typst-page-frames > .typst-page-frame');
-        if (typstPages.length > 0) {
-            const fullSvg = this.outputDiv.querySelector('.typst-page-frames > svg');
-            typstPages.forEach(page => {
-                const intrinsicWidth = parseFloat(page.dataset.typstPageWidth);
-                const intrinsicHeight = parseFloat(page.dataset.typstPageHeight);
-                if (!intrinsicWidth || !intrinsicHeight) return;
+        const typstSvg = this.outputDiv.querySelector('svg.typst-document-svg');
+        if (typstSvg) {
+            const intrinsicWidth = parseFloat(typstSvg.getAttribute('data-width')) || parseFloat(typstSvg.getAttribute('width'));
+            const intrinsicHeight = parseFloat(typstSvg.getAttribute('data-height')) || parseFloat(typstSvg.getAttribute('height'));
+            if (!intrinsicWidth || !intrinsicHeight) return;
 
-                const newWidth = intrinsicWidth * this.zoomLevel;
-                const newHeight = intrinsicHeight * this.zoomLevel;
-                page.style.width = newWidth + 'px';
-                page.style.height = newHeight + 'px';
-
-                if (fullSvg) {
-                    const pageY = parseFloat(page.dataset.typstPageY) || 0;
-                    const clonedSvg = fullSvg.cloneNode(true);
-                    clonedSvg.style.display = 'block';
-                    clonedSvg.style.position = 'absolute';
-                    clonedSvg.style.left = '0';
-                    clonedSvg.style.top = (-pageY * this.zoomLevel) + 'px';
-                    clonedSvg.style.width = newWidth + 'px';
-                    clonedSvg.style.height = 'auto';
-                    clonedSvg.style.maxWidth = 'none';
-                    clonedSvg.style.background = 'transparent';
-                    clonedSvg.style.boxShadow = 'none';
-                    clonedSvg.style.margin = '0';
-                    clonedSvg.style.pointerEvents = 'none';
-
-                    page.querySelector('svg')?.remove();
-                    page.appendChild(clonedSvg);
-                }
-            });
-            if (fullSvg) fullSvg.style.display = 'none';
+            typstSvg.style.width = (intrinsicWidth * this.zoomLevel) + 'px';
+            typstSvg.style.height = (intrinsicHeight * this.zoomLevel) + 'px';
+            typstSvg.style.display = 'block';
+            typstSvg.style.margin = '0 auto';
             return;
         }
 
