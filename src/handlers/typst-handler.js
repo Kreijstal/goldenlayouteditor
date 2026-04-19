@@ -4,7 +4,7 @@ const TYPST_VERSION = '0.6.1-rc5';
 
 // Typst Integration Variables
 let typstModule, typstCompiler, typstRenderer;
-let isTypstInitializing = false;
+let typstInitializationPromise = null;
 
 /**
  * Determines if this handler can preview a given file.
@@ -23,65 +23,61 @@ function canHandle(fileName) {
  */
 async function ensureTypstInitialized() {
   // If it's already initialized, we're done.
-  if (typstCompiler) {
+  if (typstCompiler && typstRenderer) {
     return true;
   }
 
   // If it's currently initializing in another async call, wait for it to finish.
-  if (isTypstInitializing) {
-    // A simple polling mechanism to wait for the other process to finish
-    return new Promise(resolve => {
-      const interval = setInterval(() => {
-        if (typstCompiler) {
-          clearInterval(interval);
-          resolve(true);
-        } else if (!isTypstInitializing) {
-          // It failed elsewhere
-          clearInterval(interval);
-          resolve(false);
-        }
-      }, 100);
-    });
+  if (typstInitializationPromise) {
+    return typstInitializationPromise;
   }
 
-  isTypstInitializing = true;
   console.log('Initializing Typst.ts (lazy-loaded)...');
 
-  try {
+  typstInitializationPromise = (async () => {
     // Dynamically import the library from esm.sh
-    typstModule = await import(`https://esm.sh/@myriaddreamin/typst.ts@${TYPST_VERSION}`);
+    const module = await import(`https://esm.sh/@myriaddreamin/typst.ts@${TYPST_VERSION}`);
 
     // Create compiler, renderer, and package management components
-    typstCompiler = typstModule.createTypstCompiler();
-    typstRenderer = typstModule.createTypstRenderer();
+    const compiler = module.createTypstCompiler();
+    const renderer = module.createTypstRenderer();
 
     // Create access model and package registry for package management
-    const accessModel = new typstModule.MemoryAccessModel();
-    const packageRegistry = new typstModule.FetchPackageRegistry(accessModel);
+    const accessModel = new module.MemoryAccessModel();
+    const packageRegistry = new module.FetchPackageRegistry(accessModel);
 
     await Promise.all([
-      typstCompiler.init({
+      compiler.init({
         getModule: () => `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-web-compiler@${TYPST_VERSION}/pkg/typst_ts_web_compiler_bg.wasm`,
         beforeBuild: [
-          typstModule.initOptions.withAccessModel(accessModel),
-          typstModule.initOptions.withPackageRegistry(packageRegistry),
-          typstModule.initOptions.preloadRemoteFonts([
+          module.initOptions.withAccessModel(accessModel),
+          module.initOptions.withPackageRegistry(packageRegistry),
+          module.initOptions.preloadRemoteFonts([
             'https://raw.githubusercontent.com/Myriad-Dreamin/typst.ts/main/assets/data/LibertinusSerif-Regular-subset.otf',
           ]),
         ]
       }),
-      typstRenderer.init({
+      renderer.init({
         getModule: () => `https://cdn.jsdelivr.net/npm/@myriaddreamin/typst-ts-renderer@${TYPST_VERSION}/pkg/typst_ts_renderer_bg.wasm`,
       })
     ]);
 
-    console.log('Typst.ts Initialized successfully with package support.');
-    isTypstInitializing = false;
-    return true;
+    typstModule = module;
+    typstCompiler = compiler;
+    typstRenderer = renderer;
 
+    console.log('Typst.ts Initialized successfully with package support.');
+    return true;
+  })();
+
+  try {
+    return await typstInitializationPromise;
   } catch (err) {
     console.error("Failed to initialize Typst.ts", err);
-    isTypstInitializing = false;
+    typstInitializationPromise = null;
+    typstModule = null;
+    typstCompiler = null;
+    typstRenderer = null;
     return false;
   }
 }
@@ -115,18 +111,26 @@ async function renderArtifactAsPages(artifactContent, outputContainer) {
       pageWrap.style.height = page.height + 'px';
 
       const canvas = document.createElement('canvas');
+      const pixelPerPt = window.devicePixelRatio || 2;
+      canvas.width = Math.ceil(page.width * pixelPerPt);
+      canvas.height = Math.ceil(page.height * pixelPerPt);
       canvas.style.display = 'block';
       canvas.style.width = page.width + 'px';
       canvas.style.height = page.height + 'px';
+      const canvasContext = canvas.getContext('2d');
+      if (!canvasContext) {
+        throw new Error('Unable to create Typst page canvas context');
+      }
       pageWrap.appendChild(canvas);
       outputContainer.appendChild(pageWrap);
 
       await typstRenderer.renderCanvas({
         renderSession,
-        canvas,
+        canvas: canvasContext,
         pageOffset: page.pageOffset,
         backgroundColor: '#ffffff',
-        pixelPerPt: window.devicePixelRatio || 2,
+        pixelPerPt,
+        dataSelection: { body: true },
       });
     }
 
