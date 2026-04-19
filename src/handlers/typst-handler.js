@@ -82,7 +82,7 @@ async function ensureTypstInitialized() {
   }
 }
 
-async function renderArtifactAsPages(artifactContent, outputContainer) {
+async function renderArtifactAsSvgPages(artifactContent, outputContainer) {
   if (typeof typstRenderer.runWithSession !== 'function') {
     return false;
   }
@@ -110,28 +110,24 @@ async function renderArtifactAsPages(artifactContent, outputContainer) {
       pageWrap.style.width = page.width + 'px';
       pageWrap.style.height = page.height + 'px';
 
-      const canvas = document.createElement('canvas');
-      const pixelPerPt = window.devicePixelRatio || 2;
-      canvas.width = Math.ceil(page.width * pixelPerPt);
-      canvas.height = Math.ceil(page.height * pixelPerPt);
-      canvas.style.display = 'block';
-      canvas.style.width = page.width + 'px';
-      canvas.style.height = page.height + 'px';
-      const canvasContext = canvas.getContext('2d');
-      if (!canvasContext) {
-        throw new Error('Unable to create Typst page canvas context');
-      }
-      pageWrap.appendChild(canvas);
-      outputContainer.appendChild(pageWrap);
-
-      await typstRenderer.renderCanvas({
-        renderSession,
-        canvas: canvasContext,
-        pageOffset: page.pageOffset,
-        backgroundColor: '#ffffff',
-        pixelPerPt,
-        dataSelection: { body: true },
+      const svg = renderSession.renderSvgDiff({
+        window: {
+          lo: { x: 0, y: page.pageOffset },
+          hi: { x: page.width, y: page.pageOffset + page.height },
+        },
       });
+      const template = document.createElement('template');
+      template.innerHTML = svg.trim();
+      const svgElement = template.content.querySelector('svg');
+      if (!svgElement) {
+        return false;
+      }
+
+      svgElement.style.display = 'block';
+      svgElement.style.width = '100%';
+      svgElement.style.height = '100%';
+      pageWrap.appendChild(svgElement);
+      outputContainer.appendChild(pageWrap);
     }
 
     return true;
@@ -196,7 +192,7 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
 
       let renderedPages = false;
       try {
-        renderedPages = await renderArtifactAsPages(artifact.result, outputContainer);
+        renderedPages = await renderArtifactAsSvgPages(artifact.result, outputContainer);
       } catch (pageRenderError) {
         console.warn('Typst per-page render failed, falling back to SVG:', pageRenderError);
       }

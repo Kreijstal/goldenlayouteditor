@@ -1229,10 +1229,10 @@ try {
                 page.style.width = newWidth + 'px';
                 page.style.height = newHeight + 'px';
 
-                const canvas = page.querySelector('canvas');
-                if (canvas) {
-                    canvas.style.width = newWidth + 'px';
-                    canvas.style.height = newHeight + 'px';
+                const renderedPage = page.querySelector('svg, canvas');
+                if (renderedPage) {
+                    renderedPage.style.width = '100%';
+                    renderedPage.style.height = '100%';
                 }
             });
             return;
