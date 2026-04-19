@@ -1180,6 +1180,17 @@ try {
 
     fitToWidth() {
         if (!this.outputDiv) return;
+        const typstPage = this.outputDiv.querySelector('.typst-page');
+        if (typstPage) {
+            const containerWidth = this.outputDiv.clientWidth - 48;
+            const intrinsicWidth = parseFloat(typstPage.dataset.typstPageWidth) || typstPage.getBoundingClientRect().width;
+            this.zoomLevel = containerWidth / intrinsicWidth;
+            this.zoomLevel = Math.max(0.1, Math.min(5.0, this.zoomLevel));
+            this.updateZoomDisplay();
+            this.applyZoom();
+            return;
+        }
+
         const svg = this.outputDiv.querySelector('svg');
         if (svg) {
             const containerWidth = this.outputDiv.clientWidth - 32;
@@ -1206,6 +1217,27 @@ try {
 
     applyZoom() {
         if (!this.outputDiv) return;
+        const typstPages = this.outputDiv.querySelectorAll('.typst-page');
+        if (typstPages.length > 0) {
+            typstPages.forEach(page => {
+                const intrinsicWidth = parseFloat(page.dataset.typstPageWidth);
+                const intrinsicHeight = parseFloat(page.dataset.typstPageHeight);
+                if (!intrinsicWidth || !intrinsicHeight) return;
+
+                const newWidth = intrinsicWidth * this.zoomLevel;
+                const newHeight = intrinsicHeight * this.zoomLevel;
+                page.style.width = newWidth + 'px';
+                page.style.height = newHeight + 'px';
+
+                const canvas = page.querySelector('canvas');
+                if (canvas) {
+                    canvas.style.width = newWidth + 'px';
+                    canvas.style.height = newHeight + 'px';
+                }
+            });
+            return;
+        }
+
         const svg = this.outputDiv.querySelector('svg');
         if (svg) {
             // Use width-based scaling so the SVG's layout box matches its visual size.

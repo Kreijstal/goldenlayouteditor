@@ -86,8 +86,56 @@ async function ensureTypstInitialized() {
   }
 }
 
+async function renderArtifactAsPages(artifactContent, outputContainer) {
+  if (typeof typstRenderer.runWithSession !== 'function') {
+    return false;
+  }
+
+  return typstRenderer.runWithSession({
+    format: 'vector',
+    artifactContent,
+  }, async (renderSession) => {
+    const pages = renderSession.retrievePagesInfo();
+    if (!pages || pages.length === 0) {
+      return false;
+    }
+
+    outputContainer.innerHTML = '';
+
+    for (const page of pages) {
+      const pageWrap = document.createElement('div');
+      pageWrap.className = 'typst-page';
+      pageWrap.dataset.typstPageWidth = String(page.width);
+      pageWrap.dataset.typstPageHeight = String(page.height);
+      pageWrap.style.background = 'white';
+      pageWrap.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
+      pageWrap.style.margin = '0 auto 24px';
+      pageWrap.style.overflow = 'hidden';
+      pageWrap.style.width = page.width + 'px';
+      pageWrap.style.height = page.height + 'px';
+
+      const canvas = document.createElement('canvas');
+      canvas.style.display = 'block';
+      canvas.style.width = page.width + 'px';
+      canvas.style.height = page.height + 'px';
+      pageWrap.appendChild(canvas);
+      outputContainer.appendChild(pageWrap);
+
+      await typstRenderer.renderCanvas({
+        renderSession,
+        canvas,
+        pageOffset: page.pageOffset,
+        backgroundColor: '#ffffff',
+        pixelPerPt: window.devicePixelRatio || 2,
+      });
+    }
+
+    return true;
+  });
+}
+
 /**
- * Renders a Typst file to SVG
+ * Renders a Typst file to the preview.
  * @param {string} mainFileId - The ID of the main Typst file
  * @param {HTMLElement} outputContainer - Container to display the rendered output
  * @param {HTMLElement} diagnosticsContainer - Container to display diagnostics
@@ -135,38 +183,50 @@ async function renderTypst(mainFileId, outputContainer, diagnosticsContainer, pr
     // **FIX END**
 
     if (artifact && artifact.result) {
-      // SUCCESS PATH: Compilation was successful, render the SVG.
-      const svg = await typstRenderer.renderSvg({
-        artifactContent: artifact.result,
-      });
-
       // Preserve existing zoom state if available
       let existingZoomLevel = null;
-      let existingTextAlign = null;
-      const existingSvg = outputContainer.querySelector('svg');
-      if (preserveZoom && existingSvg && previewComponentInstance) {
+      const existingPreview = outputContainer.querySelector('svg, .typst-page');
+      if (preserveZoom && existingPreview && previewComponentInstance) {
         existingZoomLevel = previewComponentInstance.zoomLevel;
-        existingTextAlign = outputContainer.style.textAlign;
       }
 
-      outputContainer.innerHTML = svg;
+      let renderedPages = false;
+      try {
+        renderedPages = await renderArtifactAsPages(artifact.result, outputContainer);
+      } catch (pageRenderError) {
+        console.warn('Typst per-page render failed, falling back to SVG:', pageRenderError);
+      }
 
-      // Set up the SVG for proper scaling
+      if (!renderedPages) {
+        const svg = await typstRenderer.renderSvg({
+          artifactContent: artifact.result,
+        });
+        outputContainer.innerHTML = svg;
+
+        const svgElement = outputContainer.querySelector('svg');
+        if (svgElement) {
+          svgElement.style.background = 'white';
+          svgElement.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
+          svgElement.style.margin = '0 auto 24px';
+        }
+      }
+
+      outputContainer.querySelectorAll('svg, .typst-page').forEach(pageElement => {
+        pageElement.style.display = 'block';
+      });
+
+      if (previewComponentInstance) {
+        if (preserveZoom && existingZoomLevel) {
+          previewComponentInstance.updateZoomDisplay();
+        } else {
+          previewComponentInstance.fitToWidth();
+        }
+        previewComponentInstance.applyZoom();
+      }
+
       const svgElement = outputContainer.querySelector('svg');
       if (svgElement) {
         svgElement.style.display = 'block';
-        svgElement.style.background = 'white';
-        svgElement.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
-        svgElement.style.margin = '0 auto 24px';
-
-        if (previewComponentInstance) {
-          if (preserveZoom && existingZoomLevel) {
-            previewComponentInstance.updateZoomDisplay();
-          } else {
-            previewComponentInstance.fitToWidth();
-          }
-          previewComponentInstance.applyZoom();
-        }
       }
     } else {
       // FAILURE PATH: Compilation failed. The diagnostics are already displayed.
