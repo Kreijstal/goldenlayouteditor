@@ -84,63 +84,75 @@ async function ensureTypstInitialized() {
 
 async function renderArtifactAsSvgPages(artifactContent, outputContainer) {
   const svg = await typstRenderer.renderSvg({ artifactContent });
-  const parser = new DOMParser();
-  const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
-  const sourceSvg = svgDoc.documentElement;
-  const sourceChildren = Array.from(sourceSvg.children);
-  const sourcePages = sourceChildren.filter(child =>
-    child.tagName.toLowerCase() === 'g' && child.classList.contains('typst-page')
-  );
+  outputContainer.innerHTML = svg;
 
-  if (sourceSvg.nodeName.toLowerCase() !== 'svg' || sourcePages.length === 0) {
+  const sourceSvg = outputContainer.querySelector('svg');
+  const sourcePages = sourceSvg
+    ? Array.from(sourceSvg.children).filter(child =>
+      child.tagName.toLowerCase() === 'g' && child.classList.contains('typst-page')
+    )
+    : [];
+  if (!sourceSvg || sourceSvg.nodeName.toLowerCase() !== 'svg' || sourcePages.length === 0) {
     return false;
   }
 
-  const svgNamespace = 'http://www.w3.org/2000/svg';
-  const sharedNodes = sourceChildren
-    .filter(child => child.tagName.toLowerCase() === 'defs' || child.tagName.toLowerCase() === 'style');
+  const pageWidth = parseFloat(sourcePages[0].getAttribute('data-page-width')) || parseFloat(sourceSvg.getAttribute('width'));
+  const pageHeight = parseFloat(sourcePages[0].getAttribute('data-page-height')) || parseFloat(sourceSvg.getAttribute('height'));
+  if (!pageWidth || !pageHeight) {
+    return false;
+  }
 
-  outputContainer.innerHTML = '';
+  sourceSvg.style.position = 'absolute';
+  sourceSvg.style.left = '0';
+  sourceSvg.style.top = '0';
+  sourceSvg.style.width = pageWidth + 'px';
+  sourceSvg.style.height = sourceSvg.getAttribute('height') || '';
+  sourceSvg.style.maxWidth = 'none';
+  sourceSvg.style.background = 'transparent';
+  sourceSvg.style.boxShadow = 'none';
+  sourceSvg.style.margin = '0';
+  sourceSvg.style.pointerEvents = 'none';
 
-  for (const sourcePage of sourcePages) {
-    const pageWidth = parseFloat(sourcePage.getAttribute('data-page-width')) || parseFloat(sourceSvg.getAttribute('width'));
-    const pageHeight = parseFloat(sourcePage.getAttribute('data-page-height')) || parseFloat(sourceSvg.getAttribute('height'));
-    if (!pageWidth || !pageHeight) {
-      return false;
-    }
+  const pageFrames = document.createElement('div');
+  pageFrames.className = 'typst-page-frames';
+  sourceSvg.replaceWith(pageFrames);
+  pageFrames.appendChild(sourceSvg);
 
+  sourcePages.forEach((sourcePage, pageIndex) => {
+    const pageY = parseFloat((sourcePage.getAttribute('transform') || '').match(/translate\([^,]+,\s*([^)]+)\)/)?.[1])
+      || pageIndex * pageHeight;
     const pageWrap = document.createElement('div');
     pageWrap.className = 'typst-page';
     pageWrap.dataset.typstPageWidth = String(pageWidth);
     pageWrap.dataset.typstPageHeight = String(pageHeight);
+    pageWrap.dataset.typstPageY = String(pageY);
     pageWrap.style.background = 'white';
     pageWrap.style.boxShadow = '0 2px 12px rgba(0, 0, 0, 0.18)';
     pageWrap.style.margin = '0 auto 24px';
     pageWrap.style.overflow = 'hidden';
+    pageWrap.style.position = 'relative';
     pageWrap.style.width = pageWidth + 'px';
     pageWrap.style.height = pageHeight + 'px';
+    pageFrames.appendChild(pageWrap);
+  });
 
-    const pageSvg = document.createElementNS(svgNamespace, 'svg');
-    pageSvg.setAttribute('viewBox', `0 0 ${pageWidth} ${pageHeight}`);
-    pageSvg.setAttribute('width', String(pageWidth));
-    pageSvg.setAttribute('height', String(pageHeight));
-    pageSvg.setAttribute('xmlns', svgNamespace);
-    pageSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-    pageSvg.setAttribute('xmlns:h5', 'http://www.w3.org/1999/xhtml');
-    pageSvg.style.display = 'block';
-    pageSvg.style.width = '100%';
-    pageSvg.style.height = '100%';
-
-    sharedNodes.forEach(node => {
-      pageSvg.appendChild(document.importNode(node, true));
-    });
-
-    const pageGroup = document.importNode(sourcePage, true);
-    pageGroup.setAttribute('transform', 'translate(0, 0)');
-    pageSvg.appendChild(pageGroup);
-    pageWrap.appendChild(pageSvg);
-    outputContainer.appendChild(pageWrap);
-  }
+  pageFrames.querySelectorAll('.typst-page').forEach(page => {
+    const pageY = parseFloat(page.dataset.typstPageY) || 0;
+    const clonedSvg = sourceSvg.cloneNode(true);
+    clonedSvg.style.display = 'block';
+    clonedSvg.style.position = 'absolute';
+    clonedSvg.style.left = '0';
+    clonedSvg.style.top = (-pageY) + 'px';
+    clonedSvg.style.width = pageWidth + 'px';
+    clonedSvg.style.height = 'auto';
+    clonedSvg.style.maxWidth = 'none';
+    clonedSvg.style.background = 'transparent';
+    clonedSvg.style.boxShadow = 'none';
+    clonedSvg.style.margin = '0';
+    clonedSvg.style.pointerEvents = 'none';
+    page.appendChild(clonedSvg);
+  });
+  sourceSvg.style.display = 'none';
 
   return true;
 }

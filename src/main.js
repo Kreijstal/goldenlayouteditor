@@ -1219,6 +1219,7 @@ try {
         if (!this.outputDiv) return;
         const typstPages = this.outputDiv.querySelectorAll('.typst-page');
         if (typstPages.length > 0) {
+            const fullSvg = this.outputDiv.querySelector('.typst-page-frames > svg');
             typstPages.forEach(page => {
                 const intrinsicWidth = parseFloat(page.dataset.typstPageWidth);
                 const intrinsicHeight = parseFloat(page.dataset.typstPageHeight);
@@ -1229,12 +1230,26 @@ try {
                 page.style.width = newWidth + 'px';
                 page.style.height = newHeight + 'px';
 
-                const renderedPage = page.querySelector('svg, canvas');
-                if (renderedPage) {
-                    renderedPage.style.width = '100%';
-                    renderedPage.style.height = '100%';
+                if (fullSvg) {
+                    const pageY = parseFloat(page.dataset.typstPageY) || 0;
+                    const clonedSvg = fullSvg.cloneNode(true);
+                    clonedSvg.style.display = 'block';
+                    clonedSvg.style.position = 'absolute';
+                    clonedSvg.style.left = '0';
+                    clonedSvg.style.top = (-pageY * this.zoomLevel) + 'px';
+                    clonedSvg.style.width = newWidth + 'px';
+                    clonedSvg.style.height = 'auto';
+                    clonedSvg.style.maxWidth = 'none';
+                    clonedSvg.style.background = 'transparent';
+                    clonedSvg.style.boxShadow = 'none';
+                    clonedSvg.style.margin = '0';
+                    clonedSvg.style.pointerEvents = 'none';
+
+                    page.querySelector('svg')?.remove();
+                    page.appendChild(clonedSvg);
                 }
             });
+            if (fullSvg) fullSvg.style.display = 'none';
             return;
         }
 
