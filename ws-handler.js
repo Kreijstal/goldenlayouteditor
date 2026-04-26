@@ -14,6 +14,10 @@ const fileWatchers = new Map();
 // Files served via HTTP with specialized viewers (not loaded into memory as text)
 const SERVED_EXTENSIONS = new Set([
   'pdf',
+  'vsd', 'vsdx',
+  'swf',
+  'epub',
+  'psd',
   'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg',
   'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac',
 ]);
