@@ -18,12 +18,24 @@ const SERVED_EXTENSIONS = new Set([
   'swf',
   'epub',
   'psd',
+  'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg',
   'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac',
 ]);
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
+
+function resolveWorkspaceFile(workspacePath, relativePath) {
+  if (!workspacePath || !relativePath) throw new Error('Missing required fields');
+  const workspaceRoot = path.resolve(workspacePath);
+  const filePath = path.resolve(workspaceRoot, path.normalize(relativePath));
+  if (!filePath.startsWith(workspaceRoot + path.sep) && filePath !== workspaceRoot) {
+    throw new Error('Path traversal blocked');
+  }
+  return { workspaceRoot, filePath };
+}
 
 /**
  * Attach WebSocket message handlers to a client socket.
@@ -476,17 +488,78 @@ const messageHandlers = {
       reply(ws, { type: 'fileContent', success: false, error: 'Missing required fields', id: msg.id });
       return;
     }
-    const workspaceRoot = path.resolve(msg.workspacePath);
-    const filePath = path.resolve(workspaceRoot, path.normalize(msg.relativePath));
-    if (!filePath.startsWith(workspaceRoot + path.sep) && filePath !== workspaceRoot) {
-      reply(ws, { type: 'fileContent', success: false, error: 'Path traversal blocked', id: msg.id });
-      return;
-    }
     try {
+      const { filePath } = resolveWorkspaceFile(msg.workspacePath, msg.relativePath);
       const content = await fs.promises.readFile(filePath, 'utf-8');
       reply(ws, { type: 'fileContent', success: true, content, relativePath: msg.relativePath, id: msg.id });
     } catch (err) {
       reply(ws, { type: 'fileContent', success: false, error: err.message, id: msg.id });
+    }
+  },
+
+  async readFileRange(ws, msg) {
+    let fileHandle = null;
+    try {
+      const { filePath } = resolveWorkspaceFile(msg.workspacePath, msg.relativePath);
+      const offset = Number(msg.offset || 0);
+      const requestedLength = Number(msg.length || 0);
+
+      if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid offset');
+      if (!Number.isSafeInteger(requestedLength) || requestedLength <= 0) throw new Error('Invalid length');
+      if (requestedLength > MAX_RANGE_READ_SIZE) {
+        throw new Error(`Range too large; maximum is ${MAX_RANGE_READ_SIZE} bytes`);
+      }
+
+      fileHandle = await fs.promises.open(filePath, 'r');
+      const stat = await fileHandle.stat();
+      if (!stat.isFile()) throw new Error('Not a file');
+
+      const readableLength = Math.max(0, Math.min(requestedLength, stat.size - offset));
+      const buffer = Buffer.allocUnsafe(readableLength);
+      const result = readableLength
+        ? await fileHandle.read(buffer, 0, readableLength, offset)
+        : { bytesRead: 0 };
+      const bytes = buffer.subarray(0, result.bytesRead);
+
+      reply(ws, {
+        type: 'fileRange',
+        success: true,
+        relativePath: msg.relativePath,
+        offset,
+        requestedLength,
+        length: bytes.length,
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+        eof: offset + bytes.length >= stat.size,
+        encoding: 'base64',
+        content: bytes.toString('base64'),
+        id: msg.id,
+      });
+    } catch (err) {
+      reply(ws, { type: 'fileRange', success: false, error: err.message, id: msg.id });
+    } finally {
+      if (fileHandle) {
+        try { await fileHandle.close(); } catch (_) { /* ignore */ }
+      }
+    }
+  },
+
+  async statFile(ws, msg) {
+    try {
+      const { filePath } = resolveWorkspaceFile(msg.workspacePath, msg.relativePath);
+      const stat = await fs.promises.stat(filePath);
+      reply(ws, {
+        type: 'fileStat',
+        success: true,
+        relativePath: msg.relativePath,
+        isFile: stat.isFile(),
+        isDirectory: stat.isDirectory(),
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+        id: msg.id,
+      });
+    } catch (err) {
+      reply(ws, { type: 'fileStat', success: false, error: err.message, id: msg.id });
     }
   },
 

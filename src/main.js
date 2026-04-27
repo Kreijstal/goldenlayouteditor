@@ -19,6 +19,7 @@ require('./vsdx-plugin');
 require('./ruffle-plugin');
 require('./epub-plugin');
 require('./psd-plugin');
+require('./xlsx-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
@@ -2558,6 +2559,10 @@ class ProjectFilesComponent {
         }
         if (/\.psd$/i.test(title)) {
             openEditorTab('psdViewer', { fileId }, `${title} [psd]`, 'psd-' + fileId);
+            return;
+        }
+        if (/\.(xlsx|xlsm|xlsb|xls|ods)$/i.test(title)) {
+            openEditorTab('xlsxAst', { fileId }, `${title} [xlsx]`, 'xlsx-' + fileId);
             return;
         }
         const contentItemId = 'editor-' + fileId;
