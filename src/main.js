@@ -23,6 +23,7 @@ require('./xlsx-plugin');
 require('./sqlite-plugin');
 require('./model3d-plugin');
 require('./wasm-plugin');
+require('./converters-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
