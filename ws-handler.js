@@ -23,7 +23,8 @@ const SERVED_EXTENSIONS = new Set([
   'glb', 'gltf', 'stl', 'obj',
   'wasm',
   'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg',
-  'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac',
+  'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'ts', 'm2ts', '3gp',
+  'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
 ]);
 
 // Maximum file size to read and send over WebSocket (5MB)
