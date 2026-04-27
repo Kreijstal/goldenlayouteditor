@@ -25,6 +25,7 @@ require('./model3d-plugin');
 require('./wasm-plugin');
 require('./converters-plugin');
 require('./media-metadata-plugin');
+require('./fla-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
@@ -2584,6 +2585,10 @@ class ProjectFilesComponent {
         }
         if (/\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|ts|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i.test(title)) {
             openEditorTab('mediaMetadata', { fileId }, `${title} [metadata]`, 'media-meta-' + fileId);
+            return;
+        }
+        if (/\.(fla|xfl)$/i.test(title)) {
+            openEditorTab('flaInspector', { fileId }, `${title} [fla]`, 'fla-' + fileId);
             return;
         }
         const contentItemId = 'editor-' + fileId;

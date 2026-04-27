@@ -22,6 +22,7 @@ const SERVED_EXTENSIONS = new Set([
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj',
   'wasm',
+  'fla', 'xfl',
   'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg',
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'ts', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
