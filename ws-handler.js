@@ -19,6 +19,8 @@ const SERVED_EXTENSIONS = new Set([
   'epub',
   'psd',
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
+  'sqlite', 'sqlite3', 'db',
+  'glb', 'gltf', 'stl', 'obj',
   'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg',
   'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac',
 ]);

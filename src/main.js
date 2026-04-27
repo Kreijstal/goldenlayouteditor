@@ -20,6 +20,8 @@ require('./ruffle-plugin');
 require('./epub-plugin');
 require('./psd-plugin');
 require('./xlsx-plugin');
+require('./sqlite-plugin');
+require('./model3d-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
@@ -2563,6 +2565,14 @@ class ProjectFilesComponent {
         }
         if (/\.(xlsx|xlsm|xlsb|xls|ods)$/i.test(title)) {
             openEditorTab('xlsxAst', { fileId }, `${title} [xlsx]`, 'xlsx-' + fileId);
+            return;
+        }
+        if (/\.(sqlite|sqlite3|db)$/i.test(title)) {
+            openEditorTab('sqliteInspector', { fileId }, `${title} [sqlite]`, 'sqlite-' + fileId);
+            return;
+        }
+        if (/\.(glb|gltf|stl|obj)$/i.test(title)) {
+            openEditorTab('model3dViewer', { fileId }, `${title} [3d]`, 'model3d-' + fileId);
             return;
         }
         const contentItemId = 'editor-' + fileId;
