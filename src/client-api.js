@@ -268,6 +268,26 @@ function createClientApi(ctx) {
         saveAll() {
             return ctx.syncAllDirtyFiles();
         },
+
+        async stat(fileIdOrPath) {
+            const f = resolveFile(fileIdOrPath);
+            if (!f) throw new Error('File not found');
+            const relPath = ctx.getRelativePath(f.id);
+            if (!ctx.currentWorkspacePath || !relPath || !wsClient || !wsClient.isConnected()) {
+                throw new Error('Workspace WebSocket is required');
+            }
+            return wsClient.statFile(ctx.currentWorkspacePath, relPath);
+        },
+
+        async readRange(fileIdOrPath, offset, length) {
+            const f = resolveFile(fileIdOrPath);
+            if (!f) throw new Error('File not found');
+            const relPath = ctx.getRelativePath(f.id);
+            if (!ctx.currentWorkspacePath || !relPath || !wsClient || !wsClient.isConnected()) {
+                throw new Error('Workspace WebSocket is required');
+            }
+            return wsClient.readFileRange(ctx.currentWorkspacePath, relPath, offset, length);
+        },
     };
 
     // --- Tabs ---

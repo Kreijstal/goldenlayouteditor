@@ -1,7 +1,7 @@
 // --- Typst Integration Handler ---
 
 const TYPST_VERSION = '0.6.1-rc5';
-const TYPST_PAGE_GAP = 24;
+const TYPST_PAGE_GAP = 10;
 
 // Typst Integration Variables
 let typstModule, typstCompiler, typstRenderer;

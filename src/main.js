@@ -15,7 +15,18 @@ require('./typst-plugin');
 require('./pandoc-plugin');
 require('./hex-editor-plugin');
 require('./thumbnails-plugin');
+require('./vsdx-plugin');
+require('./ruffle-plugin');
+require('./epub-plugin');
+require('./psd-plugin');
+require('./xlsx-plugin');
+require('./sqlite-plugin');
+require('./model3d-plugin');
+require('./wasm-plugin');
+require('./converters-plugin');
+require('./media-metadata-plugin');
 require('./fla-plugin');
+require('./fla-viewer-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
@@ -2567,6 +2578,46 @@ class ProjectFilesComponent {
             return;
         }
         const title = projectFiles[fileId].name;
+        if (/\.(vsd|vsdx)$/i.test(title)) {
+            openEditorTab('vsdxViewer', { fileId }, `${title} [vsdx]`, 'vsdx-' + fileId);
+            return;
+        }
+        if (/\.swf$/i.test(title)) {
+            openEditorTab('ruffleSwf', { fileId }, `${title} [swf]`, 'swf-' + fileId);
+            return;
+        }
+        if (/\.epub$/i.test(title)) {
+            openEditorTab('epubReader', { fileId }, `${title} [epub]`, 'epub-' + fileId);
+            return;
+        }
+        if (/\.psd$/i.test(title)) {
+            openEditorTab('psdViewer', { fileId }, `${title} [psd]`, 'psd-' + fileId);
+            return;
+        }
+        if (/\.(xlsx|xlsm|xlsb|xls|ods)$/i.test(title)) {
+            openEditorTab('xlsxAst', { fileId }, `${title} [xlsx]`, 'xlsx-' + fileId);
+            return;
+        }
+        if (/\.(sqlite|sqlite3|db)$/i.test(title)) {
+            openEditorTab('sqliteInspector', { fileId }, `${title} [sqlite]`, 'sqlite-' + fileId);
+            return;
+        }
+        if (/\.(glb|gltf|stl|obj)$/i.test(title)) {
+            openEditorTab('model3dViewer', { fileId }, `${title} [3d]`, 'model3d-' + fileId);
+            return;
+        }
+        if (/\.wasm$/i.test(title)) {
+            openEditorTab('wasmInspector', { fileId }, `${title} [wasm]`, 'wasm-' + fileId);
+            return;
+        }
+        if (/\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|ts|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i.test(title)) {
+            openEditorTab('mediaMetadata', { fileId }, `${title} [metadata]`, 'media-meta-' + fileId);
+            return;
+        }
+        if (/\.(fla|xfl)$/i.test(title)) {
+            openEditorTab('flaInspector', { fileId }, `${title} [fla]`, 'fla-' + fileId);
+            return;
+        }
         const contentItemId = 'editor-' + fileId;
         const state = { fileId, filePath: getRelativePath(fileId) };
         openEditorTab('editor', state, title, contentItemId);
@@ -3359,6 +3410,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         get currentWorkspacePath() { return currentWorkspacePath; },
         getRelativePath,
         markDirty,
+        clearDirty(fileId) {
+            dirtyFiles.delete(fileId);
+            updateDirtyIndicator(fileId);
+            updateSyncButton();
+        },
         log,
         openPluginPanel,
         openEditorTab,

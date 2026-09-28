@@ -85,6 +85,56 @@ function wsRawSend(msg) {
     }
 }
 
+function base64ToUint8Array(value) {
+    const binary = atob(value || '');
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+async function readFileRange(workspacePath, relativePath, offset, length) {
+    const result = await wsRequest({
+        type: 'readFileRange',
+        workspacePath,
+        relativePath,
+        offset,
+        length,
+    });
+    if (!result || !result.success) {
+        throw new Error((result && result.error) || 'Range read failed');
+    }
+    return {
+        relativePath: result.relativePath,
+        offset: result.offset,
+        requestedLength: result.requestedLength,
+        length: result.length,
+        size: result.size,
+        mtimeMs: result.mtimeMs,
+        eof: !!result.eof,
+        bytes: base64ToUint8Array(result.content),
+    };
+}
+
+async function statFile(workspacePath, relativePath) {
+    const result = await wsRequest({
+        type: 'statFile',
+        workspacePath,
+        relativePath,
+    });
+    if (!result || !result.success) {
+        throw new Error((result && result.error) || 'File stat failed');
+    }
+    return {
+        relativePath: result.relativePath,
+        isFile: !!result.isFile,
+        isDirectory: !!result.isDirectory,
+        size: result.size,
+        mtimeMs: result.mtimeMs,
+    };
+}
+
 function _setupWsResponseHandler(socket) {
     socket.addEventListener('message', (event) => {
         try {
@@ -437,6 +487,8 @@ module.exports = {
     get wsReady() { return wsReady; },
     wsRequest,
     wsRawSend,
+    readFileRange,
+    statFile,
     showWorkspaceSelector,
     sendPreviewFiles,
     isConnected,
