@@ -114,6 +114,7 @@ Page load → loadSessionState() → prompt "Restore / Start Fresh"
 | `png/jpg/gif/...` | `<img>` with zoom/pan | `<img>` with zoom buttons |
 | `mp4/webm/ogg` | `<video>` with controls | `<video>` |
 | `mp3/wav/flac` | `<audio>` with controls | `<audio>` |
+| `fla` | FLA canvas player plugin | FLA canvas player plugin |
 | `binary` | Hex viewer (first 64KB) | N/A |
 
 ## Plugin System

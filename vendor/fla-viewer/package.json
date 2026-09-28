@@ -1,0 +1,43 @@
+{
+  "name": "fla-viewer",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "fla",
+    "flash",
+    "animate",
+    "viewer",
+    "player"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Web-based FLA file viewer and player",
+  "dependencies": {
+    "gifenc": "^1.0.3",
+    "jszip": "^3.10.1",
+    "mp4-muxer": "^5.2.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "webm-muxer": "^5.1.4"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^25.0.7",
+    "@types/pako": "^2.0.4",
+    "@vitest/browser": "^4.0.17",
+    "@vitest/browser-playwright": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.17",
+    "happy-dom": "^20.1.0",
+    "jsdom": "^27.4.0",
+    "playwright": "^1.57.0",
+    "vitest": "^4.0.17"
+  }
+}

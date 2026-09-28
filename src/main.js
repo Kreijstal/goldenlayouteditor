@@ -15,6 +15,7 @@ require('./typst-plugin');
 require('./pandoc-plugin');
 require('./hex-editor-plugin');
 require('./thumbnails-plugin');
+require('./fla-plugin');
 
 require('ace-builds/src-min-noconflict/mode-html');
 require('ace-builds/src-min-noconflict/theme-github');
@@ -699,7 +700,10 @@ class EditorComponent {
         // For binary/media files, show viewer instead of Ace
         if (fileData.viewType) {
             this._initMediaViewer(fileData);
-            container.on('destroy', () => { log.log(`Editor: Destroying viewer for ${fileData.name}`); });
+            container.on('destroy', () => {
+                log.log(`Editor: Destroying viewer for ${fileData.name}`);
+                if (this._flaViewer && this._flaViewer.destroy) this._flaViewer.destroy();
+            });
             return;
         }
 
@@ -816,6 +820,8 @@ class EditorComponent {
             audio.controls = true;
             this.rootElement.style.cssText += 'display:flex;align-items:center;justify-content:center;';
             this.rootElement.appendChild(audio);
+        } else if (ext === 'fla') {
+            this._initFlaViewer(url, fileData.name);
         } else if (ext === 'binary') {
             this._initHexViewer(url);
         } else if (ext === 'pdf') {
@@ -826,6 +832,18 @@ class EditorComponent {
             iframe.src = url;
             iframe.style.cssText = 'width:100%;height:100%;border:none;';
             this.rootElement.appendChild(iframe);
+        }
+    }
+
+    async _initFlaViewer(url, fileName) {
+        this.rootElement.style.cssText += 'overflow:hidden;';
+        try {
+            if (!window.__goldenlayoutFlaViewer || !window.__goldenlayoutFlaViewer.mount) {
+                throw new Error('FLA viewer plugin is not initialized');
+            }
+            this._flaViewer = await window.__goldenlayoutFlaViewer.mount(this.rootElement, url, fileName);
+        } catch (err) {
+            this.rootElement.innerHTML = `<div style="padding:20px;color:#f88;">Failed to load FLA viewer: ${err.message}</div>`;
         }
     }
 
@@ -1120,6 +1138,14 @@ document.getElementById('fit').onclick=function(){if(nw)doFit();};
                 previewHtml = `<html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#000;"><video src="${url}" controls style="max-width:100%;max-height:100%;"></video></body></html>`;
             } else if (AUDIO_EXTS.has(ext)) {
                 previewHtml = `<html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;"><audio src="${url}" controls></audio></body></html>`;
+            } else if (ext === 'fla') {
+                previewHtml = `<html><head><style>
+html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;}
+</style></head><body><div id="root"></div>
+<script type="module">
+import { mountFLAViewer } from '/fla-viewer/fla-viewer.js';
+mountFLAViewer(document.getElementById('root'), { url: ${JSON.stringify(url)}, name: ${JSON.stringify(previewFile.name)} });
+</script></body></html>`;
             } else if (ext === 'pdf') {
                 previewHtml = `<html><head><style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -1493,6 +1519,7 @@ class ProjectFilesComponent {
         const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'ico', 'tiff'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
+        if (ext === 'fla') return 'FLA';
         if (ext === 'pdf') return '\uD83D\uDCCA';
         if (imageExts.includes(ext)) return '\uD83D\uDDBC\uFE0F';
         if (audioExts.includes(ext)) return '\uD83C\uDFB5';
