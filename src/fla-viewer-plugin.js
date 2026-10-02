@@ -1,7 +1,8 @@
 // --- FLA Viewer Plugin ---
-// Opens Adobe Animate/Flash .fla source files using a browser-side parser and
-// canvas player ported from https://github.com/lifeart/fla-viewer.
+// Opens Adobe Animate/Flash .fla source files with the parser and canvas player of
+// github.com/lifeart/fla-viewer, loaded from esm.sh (public/fla-viewer/fla-viewer.js).
 const { registerPlugin } = require('./plugins');
+const { resolveFileUrl } = require('./archive-fallback');
 
 let _ctx = null;
 let _viewerModulePromise = null;
@@ -142,7 +143,7 @@ class FLAViewerPanel {
             return;
         }
         const file = _ctx.projectFiles[this.fileId];
-        const url = workspaceUrl(this.fileId);
+        const url = await resolveFileUrl(workspaceUrl(this.fileId));
         if (!url) {
             this.root.textContent = 'FLA viewing requires a server workspace.';
             return;

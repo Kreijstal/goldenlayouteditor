@@ -3,12 +3,14 @@
 // renderer implements { canHandle(file), render(file, container) } and is
 // picked up by ProjectFilesComponent when a file card comes into view.
 const { registerPlugin } = require('./plugins');
+const { resolveFileUrl } = require('./archive-fallback');
+const { displayableImageUrl } = require('./jxl');
 
 let _ctx = null;
 let _pdfLib = null;
 let _pdfLibPromise = null;
 
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg']);
+const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg']);
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
 const PDF_EXTS = new Set(['pdf']);
 
@@ -17,11 +19,15 @@ function extOf(name) {
     return i >= 0 ? name.slice(i + 1).toLowerCase() : '';
 }
 
-function workspaceUrl(file) {
+async function workspaceUrl(file) {
     if (!_ctx || !_ctx.currentWorkspacePath) return null;
     const rel = _ctx.getRelativePath(file.id);
     if (!rel) return null;
-    return '/workspace-file?path=' + encodeURIComponent(_ctx.currentWorkspacePath + '/' + rel);
+    try {
+        return await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(_ctx.currentWorkspacePath + '/' + rel));
+    } catch (_) {
+        return null;
+    }
 }
 
 // Ask the server (over the WebSocket) for a pre-generated thumbnail.
@@ -106,9 +112,15 @@ function setCached(fileId, url) {
 
 // --- Image renderer ---------------------------------------------------------
 
-function renderImageClient(file, container) {
-    const url = workspaceUrl(file);
+async function renderImageClient(file, container) {
+    let url = await workspaceUrl(file);
     if (!url) return;
+    try {
+        url = await displayableImageUrl(url, file.name);
+    } catch (_) {
+        container.textContent = '\uD83D\uDDBC';
+        return;
+    }
     const img = paintImage(container, url);
     img.onerror = () => {
         container.textContent = '\uD83D\uDDBC';
@@ -125,7 +137,7 @@ const imageRenderer = {
 
 // --- Video renderer ---------------------------------------------------------
 
-function renderVideoThumbnail(file, container) {
+async function renderVideoThumbnail(file, container) {
     const cached = cachedThumb(file.id);
     if (cached) {
         clearContainer(container);
@@ -135,7 +147,7 @@ function renderVideoThumbnail(file, container) {
         container.appendChild(img);
         return;
     }
-    const url = workspaceUrl(file);
+    const url = await workspaceUrl(file);
     if (!url) return;
     const video = document.createElement('video');
     video.src = url;
@@ -230,7 +242,7 @@ async function renderPdfThumbnail(file, container) {
         container.appendChild(img);
         return;
     }
-    const url = workspaceUrl(file);
+    const url = await workspaceUrl(file);
     if (!url) return;
     try {
         const lib = await loadPdfLib();

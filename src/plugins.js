@@ -11,6 +11,9 @@
 //   toolbarButtons: [              // buttons to add to the file browser toolbar
 //     { label, title, onclick() }
 //   ],
+//   newFileTypes: [                // offered by the file browser's "New" menu
+//     { label, ext, content(stem) }  // content: string or Uint8Array (or a promise of one) for a new "stem.ext"
+//   ],
 //   init(context): void,           // called after layout is loaded, context has app references
 // }
 

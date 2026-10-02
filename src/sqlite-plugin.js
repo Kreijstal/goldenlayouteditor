@@ -49,6 +49,19 @@ function makeButton(label, title, onClick) {
     return btn;
 }
 
+const PAGE_SIZE = 100;
+
+function quoteIdent(name) {
+    return '"' + String(name).replace(/"/g, '""') + '"';
+}
+
+function formatCell(value) {
+    if (value === null || value === undefined) return { text: 'NULL', cls: 'sqlite-null' };
+    if (value instanceof Uint8Array) return { text: `<blob ${value.length} bytes>`, cls: 'sqlite-null' };
+    const text = String(value);
+    return { text: text.length > 300 ? text.slice(0, 300) + '\u2026' : text, title: text.length > 300 ? text : null, cls: typeof value === 'number' ? 'sqlite-num' : '' };
+}
+
 function execRows(db, sql, params) {
     const stmt = db.prepare(sql);
     try {
@@ -69,13 +82,13 @@ function buildSchemaAst(db) {
         ORDER BY type, name
     `);
     const tables = entries.filter(row => row.type === 'table').map(row => {
-        const columns = execRows(db, `PRAGMA table_info(${JSON.stringify(row.name)})`);
-        const indexes = execRows(db, `PRAGMA index_list(${JSON.stringify(row.name)})`).map(index => ({
+        const columns = execRows(db, `PRAGMA table_info(${quoteIdent(row.name)})`);
+        const indexes = execRows(db, `PRAGMA index_list(${quoteIdent(row.name)})`).map(index => ({
             ...index,
-            columns: execRows(db, `PRAGMA index_info(${JSON.stringify(index.name)})`),
+            columns: execRows(db, `PRAGMA index_info(${quoteIdent(index.name)})`),
         }));
-        const foreignKeys = execRows(db, `PRAGMA foreign_key_list(${JSON.stringify(row.name)})`);
-        const countRow = execRows(db, `SELECT COUNT(*) AS count FROM ${JSON.stringify(row.name)}`)[0] || { count: 0 };
+        const foreignKeys = execRows(db, `PRAGMA foreign_key_list(${quoteIdent(row.name)})`);
+        const countRow = execRows(db, `SELECT COUNT(*) AS count FROM ${quoteIdent(row.name)}`)[0] || { count: 0 };
         return {
             name: row.name,
             sql: row.sql,
@@ -138,10 +151,14 @@ class SqliteComponent {
 .sqlite-side{min-height:0;border-right:1px solid #444c56;background:#22272e;display:grid;grid-template-rows:auto 1fr}
 .sqlite-side h3{font-size:12px;letter-spacing:0;text-transform:uppercase;color:#adbac7;margin:0;padding:8px 10px;border-bottom:1px solid #444c56}
 .sqlite-tables{overflow:auto;padding:6px}
-.sqlite-table{display:block;width:100%;box-sizing:border-box;margin-bottom:4px;padding:6px 8px;background:#2d333b;border:1px solid #444c56;border-radius:4px;color:#e6edf3;text-align:left;cursor:pointer}
-.sqlite-table.active{border-color:#6cb6ff;background:#303b49}
-.sqlite-table-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sqlite-table-meta{color:#adbac7;font-size:11px;margin-top:2px}
+.sqlite-tables{padding:0}
+.sqlite-table{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;min-height:36px;padding:4px 10px;background:none;border:none;border-bottom:1px solid #2d333b;color:#e6edf3;text-align:left;cursor:pointer;font:inherit}
+.sqlite-table:hover{background:#2d333b}
+.sqlite-table.active{background:#303b49;box-shadow:inset 3px 0 #6cb6ff}
+.sqlite-table-icon{flex-shrink:0;opacity:.8}
+.sqlite-table-name{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sqlite-table-meta{flex-shrink:0;color:#adbac7;font-size:11px;font-variant-numeric:tabular-nums}
+.sqlite-back{display:none}
 .sqlite-content{min-width:0;min-height:0;display:grid;grid-template-rows:auto auto 1fr;background:#1f2328}
 .sqlite-summary{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;padding:8px 10px;border-bottom:1px solid #444c56;background:#22272e}
 .sqlite-card{background:#2d333b;border:1px solid #444c56;border-radius:4px;padding:7px 8px;min-width:0}
@@ -150,9 +167,26 @@ class SqliteComponent {
 .sqlite-query{display:grid;grid-template-columns:1fr auto;gap:8px;padding:8px 10px;border-bottom:1px solid #444c56;background:#22272e}
 .sqlite-query textarea{height:54px;resize:vertical;background:#1f2328;color:#e6edf3;border:1px solid #444c56;border-radius:4px;padding:6px;font:12px ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
 .sqlite-output{margin:0;padding:12px;overflow:auto;color:#d1d7e0;background:#1f2328;font:12px ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;line-height:1.45;tab-size:2}
+.sqlite-output.sqlite-grid-wrap{padding:0;font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;white-space:normal}
+.sqlite-pager{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid #444c56;background:#22272e;position:sticky;left:0;top:0;z-index:2;flex-wrap:wrap}
+.sqlite-pager button{background:#373e47;color:#e6edf3;border:1px solid #545d68;border-radius:4px;padding:3px 10px;font:inherit;cursor:pointer}
+.sqlite-pager button:disabled{opacity:.4}
+.sqlite-grid{border-collapse:collapse;font:12px ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+.sqlite-grid th{position:sticky;top:0;background:#2d333b;color:#adbac7;text-align:left;font-weight:600;z-index:1}
+.sqlite-grid th,.sqlite-grid td{border:1px solid #373e47;padding:3px 6px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top}
+.sqlite-grid tr:nth-child(even) td{background:#22272e}
+.sqlite-grid td.sqlite-null{color:#768390;font-style:italic}
+.sqlite-grid td.sqlite-num{text-align:right;color:#96d0ff}
+.sqlite-grid-caption{padding:6px 10px;color:#adbac7}
 .sqlite-message,.sqlite-error{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:#adbac7}
 .sqlite-error{color:#ffb4ab}
-@media (max-width:800px){.sqlite-main{grid-template-columns:1fr}.sqlite-side{display:none}.sqlite-summary{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+@media (max-width:800px){
+.sqlite-main{grid-template-columns:1fr}.sqlite-summary{display:none}.sqlite-query textarea{height:38px}
+.sqlite-side{border-right:none}
+.sqlite-main.list-mode .sqlite-content{display:none}
+.sqlite-main:not(.list-mode) .sqlite-side{display:none}
+.sqlite-shell:not(.list-mode) .sqlite-back{display:inline-block}
+}
 `;
         document.head.appendChild(style);
     }
@@ -173,7 +207,10 @@ class SqliteComponent {
         });
         this.toolbar.appendChild(this.fileInput);
         this.toolbar.appendChild(makeButton('Open', 'Open local SQLite database', () => this.fileInput.click()));
-        this.toolbar.appendChild(makeButton('Schema AST', 'Show database schema AST', () => this._renderJson(this.ast)));
+        this.backBtn = makeButton('\u2039 Tables', 'Back to table list', () => this._setListMode(true));
+        this.backBtn.classList.add('sqlite-back');
+        this.toolbar.appendChild(this.backBtn);
+        this.toolbar.appendChild(makeButton('Schema', 'Show database schema AST', () => this._renderJson(this.ast)));
         this.titleEl = document.createElement('span');
         this.titleEl.className = 'sqlite-title';
         this.titleEl.textContent = this.fileName;
@@ -200,7 +237,7 @@ class SqliteComponent {
         this.sqlInput.value = 'SELECT name, type, sql FROM sqlite_schema WHERE name NOT LIKE "sqlite_%" LIMIT 50;';
         this.queryEl.appendChild(this.sqlInput);
         this.queryEl.appendChild(makeButton('Run', 'Run SQL query', () => this._runQuery()));
-        this.outputEl = document.createElement('pre');
+        this.outputEl = document.createElement('div');
         this.outputEl.className = 'sqlite-output';
         this.content.appendChild(this.summaryEl);
         this.content.appendChild(this.queryEl);
@@ -262,13 +299,16 @@ class SqliteComponent {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'sqlite-table';
-            btn.innerHTML = '<div class="sqlite-table-name"></div><div class="sqlite-table-meta"></div>';
+            btn.innerHTML = '<span class="sqlite-table-icon">\u25A6</span><span class="sqlite-table-name"></span><span class="sqlite-table-meta"></span>';
+            btn.dataset.table = table.name;
             btn.querySelector('.sqlite-table-name').textContent = table.name;
-            btn.querySelector('.sqlite-table-meta').textContent = `${table.rowCount} row(s) | ${table.columns.length} column(s)`;
-            btn.addEventListener('click', () => this._selectTable(table.name));
+            btn.querySelector('.sqlite-table-meta').textContent = `${table.rowCount.toLocaleString()} rows \u00B7 ${table.columns.length} cols`;
+            btn.addEventListener('click', () => { this._selectTable(table.name); this._setListMode(false); });
             this.tablesEl.appendChild(btn);
         }
         this.statusEl.textContent = `${this.ast.tables.length} table(s)`;
+        // Start on the table list; wide layouts also show the first table beside it
+        this._setListMode(true);
         if (this.ast.tables[0]) this._selectTable(this.ast.tables[0].name);
         else this._renderJson(this.ast);
     }
@@ -276,18 +316,92 @@ class SqliteComponent {
     _selectTable(name) {
         this.selectedTable = name;
         for (const btn of this.tablesEl.querySelectorAll('.sqlite-table')) {
-            btn.classList.toggle('active', btn.querySelector('.sqlite-table-name').textContent === name);
+            btn.classList.toggle('active', btn.dataset.table === name);
         }
-        const table = this.ast.tables.find(item => item.name === name);
-        this.sqlInput.value = `SELECT * FROM ${JSON.stringify(name)} LIMIT 100;`;
-        this._renderJson(table);
+        this.page = 0;
+        this._showTablePage();
+    }
+
+    _setListMode(on) {
+        this.main.classList.toggle('list-mode', on);
+        this.shell.classList.toggle('list-mode', on);
+    }
+
+    _showTablePage() {
+        const table = this.ast.tables.find(item => item.name === this.selectedTable);
+        if (!table) return;
+        const offset = this.page * PAGE_SIZE;
+        const sql = `SELECT * FROM ${quoteIdent(table.name)} LIMIT ${PAGE_SIZE} OFFSET ${offset};`;
+        this.sqlInput.value = sql;
+        let result;
+        try {
+            result = this.db.exec(sql)[0] || { columns: table.columns.map(c => c.name), values: [] };
+        } catch (err) {
+            this._showError(err.message);
+            return;
+        }
+        this._renderSummary();
+        this.outputEl.className = 'sqlite-output sqlite-grid-wrap';
+        this.outputEl.innerHTML = '';
+        const pager = document.createElement('div');
+        pager.className = 'sqlite-pager';
+        const last = offset + result.values.length;
+        const info = document.createElement('span');
+        info.textContent = table.rowCount ? `${offset + 1}\u2013${last} of ${table.rowCount}` : 'No rows';
+        const prev = makeButton('\u2039', 'Previous page', () => { this.page--; this._showTablePage(); });
+        prev.disabled = this.page === 0;
+        const next = makeButton('\u203A', 'Next page', () => { this.page++; this._showTablePage(); });
+        next.disabled = last >= table.rowCount;
+        const cols = makeButton('Columns', 'Show table schema', () => this._renderJson(table));
+        pager.append(prev, info, next, cols);
+        this.outputEl.appendChild(pager);
+        this.outputEl.appendChild(this._buildGrid(result.columns, result.values));
+        this.outputEl.scrollTop = 0;
+    }
+
+    _buildGrid(columns, rows) {
+        const tableEl = document.createElement('table');
+        tableEl.className = 'sqlite-grid';
+        const head = tableEl.createTHead().insertRow();
+        for (const col of columns) {
+            const th = document.createElement('th');
+            th.textContent = col;
+            head.appendChild(th);
+        }
+        const body = tableEl.createTBody();
+        for (const row of rows) {
+            const tr = body.insertRow();
+            for (const value of row) {
+                const td = tr.insertCell();
+                const cell = formatCell(value);
+                td.textContent = cell.text;
+                if (cell.cls) td.className = cell.cls;
+                if (cell.title) td.title = cell.title;
+            }
+        }
+        return tableEl;
     }
 
     _runQuery() {
         if (!this.db) return;
         try {
-            const result = this.db.exec(this.sqlInput.value);
-            this._renderJson(result.map(item => ({ columns: item.columns, rows: item.values })));
+            const results = this.db.exec(this.sqlInput.value);
+            this._renderSummary();
+            this.outputEl.className = 'sqlite-output sqlite-grid-wrap';
+            this.outputEl.innerHTML = '';
+            if (!results.length) {
+                const done = document.createElement('div');
+                done.className = 'sqlite-grid-caption';
+                done.textContent = `OK, ${this.db.getRowsModified()} row(s) changed (in memory only)`;
+                this.outputEl.appendChild(done);
+            }
+            for (const item of results) {
+                const caption = document.createElement('div');
+                caption.className = 'sqlite-grid-caption';
+                caption.textContent = `${item.values.length} row(s)`;
+                this.outputEl.appendChild(caption);
+                this.outputEl.appendChild(this._buildGrid(item.columns, item.values));
+            }
         } catch (err) {
             this._showError(err.message);
         }
@@ -296,7 +410,11 @@ class SqliteComponent {
     _renderJson(value) {
         this._renderSummary();
         this.outputEl.className = 'sqlite-output';
-        this.outputEl.textContent = JSON.stringify(value || null, null, 2);
+        this.outputEl.innerHTML = '';
+        const pre = document.createElement('pre');
+        pre.style.margin = '0';
+        pre.textContent = JSON.stringify(value || null, null, 2);
+        this.outputEl.appendChild(pre);
     }
 
     _renderSummary() {

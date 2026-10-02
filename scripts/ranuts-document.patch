@@ -1,0 +1,129 @@
+diff --git a/lib/embed-api.ts b/lib/embed-api.ts
+index 8d8be3e..caab0f8 100644
+--- a/lib/embed-api.ts
++++ b/lib/embed-api.ts
+@@ -247,4 +247,13 @@ export function initEmbedApi(): void {
+   window.addEventListener('load', () => {
+     postToParent('document:ready');
+   });
++
++  // Saves and edits started inside the editor, for the host page
++  window.addEventListener('document:user-save', (event) => {
++    const file = (event as CustomEvent<File>).detail;
++    postToParent('document:saved', { file, fileName: file.name, userInitiated: true } as EmbedResponsePayload);
++  });
++  window.addEventListener('document:user-modified', () => {
++    postToParent('document:modified');
++  });
+ }
+diff --git a/lib/onlyoffice/guards/x2t-worker.ts b/lib/onlyoffice/guards/x2t-worker.ts
+index 625f70a..53513ef 100644
+--- a/lib/onlyoffice/guards/x2t-worker.ts
++++ b/lib/onlyoffice/guards/x2t-worker.ts
+@@ -39,12 +39,14 @@
+  *    same URLs off the same HTTP and Service Worker cache.
+  */
+ 
++import { BASE_PATH } from '@ranuts/shared/document-utils';
+ import { waitForFontSystem, type FontSystemWindow } from '../font-system';
+ 
+ /** How long an idle worker is kept before its heap is handed back. */
+ const IDLE_TERMINATE_MS = 30_000;
+ 
+-const WORKER_URL = '/sdkjs/common/wasm/x2t/x2t.worker.js';
++// Next to the vendored sdkjs, wherever the site is mounted
++const WORKER_URL = `${BASE_PATH}sdkjs/common/wasm/x2t/x2t.worker.js`;
+ 
+ /** Style suffixes the vendor's own fetchFonts uses, keyed by the info field. */
+ const FONT_STYLE_SUFFIX: Record<string, string> = {
+diff --git a/lib/onlyoffice/save-stream.ts b/lib/onlyoffice/save-stream.ts
+index db50403..75939d6 100644
+--- a/lib/onlyoffice/save-stream.ts
++++ b/lib/onlyoffice/save-stream.ts
+@@ -123,7 +123,9 @@ function routeSavedFile(file: File): void {
+   }
+ 
+   if (isEmbedMode()) {
+-    console.warn('Local save is disabled in iframe embed mode. Use document:save from the parent page.');
++    // The editor's own Save (toolbar, Ctrl+S): the host page gets the file
++    // (embed-api posts it as document:saved with userInitiated: true)
++    window.dispatchEvent(new CustomEvent('document:user-save', { detail: file }));
+     return;
+   }
+ 
+diff --git a/lib/unsaved-guard.ts b/lib/unsaved-guard.ts
+index 202dbb7..c61f64d 100644
+--- a/lib/unsaved-guard.ts
++++ b/lib/unsaved-guard.ts
+@@ -28,6 +28,8 @@ let lastEditAt = 0;
+ 
+ /** The editor reported an edit (`onDocumentStateChange` with modified = true). */
+ export function markDocumentDirty(): void {
++  // The first edit since the last save: an embedding host may show it
++  if (!dirty && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('document:user-modified'));
+   dirty = true;
+   lastEditAt = Date.now();
+ }
+diff --git a/packages/shared/src/document-utils.ts b/packages/shared/src/document-utils.ts
+index f87a1a3..0ab69c7 100644
+--- a/packages/shared/src/document-utils.ts
++++ b/packages/shared/src/document-utils.ts
+@@ -16,7 +16,12 @@ export const getBasePath = (): string => {
+   if (pathname.startsWith('/document/') || pathname === '/document') {
+     return '/document/';
+   }
+-  // Docker or other deployments use root path
++  // Any other mount point: the pages all sit at the site's top level, so the
++  // folder of the current page is the base (/editor -> /, /office/editor -> /office/).
++  // Frames inside sdkjs/ and web-apps/ keep '/' as before.
++  if (!/\/(sdkjs|web-apps)\//.test(pathname)) {
++    return pathname.replace(/[^/]*$/, '') || '/';
++  }
+   return '/';
+ };
+ 
+diff --git a/public/sdkjs/common/wasm/x2t/x2t_helper.js b/public/sdkjs/common/wasm/x2t/x2t_helper.js
+index b336e0d..fbc5082 100644
+--- a/public/sdkjs/common/wasm/x2t/x2t_helper.js
++++ b/public/sdkjs/common/wasm/x2t/x2t_helper.js
+@@ -645,6 +645,22 @@
+     X2TConverter.prototype.doInitialize = function () {
+         var self = this;
+ 
++        // The runtime-ready hook goes on Module before x2t.js runs: an x2t.js
++        // from emscripten 4 takes its Module hooks at startup and aborts on a
++        // later assignment ("Attempt to set Module.onRuntimeInitialized after it
++        // has already been processed"), and with the wasm cached the runtime can
++        // be up before the <script>'s load event
++        self.runtimeReady = false;
++        self.onRuntimeReady = null;
++        if (!this.hasScriptLoaded) {
++            globalScope.Module = Object.assign({}, globalScope.Module, {
++                onRuntimeInitialized: function () {
++                    self.runtimeReady = true;
++                    if (self.onRuntimeReady) self.onRuntimeReady();
++                },
++            });
++        }
++
+         return this.loadScript().then(function () {
+             return new Promise(function (resolve, reject) {
+                 var x2t = globalScope.Module;
+@@ -671,7 +687,7 @@
+                     reject(error);
+                 };
+ 
+-                x2t.onRuntimeInitialized = function () {
++                var initialized = function () {
+                     try {
+                         clearTimeout(timeoutId);
+                         self.onWasmInstantiateError = null;
+@@ -684,6 +700,8 @@
+                         reject(error);
+                     }
+                 };
++                if (self.runtimeReady || x2t.calledRun) initialized();
++                else self.onRuntimeReady = initialized;
+             });
+         }).catch(function (error) {
+             self.initPromise = null;

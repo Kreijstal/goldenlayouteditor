@@ -1,4 +1,5 @@
 // Service Worker for serving files dynamically (offline-capable)
+importScripts('zip-sw.js'); // read-only zip browsing: handleZipFetch()
 let files = new Map(); // Store all files by filename
 
 // Utility function to get MIME type from file extension
@@ -56,6 +57,12 @@ self.addEventListener('message', (event) => {
 
 // Intercept fetch requests
 self.addEventListener('fetch', (event) => {
+    const zipResponse = handleZipFetch(event.request);
+    if (zipResponse) {
+        event.respondWith(zipResponse);
+        return;
+    }
+
     const url = new URL(event.request.url);
     const pathname = url.pathname;
     

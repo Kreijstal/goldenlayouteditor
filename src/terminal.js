@@ -40,6 +40,53 @@ async function ensureXtermLoaded() {
     return _initPromise;
 }
 
+// An xterm in `el` that fits it, refitting when the panel resizes
+function makeTerminal(el, container, onResize) {
+    const terminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 13,
+        fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
+        theme: {
+            background: '#1e1e1e',
+            foreground: '#d4d4d4',
+            cursor: '#aeafad',
+        },
+        allowProposedApi: true,
+    });
+
+    const fitAddon = new FitAddon();
+    terminal.loadAddon(fitAddon);
+
+    if (ImageAddon) {
+        try {
+            terminal.loadAddon(new ImageAddon());
+        } catch (e) {
+            log.warn('Image addon failed:', e);
+        }
+    }
+
+    terminal.open(el);
+
+    // Let the terminal handle Ctrl+key combos instead of the browser
+    terminal.attachCustomKeyEventHandler((e) => {
+        if (e.ctrlKey && e.type === 'keydown') {
+            // Allow browser Ctrl+Shift+I (dev tools) and Ctrl+Shift+J (console)
+            if (e.shiftKey && (e.key === 'I' || e.key === 'J')) return false;
+            // Everything else (Ctrl+R, Ctrl+C, Ctrl+D, etc.) goes to terminal
+            return true;
+        }
+        return true;
+    });
+
+    const fit = () => { try { fitAddon.fit(); } catch (e) { /* not laid out */ } };
+    setTimeout(fit, 50);
+    container.on('resize', () => {
+        fit();
+        if (onResize) onResize();
+    });
+    return { terminal, fit };
+}
+
 class TerminalComponent {
     constructor(container, state) {
         this.rootElement = container.element;
@@ -61,49 +108,9 @@ class TerminalComponent {
             return;
         }
 
-        this.terminal = new Terminal({
-            cursorBlink: true,
-            fontSize: 13,
-            fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
-            theme: {
-                background: '#1e1e1e',
-                foreground: '#d4d4d4',
-                cursor: '#aeafad',
-            },
-            allowProposedApi: true,
-        });
-
-        this.fitAddon = new FitAddon();
-        this.terminal.loadAddon(this.fitAddon);
-
-        if (ImageAddon) {
-            try {
-                this.terminal.loadAddon(new ImageAddon());
-            } catch (e) {
-                log.warn('Image addon failed:', e);
-            }
-        }
-
-        this.terminal.open(this.rootElement);
-
-        // Let the terminal handle Ctrl+key combos instead of the browser
-        this.terminal.attachCustomKeyEventHandler((e) => {
-            if (e.ctrlKey && e.type === 'keydown') {
-                // Allow browser Ctrl+Shift+I (dev tools) and Ctrl+Shift+J (console)
-                if (e.shiftKey && (e.key === 'I' || e.key === 'J')) return false;
-                // Everything else (Ctrl+R, Ctrl+C, Ctrl+D, etc.) goes to terminal
-                return true;
-            }
-            return true;
-        });
-
-        setTimeout(() => this.fitAddon.fit(), 50);
-        container.on('resize', () => {
-            if (this.fitAddon) {
-                this.fitAddon.fit();
-                this._sendResize();
-            }
-        });
+        const { terminal, fit } = makeTerminal(this.rootElement, container, () => this._sendResize());
+        this.terminal = terminal;
+        this.fitAddon = { fit };
 
         if (this.wsClient && this.wsClient.isConnected()) {
             await this._connectPTY();
@@ -154,36 +161,18 @@ class TerminalComponent {
         }
     }
 
-    _startLocalMode() {
-        this.terminal.writeln('Terminal (no server connection)');
-        this.terminal.writeln('Type JavaScript to evaluate:\r\n');
-        let line = '';
-        this.terminal.write('> ');
-        this.terminal.onData((data) => {
-            for (const ch of data) {
-                if (ch === '\r') {
-                    this.terminal.writeln('');
-                    if (line.trim()) {
-                        try {
-                            const result = eval(line); // eslint-disable-line no-eval
-                            this.terminal.writeln('\x1b[32m' + String(result) + '\x1b[0m');
-                        } catch (e) {
-                            this.terminal.writeln('\x1b[31m' + e.message + '\x1b[0m');
-                        }
-                    }
-                    line = '';
-                    this.terminal.write('> ');
-                } else if (ch === '\x7f') {
-                    if (line.length > 0) {
-                        line = line.slice(0, -1);
-                        this.terminal.write('\b \b');
-                    }
-                } else if (ch >= ' ') {
-                    line += ch;
-                    this.terminal.write(ch);
-                }
-            }
-        });
+    // No server PTY: a shell running in the browser instead (Wanix)
+    async _startLocalMode() {
+        this.terminal.writeln('No server connection: starting a shell in the browser (Wanix).');
+        try {
+            const { attachShell } = require('./wanix-plugin');
+            const detach = await attachShell(this.terminal);
+            if (this._destroyed) detach();
+            else this._detachShell = detach;
+        } catch (err) {
+            log.warn('Wanix failed:', err);
+            this.terminal.writeln(`\x1b[31mThe in-browser shell did not start: ${err.message || err}\x1b[0m`);
+        }
     }
 
     _sendResize() {
@@ -198,6 +187,8 @@ class TerminalComponent {
     }
 
     _destroy() {
+        this._destroyed = true;
+        if (this._detachShell) this._detachShell();
         if (this._msgHandler) {
             this.wsClient.removeMessageListener(this._msgHandler);
         }
@@ -226,3 +217,5 @@ registerPlugin({
         TerminalComponent._wsClient = ctx.wsClient;
     },
 });
+
+module.exports = { ensureXtermLoaded, makeTerminal };

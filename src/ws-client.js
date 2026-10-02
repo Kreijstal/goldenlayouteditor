@@ -1,6 +1,7 @@
 // --- WebSocket Client (optional, for server-enhanced mode) ---
 const { createLogger, setWsSender, setEnabled } = require('./debug');
 const { renderTree } = require('./tree-renderer');
+const { isMemoryPath } = require('./archive-fallback');
 const logger = createLogger('WS');
 const log = logger.log.bind(logger);
 const warn = logger.warn.bind(logger);
@@ -61,6 +62,12 @@ const _wsPendingCallbacks = {};
 
 function wsRequest(msg) {
     return new Promise((resolve, reject) => {
+        // Files that exist only in memory (decrypted contents) are never sent to or saved on the server
+        if (Object.keys(msg).some(k => k !== 'content' && typeof msg[k] === 'string' && isMemoryPath(msg[k]))
+            || (msg.workspacePath && msg.relativePath && isMemoryPath(msg.workspacePath + '/' + msg.relativePath))) {
+            reject(new Error('in-memory file: not sent to the server'));
+            return;
+        }
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             reject(new Error('WebSocket not connected'));
             return;

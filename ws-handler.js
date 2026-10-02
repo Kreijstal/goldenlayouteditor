@@ -20,11 +20,14 @@ const SERVED_EXTENSIONS = new Set([
   'psd',
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'sqlite', 'sqlite3', 'db',
-  'glb', 'gltf', 'stl', 'obj',
+  'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
+  'fzz',
+  'fst', 'ghw',
   'wasm',
   'fla', 'xfl',
-  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg',
-  'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'ts', 'm2ts', '3gp',
+  'png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg',
+  // not 'ts': that is TypeScript far more often than MPEG transport stream
+  'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
 ]);
 
@@ -40,6 +43,79 @@ function resolveWorkspaceFile(workspacePath, relativePath) {
     throw new Error('Path traversal blocked');
   }
   return { workspaceRoot, filePath };
+}
+
+// --- File browser action helpers ---
+
+async function exists(p) {
+  try { await fs.promises.lstat(p); return true; } catch { return false; }
+}
+
+// "name.ext" -> first of "name.ext", "name (2).ext", ... that is free in dir
+async function freeName(dir, name) {
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  let candidate = path.join(dir, name);
+  for (let i = 2; await exists(candidate); i++) candidate = path.join(dir, `${stem} (${i})${ext}`);
+  return candidate;
+}
+
+// XDG_TEMPLATES_DIR from ~/.config/user-dirs.dirs, else ~/Templates
+async function templatesDir() {
+  const home = process.env.HOME || '/';
+  if (process.env.XDG_TEMPLATES_DIR) return process.env.XDG_TEMPLATES_DIR;
+  try {
+    const conf = await fs.promises.readFile(path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'user-dirs.dirs'), 'utf-8');
+    const m = conf.match(/^XDG_TEMPLATES_DIR="([^"]*)"/m);
+    if (m) return m[1].replace(/^\$HOME/, home);
+  } catch { /* not configured */ }
+  return path.join(home, 'Templates');
+}
+
+// rename, falling back to copy+delete across filesystems
+async function movePath(src, dest) {
+  try {
+    await fs.promises.rename(src, dest);
+  } catch (err) {
+    if (err.code !== 'EXDEV') throw err;
+    await fs.promises.cp(src, dest, { recursive: true, errorOnExist: true, force: false, preserveTimestamps: true, verbatimSymlinks: true });
+    await fs.promises.rm(src, { recursive: true });
+  }
+}
+
+// FreeDesktop.org trash in ~/.local/share/Trash, restorable from file managers
+async function moveToTrash(src) {
+  const trash = path.join(process.env.XDG_DATA_HOME || path.join(process.env.HOME, '.local/share'), 'Trash');
+  const filesDir = path.join(trash, 'files');
+  const infoDir = path.join(trash, 'info');
+  await fs.promises.mkdir(filesDir, { recursive: true });
+  await fs.promises.mkdir(infoDir, { recursive: true });
+  const dest = await freeName(filesDir, path.basename(src));
+  const name = path.basename(dest);
+  const now = new Date();
+  const date = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 19); // local time, per spec
+  await fs.promises.writeFile(path.join(infoDir, name + '.trashinfo'),
+    `[Trash Info]\nPath=${encodeURI(src)}\nDeletionDate=${date}\n`);
+  await movePath(src, dest);
+}
+
+// Apply op to each absolute path; reply with per-path errors
+async function runPathOp(ws, msg, paths, op) {
+  const errors = [];
+  for (const p of paths || []) {
+    const abs = path.resolve(String(p));
+    if (abs === '/' || abs === path.resolve(process.env.HOME || '/')) {
+      errors.push({ path: abs, error: 'Refusing to touch / or home' });
+      continue;
+    }
+    try {
+      await op(abs);
+    } catch (err) {
+      errors.push({ path: abs, error: err.message });
+    }
+  }
+  reply(ws, { type: msg.type + 'Result', success: errors.length === 0, errors, id: msg.id });
 }
 
 /**
@@ -337,6 +413,109 @@ const messageHandlers = {
     } catch (err) {
       reply(ws, { type: 'dirListing', path: dirPath, items: [], error: err.message, id: msg.id });
     }
+  },
+
+  // Shallow listing for the file browser mode: one directory level, no file
+  // contents. Text files are marked lazy and fetched with readFile on open.
+  async browseDir(ws, msg) {
+    const dirPath = path.resolve(msg.path || process.env.HOME || '/');
+    try {
+      const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
+      const items = await Promise.all(entries
+        .filter(e => msg.showHidden || !e.name.startsWith('.'))
+        .map(async (e) => {
+          let stat = null;
+          try { stat = await fs.promises.stat(path.join(dirPath, e.name)); } catch {}
+          const isDirectory = stat ? stat.isDirectory() : e.isDirectory();
+          const item = {
+            name: e.name,
+            type: isDirectory ? 'directory' : 'file',
+            size: stat ? stat.size : 0,
+            mtimeMs: stat ? stat.mtimeMs : 0,
+          };
+          if (e.isSymbolicLink()) item.symlink = true;
+          if (isDirectory) return item;
+          const ext = e.name.split('.').pop().toLowerCase();
+          if (!stat || !stat.isFile()) item.viewType = 'special'; // broken link, fifo, socket, device
+          else if (SERVED_EXTENSIONS.has(ext)) item.viewType = ext;
+          else if (stat.size > MAX_FILE_SIZE) item.viewType = 'binary';
+          else item.lazy = true;
+          return item;
+        }));
+      items.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      });
+      reply(ws, { type: 'browseListing', path: dirPath, parent: path.dirname(dirPath), items, id: msg.id });
+    } catch (err) {
+      reply(ws, { type: 'browseListing', path: dirPath, parent: path.dirname(dirPath), items: [], error: err.message, id: msg.id });
+    }
+  },
+
+  // --- File browser actions (absolute paths) ---
+
+  async trashPaths(ws, msg) {
+    await runPathOp(ws, msg, msg.paths, moveToTrash);
+  },
+
+  async copyPaths(ws, msg) {
+    await runPathOp(ws, msg, msg.paths, async (src) => {
+      const dest = await freeName(path.resolve(msg.dest), path.basename(src));
+      await fs.promises.cp(src, dest, { recursive: true, errorOnExist: true, force: false, preserveTimestamps: true });
+    });
+  },
+
+  async movePaths(ws, msg) {
+    await runPathOp(ws, msg, msg.paths, async (src) => {
+      const destDir = path.resolve(msg.dest);
+      if (destDir === src || destDir.startsWith(src + path.sep)) throw new Error('Cannot move a folder into itself');
+      if (path.dirname(src) === destDir) return; // already here
+      await movePath(src, await freeName(destDir, path.basename(src)));
+    });
+  },
+
+  async renamePath(ws, msg) {
+    await runPathOp(ws, msg, [msg.path], async (src) => {
+      const name = String(msg.name || '');
+      if (!name || name.includes('/') || name === '.' || name === '..') throw new Error('Invalid name');
+      const dest = path.join(path.dirname(src), name);
+      if (await exists(dest)) throw new Error(`${name} already exists`);
+      await fs.promises.rename(src, dest);
+    });
+  },
+
+  // New file from the browser's "New" menu: { path, content?, encoding?: 'base64', template? }.
+  // template is a file name in the templates folder (see listTemplates) to copy.
+  // Never overwrites.
+  async createFile(ws, msg) {
+    await runPathOp(ws, msg, [msg.path], async (dest) => {
+      if (msg.template) {
+        const name = path.basename(String(msg.template));
+        await fs.promises.copyFile(path.join(await templatesDir(), name), dest, fs.constants.COPYFILE_EXCL);
+        return;
+      }
+      const data = msg.encoding === 'base64' ? Buffer.from(String(msg.content || ''), 'base64') : String(msg.content || '');
+      await fs.promises.writeFile(dest, data, { flag: 'wx' });
+    });
+  },
+
+  // Files in the user's templates folder (XDG_TEMPLATES_DIR, like a desktop file manager's "New Document")
+  async listTemplates(ws, msg) {
+    const dir = await templatesDir();
+    let items = [];
+    try {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      items = entries.filter(e => !e.name.startsWith('.') && (e.isFile() || e.isSymbolicLink())).map(e => e.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    } catch { /* no templates folder */ }
+    reply(ws, { type: 'templates', dir, items, id: msg.id });
+  },
+
+  async makeDir(ws, msg) {
+    await runPathOp(ws, msg, [msg.path], async (dir) => {
+      if (await exists(dir)) throw new Error(`${path.basename(dir)} already exists`);
+      await fs.promises.mkdir(dir);
+    });
   },
 
   async openWorkspace(ws, msg) {

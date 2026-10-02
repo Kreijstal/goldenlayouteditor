@@ -300,8 +300,12 @@ function getFileType(fileName) {
             return 'javascript';
         case 'json':
             return 'json';
-        default:
-            return 'text';
+        default: {
+            // Everything else by Ace's own extension table; the mode file itself
+            // is fetched from esm.sh when first used (see main.js)
+            const mode = modelist.getModeForPath(fileName).mode;
+            return mode.replace(/^ace\/mode\//, '');
+        }
     }
 }
 
@@ -310,6 +314,8 @@ function getFileType(fileName) {
  * @param {string} fileName - The name of the file.
  * @returns {string} - The Ace editor mode.
  */
+const modelist = window.ace.require('ace/ext/modelist');
+
 function getAceMode(fileName) {
     const extension = fileName.split('.').pop().toLowerCase();
     switch (extension) {
@@ -323,8 +329,12 @@ function getAceMode(fileName) {
             return 'javascript';
         case 'json':
             return 'json';
-        default:
-            return 'text';
+        default: {
+            // Everything else by Ace's own extension table; the mode file itself
+            // is fetched from esm.sh when first used (see main.js)
+            const mode = modelist.getModeForPath(fileName).mode;
+            return mode.replace(/^ace\/mode\//, '');
+        }
     }
 }
 

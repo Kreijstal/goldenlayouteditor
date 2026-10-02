@@ -1,9 +1,11 @@
 const { GoldenLayout, Stack, LayoutConfig } = require('golden-layout');
-const ace = require('ace-builds/src-min-noconflict/ace');
+// Ace (with the extensions used right away) comes from esm.sh by script tags in index.html
+const ace = window.ace;
 const handlerRegistry = require('./handlers');
 const { getPlugins } = require('./plugins');
 const { renderTree } = require('./tree-renderer');
 const { isMobile, MobileLayout, createContainerAdapter } = require('./mobile-layout');
+const { initBrowseMode } = require('./browse-mode');
 const { createClientApi } = require('./client-api');
 const { installClientRpc } = require('./client-rpc');
 const debug = require('./debug');
@@ -11,7 +13,9 @@ const log = debug.createLogger('App');
 
 // Load plugins (side-effect: they register themselves)
 require('./terminal');
+require('./wanix-plugin');
 require('./typst-plugin');
+require('./latexml-plugin');
 require('./pandoc-plugin');
 require('./hex-editor-plugin');
 require('./thumbnails-plugin');
@@ -20,20 +24,51 @@ require('./ruffle-plugin');
 require('./epub-plugin');
 require('./psd-plugin');
 require('./xlsx-plugin');
+require('./spreadsheet-plugin');
+require('./jupyterlite-plugin');
+require('./docx-plugin');
+require('./eurooffice-plugin');
+require('./font-plugin');
+require('./midi-plugin');
+require('./sf2-plugin');
 require('./sqlite-plugin');
+require('./pst-plugin');
+require('./pcap-plugin');
+require('./apng-plugin');
+require('./xcf-plugin');
+require('./tvg-plugin');
+require('./videocut-plugin');
 require('./model3d-plugin');
+require('./waveform-plugin');
+require('./kicad-plugin');
+require('./fritzing-plugin');
+require('./texmacs-plugin');
 require('./wasm-plugin');
 require('./converters-plugin');
 require('./media-metadata-plugin');
 require('./fla-plugin');
 require('./fla-viewer-plugin');
+require('./mathematica-plugin');
+require('./bpmn-plugin');
+require('./gpx-plugin');
+require('./flp-plugin');
+require('./emulator-plugin');
+require('./gpg-plugin');
+require('./kdbx-plugin');
+require('./mht-plugin');
+require('./jbf-plugin');
+require('./hwp-plugin');
+require('./vrm-plugin');
+const { hasDicomPreamble } = require('./dicom-plugin');
+const { hasElfMagic, mayBeElf } = require('./elf-plugin');
+require('./score-plugin');
+require('./chm-plugin');
+require('./hlp-plugin');
 
-require('ace-builds/src-min-noconflict/mode-html');
-require('ace-builds/src-min-noconflict/theme-github');
-require('ace-builds/src-min-noconflict/ext-language_tools');
-require('ace-builds/src-min-noconflict/ext-searchbox');
-require('ace-builds/src-min-noconflict/mode-css');
-require('ace-builds/src-min-noconflict/mode-javascript');
+// Modes, workers and snippets load on demand from the same ace-builds on esm.sh, as
+// the files themselves (?raw)
+ace.config.set('basePath', 'https://esm.sh/ace-builds@1.43.6/src-min-noconflict/');
+ace.config.set('suffix', '.js?raw');
 
 
 // Preview handlers for different file types - now using handler registry
@@ -144,12 +179,24 @@ function getAllFiles(node = projectStructure, files = []) {
 
 // Legacy compatibility - expose files as flat object
 let projectFiles = {};
+// Files that exist only in memory (decrypted contents, gpg-plugin.js): in
+// projectFiles so viewers find them by id, but not enumerable there, so nothing
+// that walks all files (preview sync, compilers, the session) sees them, and not
+// in the tree or on disk; their bytes are answered by the page
+// (archive-fallback.js) and they are never saved
+const memoryFiles = {};
+function exposeMemoryFiles() {
+    for (const file of Object.values(memoryFiles)) {
+        Object.defineProperty(projectFiles, file.id, { value: file, enumerable: false, configurable: true, writable: true });
+    }
+}
 function updateProjectFilesCache() {
     projectFiles = {};
     const allFiles = getAllFiles();
     allFiles.forEach(file => {
         projectFiles[file.id] = file;
     });
+    exposeMemoryFiles();
 }
 updateProjectFilesCache();
 
@@ -205,6 +252,9 @@ const serviceWorkerReady = new Promise((resolve) => {
 
 // --- WebSocket Client (optional, for server-enhanced mode) ---
 const wsClient = require('./ws-client');
+const { resolveFileUrl, addMemoryFile: addMemoryFileBytes, removeMemoryFile: removeMemoryFileBytes } = require('./archive-fallback');
+const { displayableImageUrl } = require('./jxl');
+const { attachSubtitles } = require('./subtitles');
 
 // Current workspace path (null = in-memory only)
 let currentWorkspacePath = null;
@@ -219,7 +269,7 @@ const _recentlySavedFiles = new Map(); // relativePath -> timestamp
 async function saveFileToDisk(fileId) {
     if (!currentWorkspacePath || !wsClient || !wsClient.isConnected()) return false;
     const file = projectFiles[fileId];
-    if (!file) return false;
+    if (!file || memoryFiles[fileId]) return false;
     const relativePath = getRelativePath(fileId);
     if (!relativePath) return false;
     try {
@@ -258,7 +308,7 @@ async function syncAllDirtyFiles() {
 }
 
 function markDirty(fileId) {
-    if (!currentWorkspacePath) return;
+    if (!currentWorkspacePath || memoryFiles[fileId]) return;
     const wasClean = !dirtyFiles.has(fileId);
     dirtyFiles.add(fileId);
     if (wasClean) {
@@ -316,7 +366,25 @@ function updateDirtyIndicator(fileId) {
 // --- Session State Persistence ---
 const SESSION_KEY = 'gl-editor-session';
 
+// New content for a file from outside its editor (a plugin): kept, and shown
+// in its editor if one is open, keeping the cursor where it was
+function setFileContentFromPlugin(fileId, content) {
+    const file = projectFiles[fileId];
+    if (!file || file.content === content) return;
+    file.content = content;
+    const editorComponent = _editorInstances.get(fileId);
+    if (editorComponent && editorComponent.editor) {
+        const cursorPos = editorComponent.editor.getCursorPosition();
+        editorComponent._suppressChangeEvents = true;
+        editorComponent.editor.setValue(content, -1);
+        editorComponent.editor.moveCursorToPosition(cursorPos);
+        editorComponent._suppressChangeEvents = false;
+    }
+    if (activePreviewFileId === fileId && previewComponentInstance) previewComponentInstance.updatePreviewMode();
+}
+
 function getRelativePath(fileId, node = projectStructure, prefix = '') {
+    if (node === projectStructure && memoryFiles[fileId]) return memoryFiles[fileId].relPath;
     if (node.children) {
         for (const child of node.children) {
             if (child.id === fileId) return prefix + child.name;
@@ -427,6 +495,8 @@ function clearSessionState() {
 
 function rewriteLayoutConfig(config) {
     function rewrite(item) {
+        // The Rust terminal panel is gone (cargo and rustc run in the in-browser shell)
+        if (item.componentType === 'rustTerminal') item._remove = true;
         const isFileComponent = item.componentType === 'editor' || item.componentType === 'hexEditor';
         if (isFileComponent && item.componentState) {
             const filePath = item.componentState.filePath;
@@ -706,14 +776,17 @@ class EditorComponent {
         }
 
         const fileData = projectFiles[this.fileId];
-        log.log('Editor init:', this.fileId, fileData.name);
+        // Logs go to the server: no names of in-memory (decrypted) files
+        const logName = fileData.memoryOnly ? '(decrypted file)' : fileData.name;
+        log.log('Editor init:', this.fileId, logName);
 
         // For binary/media files, show viewer instead of Ace
         if (fileData.viewType) {
             this._initMediaViewer(fileData);
             container.on('destroy', () => {
-                log.log(`Editor: Destroying viewer for ${fileData.name}`);
+                log.log(`Editor: Destroying viewer for ${logName}`);
                 if (this._flaViewer && this._flaViewer.destroy) this._flaViewer.destroy();
+                if (this._subtitles) this._subtitles.destroy();
             });
             return;
         }
@@ -792,29 +865,40 @@ class EditorComponent {
         container.on('resize', () => this.editor.resize());
         container.on('show', () => this.editor.resize());
         container.on('destroy', () => {
-            log.log(`Editor: Destroying editor for ${fileData.name}`);
+            log.log(`Editor: Destroying editor for ${logName}`);
             _editorInstances.delete(this.fileId);
             this.editor.destroy();
         });
     }
 
-    _initMediaViewer(fileData) {
+    async _initMediaViewer(fileData) {
         if (!currentWorkspacePath) {
             this.rootElement.innerHTML = '<div style="padding:20px;color:#666;">Media viewing requires a server workspace.</div>';
             return;
         }
         const relPath = this._getRelativePath(fileData.id);
         const fullPath = currentWorkspacePath + '/' + relPath;
-        const url = '/workspace-file?path=' + encodeURIComponent(fullPath);
+        let url;
+        try {
+            url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath));
+        } catch (err) {
+            this.rootElement.textContent = `Could not read ${fileData.name}: ${err.message}`;
+            return;
+        }
 
-        const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg']);
-        const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg']);
+        const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         const ext = fileData.viewType;
 
         if (IMAGE_EXTS.has(ext)) {
             const img = document.createElement('img');
-            img.src = url;
+            try {
+                img.src = await displayableImageUrl(url, fileData.name); // JPEG XL: decoded where the browser can't
+            } catch (err) {
+                this.rootElement.textContent = `Could not show ${fileData.name}: ${err.message}`;
+                return;
+            }
             img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
             this.rootElement.style.cssText += 'display:flex;align-items:center;justify-content:center;overflow:auto;';
             this.rootElement.appendChild(img);
@@ -822,9 +906,17 @@ class EditorComponent {
             const video = document.createElement('video');
             video.src = url;
             video.controls = true;
-            video.style.cssText = 'max-width:100%;max-height:100%;';
+            // Subtitles: files beside it (same folder), tracks inside it, or opened by hand
+            const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/') + 1) : '';
+            const siblings = Object.keys(projectFiles).map(id => ({ id, rel: this._getRelativePath(id) }))
+                .filter(f => f.rel && f.rel.startsWith(dir) && !f.rel.slice(dir.length).includes('/'))
+                .map(f => ({
+                    name: projectFiles[f.id].name,
+                    url: () => resolveFileUrl('/workspace-file?path=' + encodeURIComponent(currentWorkspacePath + '/' + f.rel)),
+                }));
+            this._subtitles = attachSubtitles(video, { url, name: fileData.name, siblings });
             this.rootElement.style.cssText += 'display:flex;align-items:center;justify-content:center;';
-            this.rootElement.appendChild(video);
+            this.rootElement.appendChild(this._subtitles.element);
         } else if (AUDIO_EXTS.has(ext)) {
             const audio = document.createElement('audio');
             audio.src = url;
@@ -868,7 +960,10 @@ class EditorComponent {
             const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.9.155/build/pdf.mjs');
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.9.155/build/pdf.worker.mjs';
 
-            const pdf = await pdfjsLib.getDocument(url).promise;
+            // In-memory files (decrypted, extracted from DICOM) are blob: URLs, which this pdf.js can't
+            // fetch itself (it fails building the request headers): hand it the bytes
+            const source = url.startsWith('blob:') ? { data: await (await fetch(url)).arrayBuffer() } : url;
+            const pdf = await pdfjsLib.getDocument(source).promise;
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const viewport = page.getViewport({ scale: 1.5 });
@@ -1108,15 +1203,16 @@ class PreviewComponent {
 
             const relPath = getRelativePath(previewFile.id);
             const fullPath = currentWorkspacePath + '/' + relPath;
-            const url = '/workspace-file?path=' + encodeURIComponent(fullPath);
+            let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             const ext = previewFile.viewType;
             let previewHtml;
 
             if (IMAGE_EXTS.has(ext)) {
+                url = await displayableImageUrl(url, previewFile.name).catch(() => url);
                 previewHtml = `<html><head><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{overflow:auto;background:#1e1e1e;width:100vw;height:100vh;}
@@ -1527,7 +1623,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'ico', 'tiff'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'webp', 'ico', 'tiff'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
@@ -2577,51 +2673,148 @@ class ProjectFilesComponent {
             log.error(`ProjectFiles: No file data found for fileId: "${fileId}"`);
             return;
         }
-        const title = projectFiles[fileId].name;
-        if (/\.(vsd|vsdx)$/i.test(title)) {
-            openEditorTab('vsdxViewer', { fileId }, `${title} [vsdx]`, 'vsdx-' + fileId);
-            return;
-        }
-        if (/\.swf$/i.test(title)) {
-            openEditorTab('ruffleSwf', { fileId }, `${title} [swf]`, 'swf-' + fileId);
-            return;
-        }
-        if (/\.epub$/i.test(title)) {
-            openEditorTab('epubReader', { fileId }, `${title} [epub]`, 'epub-' + fileId);
-            return;
-        }
-        if (/\.psd$/i.test(title)) {
-            openEditorTab('psdViewer', { fileId }, `${title} [psd]`, 'psd-' + fileId);
-            return;
-        }
-        if (/\.(xlsx|xlsm|xlsb|xls|ods)$/i.test(title)) {
-            openEditorTab('xlsxAst', { fileId }, `${title} [xlsx]`, 'xlsx-' + fileId);
-            return;
-        }
-        if (/\.(sqlite|sqlite3|db)$/i.test(title)) {
-            openEditorTab('sqliteInspector', { fileId }, `${title} [sqlite]`, 'sqlite-' + fileId);
-            return;
-        }
-        if (/\.(glb|gltf|stl|obj)$/i.test(title)) {
-            openEditorTab('model3dViewer', { fileId }, `${title} [3d]`, 'model3d-' + fileId);
-            return;
-        }
-        if (/\.wasm$/i.test(title)) {
-            openEditorTab('wasmInspector', { fileId }, `${title} [wasm]`, 'wasm-' + fileId);
-            return;
-        }
-        if (/\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|ts|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i.test(title)) {
-            openEditorTab('mediaMetadata', { fileId }, `${title} [metadata]`, 'media-meta-' + fileId);
-            return;
-        }
-        if (/\.(fla|xfl)$/i.test(title)) {
-            openEditorTab('flaInspector', { fileId }, `${title} [fla]`, 'fla-' + fileId);
-            return;
-        }
-        const contentItemId = 'editor-' + fileId;
-        const state = { fileId, filePath: getRelativePath(fileId) };
-        openEditorTab('editor', state, title, contentItemId);
+        const v = viewerForFile(fileId);
+        openEditorTab(v.componentType, v.state, v.title, v.id);
     }
+}
+
+// In-memory files for plugins (see memoryFiles): file is a project file object
+// (name, content, viewType) and relPath its path in the workspace, inside a
+// ".in-memory-<token>" folder; bytes are what viewers fetching it get
+function addMemoryFile(file, relPath, bytes) {
+    file.id = file.id || generateUniqueId('mem');
+    file.relPath = relPath;
+    file.memoryOnly = true;
+    file.readOnly = true;
+    memoryFiles[file.id] = file;
+    exposeMemoryFiles();
+    if (currentWorkspacePath && bytes) addMemoryFileBytes(currentWorkspacePath + '/' + relPath, bytes);
+    file._memoryPath = currentWorkspacePath ? currentWorkspacePath + '/' + relPath : null;
+    return file.id;
+}
+
+function removeMemoryFile(fileId) {
+    const file = memoryFiles[fileId];
+    if (!file) return;
+    if (file._memoryPath) removeMemoryFileBytes(file._memoryPath);
+    delete memoryFiles[fileId];
+    if (projectFiles[fileId] === file) delete projectFiles[fileId];
+}
+
+// Specialised viewers, checked in order before falling back to the editor.
+const FILE_VIEWERS = [
+    { re: /\.(vsd|vsdx)$/i, componentType: 'vsdxViewer', tag: 'vsdx', prefix: 'vsdx-' },
+    { re: /\.swf$/i, componentType: 'ruffleSwf', tag: 'swf', prefix: 'swf-' },
+    { re: /\.epub$/i, componentType: 'epubReader', tag: 'epub', prefix: 'epub-' },
+    { re: /\.psd$/i, componentType: 'psdViewer', tag: 'psd', prefix: 'psd-' },
+    { re: /\.ipynb$/i, componentType: 'jupyterLite', tag: 'jupyter', prefix: 'jupyter-' },
+    // Mathematica notebooks (a .nb file is a Notebook[...] expression, usually after a comment)
+    { re: /\.nb$/i, sniff: /^\s*(\(\*|Notebook\[)/, componentType: 'mathematicaViewer', tag: 'notebook', prefix: 'mathematica-' },
+    // A Jupyter Book's table of contents: the book, read chapter by chapter
+    { re: /^(_toc|myst)\.yml$/i, componentType: 'jupyterLite', tag: 'book', prefix: 'jupyter-' },
+    { re: /\.(docx|docm|dotx|dotm)$/i, componentType: 'officeEditor', tag: 'office', prefix: 'office-' },
+    { re: /\.(pptx|pptm|ppsx|potx)$/i, componentType: 'officeEditor', tag: 'office', prefix: 'office-' },
+    { re: /\.(docx|docm|dotx|dotm)$/i, componentType: 'docxViewer', tag: 'docx', prefix: 'docx-' },
+    { re: /\.xlsx$/i, componentType: 'spreadsheetEditor', tag: 'sheet', prefix: 'sheet-' },
+    { re: /\.(xlsx|xlsm|xlsb|xls|ods)$/i, componentType: 'xlsxAst', tag: 'xlsx', prefix: 'xlsx-' },
+    // CSV/TSV: the text editor first, the spreadsheet grid as a choice
+    { re: /\.(csv|tsv)$/i, componentType: 'spreadsheetEditor', tag: 'sheet', prefix: 'sheet-', afterEditor: true },
+    { re: /\.(sf2|sf3|sfogg|dls)$/i, componentType: 'soundfontViewer', tag: 'sf', prefix: 'sf-' },
+    { re: /\.(mid|midi|kar|smf)$/i, componentType: 'midiEditor', tag: 'midi', prefix: 'midi-' },
+    // the same MIDI file engraved as a score, a second choice
+    { re: /\.(mid|midi|kar)$/i, componentType: 'scoreViewer', tag: 'score', prefix: 'score-', afterEditor: true },
+    { re: /\.(ttf|otf|woff2?)$/i, componentType: 'fontEditor', tag: 'font', prefix: 'font-' },
+    { re: /\.(sqlite|sqlite3|db)$/i, componentType: 'sqliteInspector', tag: 'sqlite', prefix: 'sqlite-' },
+    { re: /\.(pst|ost)$/i, componentType: 'pstViewer', tag: 'outlook', prefix: 'pst-' },
+    // Animated PNG: the frame viewer for .apng; for .png (animated or not, unknown until read) a choice after the editor
+    { re: /\.xcf$/i, componentType: 'xcfViewer', tag: 'layers', prefix: 'xcf-' },
+    { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
+    { re: /\.vcut$/i, componentType: 'videoCut', tag: 'video editor', prefix: 'vcut-' },
+    { re: /\.apng$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-' },
+    { re: /\.(png|jxl)$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-', afterEditor: true },
+    { re: /\.(pcap|pcapng|cap|ntar|erf|snoop)$/i, componentType: 'pcapViewer', tag: 'pcap', prefix: 'pcap-' },
+    { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
+    { re: /\.(fzz|fz)$/i, componentType: 'fritzingEditor', tag: 'fritzing', prefix: 'fritzing-' },
+    // .tm is also a Tcl module: only files that are TeXmacs documents
+    { re: /\.tmu$|\.tm$/i, sniff: /^\s*<(TeXmacs|TMU)\|/, componentType: 'texmacsEditor', tag: 'texmacs', prefix: 'texmacs-' },
+    { re: /\.(kicad_sch|kicad_pcb)$/i, componentType: 'kicadViewer', tag: 'kicad', prefix: 'kicad-' },
+    // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
+    { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
+    { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
+    { re: /\.(vcd|fst|ghw)$/i, componentType: 'waveformViewer', tag: 'wave', prefix: 'wave-' },
+    { re: /\.wasm$/i, componentType: 'wasmInspector', tag: 'wasm', prefix: 'wasm-' },
+    { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
+    // .ts is usually TypeScript: offer the media viewer only when the file turned out binary (MPEG-TS)
+    { re: /\.ts$/i, binaryOnly: true, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
+    { re: /\.(fla|xfl)$/i, componentType: 'flaInspector', tag: 'fla', prefix: 'fla-' },
+    // LaTeX: the source beside the document, rebuilt as it is edited (the plain editor stays in the list)
+    { re: /\.(tex|ltx|latex)$/i, componentType: 'latexEditor', tag: 'latex', prefix: 'latex-' },
+    { re: /\.(bpmn|bpmn20\.xml)$/i, componentType: 'bpmnEditor', tag: 'bpmn', prefix: 'bpmn-' },
+    { re: /\.flp$/i, componentType: 'flpViewer', tag: 'flp', prefix: 'flp-' },
+    // OpenPGP-encrypted files: asks for the passphrase, then shows the contents in their own viewer
+    // MHTML web archives (saved by Chrome, IE, Word): the page rebuilt from its parts, sandboxed
+    { re: /\.(mht|mhtml)$/i, componentType: 'mhtViewer', tag: 'mht', prefix: 'mht-' },
+    { re: /\.(gpg|pgp)$/i, componentType: 'gpgViewer', tag: 'decrypt', prefix: 'gpg-' },
+    { re: /\.asc$/i, sniff: /-----BEGIN PGP MESSAGE-----/, componentType: 'gpgViewer', tag: 'decrypt', prefix: 'gpg-' },
+    // KeePass databases (KDBX 3.1/4.x; .kdb and KDBX 2 get a message): password/key file, then the entries, read-only
+    { re: /\.(kdbx|kdb)$/i, componentType: 'kdbxViewer', tag: 'keepass', prefix: 'kdbx-' },
+    // Paint Shop Pro thumbnail caches (pspbrwse.jbf)
+    { re: /\.jbf$/i, componentType: 'jbfViewer', tag: 'thumbs', prefix: 'jbf-' },
+    // VRM avatars (VRM 0.x / 1.0, glTF-binary based)
+    { re: /\.vrm$/i, componentType: 'vrmViewer', tag: 'vrm', prefix: 'vrm-' },
+    // DICOM medical images; files without an extension when they start with the DICM preamble
+    { re: /\.(dcm|dicom)$/i, componentType: 'dicomViewer', tag: 'dicom', prefix: 'dicom-' },
+    { re: /^[^.]+$/, test: hasDicomPreamble, componentType: 'dicomViewer', tag: 'dicom', prefix: 'dicom-' },
+    // ELF executables, shared objects (lib.so.6 too), object files, kernel modules and firmware images
+    { re: /\.(elf|axf|ko|o|so(\.\d+)*)$/i, test: mayBeElf, componentType: 'elfViewer', tag: 'elf', prefix: 'elf-' },
+    // Music scores, engraved by webmscore (MuseScore): its own files, MusicXML, Guitar Pro (3-7) and Power Tab
+    { re: /\.(mscz|mscx|mscs|musicxml|mxl|gp|gp3|gp4|gp5|gtp|ptb)$/i, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
+    // .xml is anything: MusicXML (score-partwise/timewise) as a choice after the editor
+    { re: /\.xml$/i, sniff: /<(score-partwise|score-timewise)[\s>]|<!DOCTYPE score-(partwise|timewise)/, componentType: 'scoreViewer', tag: 'score', prefix: 'score-', afterEditor: true },
+    // Compiled HTML Help: contents, index and topics
+    { re: /\.chm$/i, componentType: 'chmViewer', tag: 'help', prefix: 'chm-' },
+    // Hangul Word Processor documents (HWP 5.0, HWP 3.x, HWPX), laid out page by page by rhwp
+    { re: /\.(hwp|hwpx)$/i, componentType: 'hwpViewer', tag: 'hwp', prefix: 'hwp-' },
+    // Windows Help and OS/2 help; text-mode programs' plain-text .hlp files (and Windows .inf setup files) stay in the editor
+    { re: /\.hlp$/i, sniff: /^(?:\?_\x03\x00|HSP|$)|\x00/, componentType: 'hlpViewer', tag: 'winhelp', prefix: 'hlp-' },
+    { re: /\.inf$/i, sniff: /^(?:HSP|$)/, componentType: 'hlpViewer', tag: 'os/2 help', prefix: 'hlp-' },
+    // Game ROMs, run with EmulatorJS; disc images and raw dumps could be for several systems: a choice after the editor
+    { re: /\.(nes|unf|unif|sfc|smc|fig|swc|n64|z64|v64|gbc?|gba|agb|nds|vb|vboy|sms|sg|gen|smd|gg|32x|pbp|pce|ngp|ngc|wsc?|lnx|j64|jag|a26|a78|col)$/i, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-' },
+    // .md is usually Markdown: a Mega Drive ROM only when the file turned out binary
+    { re: /\.md$/i, binaryOnly: true, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-' },
+    { re: /\.(iso|chd|img|bin)$/i, binaryOnly: true, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-', afterEditor: true },
+    // Any other file that starts with \x7fELF (no extension, .bin, .out, .debug, …): last, so viewers for its extension come first
+    { re: /^/, test: hasElfMagic, componentType: 'elfViewer', tag: 'elf', prefix: 'elf-' },
+];
+
+function editorViewerForFile(fileId) {
+    return {
+        componentType: 'editor',
+        state: { fileId, filePath: getRelativePath(fileId) },
+        title: projectFiles[fileId].name,
+        id: 'editor-' + fileId,
+    };
+}
+
+// All viewers that can open a file; the first one is the default.
+function viewersForFile(fileId) {
+    const title = projectFiles[fileId].name;
+    const viewers = FILE_VIEWERS.filter(v => v.re.test(title) && (!v.binaryOnly || projectFiles[fileId].viewType)
+        && (!v.sniff || typeof projectFiles[fileId].content !== 'string' || v.sniff.test(projectFiles[fileId].content.slice(0, 200)))
+        && (!v.test || v.test(projectFiles[fileId]))).map(v => ({
+        componentType: v.componentType,
+        state: { fileId },
+        title: `${title} [${v.tag}]`,
+        id: v.prefix + fileId,
+        afterEditor: !!v.afterEditor,
+    }));
+    // Viewers that are only a second choice come after the plain editor
+    const later = viewers.filter(v => v.afterEditor);
+    return [...viewers.filter(v => !v.afterEditor), editorViewerForFile(fileId), ...later];
+}
+
+function viewerForFile(fileId) {
+    return viewersForFile(fileId)[0];
 }
 
 // --- GoldenLayout Initialization ---
@@ -2908,6 +3101,13 @@ function createTopToolbar() {
     makeEntry(fileMenu, 'Search Files…', () => openSearchDialog('name'));
     makeEntry(fileMenu, 'Grep Contents…', () => openSearchDialog('grep'));
 
+    // Switch to file browser mode
+    const browseItem = document.createElement('div');
+    browseItem.className = 'menu-item';
+    browseItem.textContent = 'Files';
+    browseItem.title = 'Switch to file browser mode';
+    browseItem.addEventListener('click', () => { location.href = location.pathname + '?browse'; });
+
     // Plugins menu
     const pluginEntries = [];
     for (const plugin of getPlugins()) {
@@ -2930,6 +3130,8 @@ function createTopToolbar() {
             });
         }
     }
+
+    toolbarEl.appendChild(browseItem);
 
     // Dismiss menus on outside click
     document.addEventListener('click', () => {
@@ -3189,8 +3391,17 @@ function initMobileLayout(layoutContainer) {
     openWsBtn.onclick = () => wsClient.showWorkspaceSelector(handleWorkspaceLoaded);
     toolbar.appendChild(openWsBtn);
 
+    const browseBtn = document.createElement('a');
+    browseBtn.textContent = '\uD83D\uDCC1 Files';
+    browseBtn.href = location.pathname + '?browse';
+    browseBtn.style.cssText = 'padding:6px 12px;font-size:13px;border:1px solid #555;background:#2a2a2a;color:#ddd;border-radius:4px;text-decoration:none;display:none;';
+    toolbar.appendChild(browseBtn);
+
     wsClient.wsReady.then(socket => {
-        if (socket) openWsBtn.style.display = '';
+        if (socket) {
+            openWsBtn.style.display = '';
+            browseBtn.style.display = '';
+        }
     });
 
     fileTreeEl.appendChild(toolbar);
@@ -3363,6 +3574,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // --- File Browser Mode (?browse) ---
+    if (new URLSearchParams(location.search).has('browse')) {
+        log.log('Init: File browser mode.');
+        initBrowseMode(layoutContainer, {
+            wsClient,
+            EditorComponent,
+            viewersForFile,
+            setWorkspace(dirPath, files) {
+                currentWorkspacePath = dirPath;
+                projectStructure.children = files;
+                updateProjectFilesCache();
+            },
+            getProjectFiles: () => projectFiles,
+            pluginCtx: {
+                wsClient,
+                goldenLayoutInstance: null,
+                get projectFiles() { return projectFiles; },
+                get currentWorkspacePath() { return currentWorkspacePath; },
+                getRelativePath,
+                setFileContent: setFileContentFromPlugin,
+                markDirty() {},
+                clearDirty() {},
+                log,
+                createFile() { return null; },
+                viewersForFile,
+                addMemoryFile,
+                removeMemoryFile,
+            },
+        });
+        return;
+    }
+
     // --- Mobile Layout Path ---
     if (isMobile()) {
         log.log('Init: Mobile device detected, using mobile layout.');
@@ -3409,6 +3652,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         get projectFiles() { return projectFiles; },
         get currentWorkspacePath() { return currentWorkspacePath; },
         getRelativePath,
+        setFileContent: setFileContentFromPlugin,
         markDirty,
         clearDirty(fileId) {
             dirtyFiles.delete(fileId);
@@ -3419,6 +3663,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         openPluginPanel,
         openEditorTab,
         createFile: pluginCreateFile,
+        viewersForFile,
+        addMemoryFile,
+        removeMemoryFile,
+        getComponent: (type) => type === 'editor' ? EditorComponent
+            : (getPlugins().find(p => p.components && p.components[type]) || { components: {} }).components[type],
     };
     for (const plugin of getPlugins()) {
         if (plugin.init) plugin.init(pluginCtx);

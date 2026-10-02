@@ -1,21 +1,20 @@
 // --- VSDX Plugin ---
-// Uses the VSDX editor modules directly from GitHub via esm.sh.
+// Uses the VSDX editor's modules (github.com/smartnexiacloud-lgtm/vsdxeditor, GPL-3.0)
+// straight from its repository through esm.sh, at the head of master (not pinned).
 const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
 
 const log = createLogger('VSDX');
-const VSDX_PARSER_URL = 'https://esm.sh/gh/Kreijstal/vsdxeditor/src/vsdx-parser.js';
-const VSD_PARSER_URL = 'https://esm.sh/gh/Kreijstal/vsdxeditor/src/vsd-parser.js';
-const VSDX_RENDERER_URL = 'https://esm.sh/gh/Kreijstal/vsdxeditor/src/svg-renderer.js';
+const VSDX_SRC = 'https://esm.sh/gh/smartnexiacloud-lgtm/vsdxeditor@master/src/';
 
 let _libsPromise = null;
 async function loadVsdxLibs() {
     if (!_libsPromise) {
         _libsPromise = (async () => {
             const [vsdxParser, vsdParser, renderer] = await Promise.all([
-                import(VSDX_PARSER_URL),
-                import(VSD_PARSER_URL),
-                import(VSDX_RENDERER_URL),
+                import(/* webpackIgnore: true */ VSDX_SRC + 'vsdx-parser.js'),
+                import(/* webpackIgnore: true */ VSDX_SRC + 'vsd-parser.js'),
+                import(/* webpackIgnore: true */ VSDX_SRC + 'svg-renderer.js'),
             ]);
             return {
                 parseVsdx: vsdxParser.parseVsdx,
@@ -26,6 +25,7 @@ async function loadVsdxLibs() {
                 renderPage: renderer.renderPage,
             };
         })();
+        _libsPromise.catch(() => { _libsPromise = null; });
     }
     return _libsPromise;
 }
@@ -125,6 +125,19 @@ class VsdxViewerComponent {
 .vsdx-dialog{width:min(900px,90vw);height:min(620px,82vh);background:#1f2328;border:1px solid #57606a;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 .vsdx-dialog textarea{flex:1;resize:none;margin:10px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;font:12px ui-monospace,SFMono-Regular,Consolas,monospace;padding:10px}
 .vsdx-dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 10px 10px}
+.vsdx-viewport{touch-action:none}
+.vsdx-panel-btn{display:none}
+@media (max-width:800px){
+.vsdx-main{grid-template-columns:1fr;grid-template-rows:1fr}
+.vsdx-side{display:none;border-left:0;border-top:1px solid #394049}
+.vsdx-plugin-root.show-side .vsdx-main{grid-template-rows:1fr 45%}
+.vsdx-plugin-root.show-side .vsdx-side{display:grid;grid-template-rows:auto 1fr 1fr}
+.vsdx-toolbar .vsdx-panel-btn{display:inline-block}
+.vsdx-plugin-root.show-side .vsdx-panel-btn{background:#0969da}
+.vsdx-toolbar{padding:5px 6px;gap:4px}
+.vsdx-toolbar button{padding:4px 7px}
+.vsdx-title{display:none}
+}
 `;
         document.head.appendChild(style);
     }
@@ -151,7 +164,13 @@ class VsdxViewerComponent {
         this.toolbar.appendChild(makeButton('Download', 'Download current VSDX', () => this._download()));
         this.toolbar.appendChild(makeButton('+', 'Zoom in', () => this._setZoom(this.zoom * 1.2)));
         this.toolbar.appendChild(makeButton('-', 'Zoom out', () => this._setZoom(this.zoom / 1.2)));
-        this.toolbar.appendChild(makeButton('Fit', 'Reset view', () => this._resetView()));
+        this.toolbar.appendChild(makeButton('Fit', 'Fit page to view', () => this._fitPage()));
+        const panelBtn = makeButton('Panel', 'Layers / shapes panel', () => {
+            this.root.classList.toggle('show-side');
+            requestAnimationFrame(() => this._fitPage());
+        });
+        panelBtn.classList.add('vsdx-panel-btn');
+        this.toolbar.appendChild(panelBtn);
         this.titleEl = document.createElement('span');
         this.titleEl.className = 'vsdx-title';
         this.titleEl.textContent = this.fileName;
@@ -193,6 +212,56 @@ class VsdxViewerComponent {
         this._upHandler = () => this._endPan();
         window.addEventListener('mousemove', this._moveHandler);
         window.addEventListener('mouseup', this._upHandler);
+        this._wireTouch();
+    }
+
+    // One finger pans, two fingers pinch-zoom around their midpoint.
+    // Taps still reach shapes because touchstart is not cancelled.
+    _wireTouch() {
+        let last = null;
+        const snap = (e) => {
+            const rect = this.viewport.getBoundingClientRect();
+            const t = [...e.touches].map(p => ({ x: p.clientX - rect.left - 24, y: p.clientY - rect.top - 24 }));
+            if (t.length === 1) return { x: t[0].x, y: t[0].y, d: 0 };
+            if (t.length >= 2) return { x: (t[0].x + t[1].x) / 2, y: (t[0].y + t[1].y) / 2, d: Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y) };
+            return null;
+        };
+        this.viewport.addEventListener('touchstart', (e) => { last = snap(e); }, { passive: true });
+        this.viewport.addEventListener('touchmove', (e) => {
+            const cur = snap(e);
+            if (!cur || !last) { last = cur; return; }
+            e.preventDefault();
+            if (cur.d && last.d) {
+                const nextZoom = Math.max(0.02, Math.min(20, this.zoom * cur.d / last.d));
+                const scale = nextZoom / this.zoom;
+                this.panX = last.x - scale * (last.x - this.panX);
+                this.panY = last.y - scale * (last.y - this.panY);
+                this.zoom = nextZoom;
+            }
+            this.panX += cur.x - last.x;
+            this.panY += cur.y - last.y;
+            last = cur;
+            this._updateTransform();
+            this._updateStatus();
+        }, { passive: false });
+        const end = (e) => { last = snap(e); };
+        this.viewport.addEventListener('touchend', end, { passive: true });
+        this.viewport.addEventListener('touchcancel', end, { passive: true });
+    }
+
+    // Scale the rendered page so it fits the viewport, centered.
+    _fitPage() {
+        const svg = this.canvas.querySelector('svg');
+        const vw = this.viewport.clientWidth - 48, vh = this.viewport.clientHeight - 48;
+        if (!svg || vw <= 0 || vh <= 0) return this._resetView();
+        const w = svg.getBoundingClientRect().width / this.zoom;
+        const h = svg.getBoundingClientRect().height / this.zoom;
+        if (!w || !h) return this._resetView();
+        this.zoom = Math.max(0.02, Math.min(20, Math.min(vw / w, vh / h)));
+        this.panX = (vw - w * this.zoom) / 2;
+        this.panY = (vh - h * this.zoom) / 2;
+        this._updateTransform();
+        this._updateStatus();
     }
 
     async _init() {
@@ -290,7 +359,7 @@ class VsdxViewerComponent {
             this._applyLayerVisibility();
             this._wireShapeSelection();
             this._syncSelectionHighlight();
-            this._updateTransform();
+            this._fitPage();
         }).catch(err => this._showError(err.message));
     }
 
@@ -513,7 +582,7 @@ class VsdxViewerComponent {
     }
 
     _setZoom(value) {
-        this.zoom = Math.max(0.1, Math.min(20, value));
+        this.zoom = Math.max(0.02, Math.min(20, value));
         this._updateTransform();
         this._updateStatus();
     }

@@ -9,6 +9,16 @@ const wsHandler = require('./ws-handler');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Cross-origin isolation, for SharedArrayBuffer (WebAssembly threads: the Rust
+// toolchain, WASI programs in Wanix). credentialless rather than require-corp,
+// so CDN scripts and images that send no CORP header still load (without
+// cookies). Workers and same-origin frames need it as well as the page.
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+  next();
+});
+
 // In-memory store for preview files (shared with WS handler)
 const previewFiles = new Map();
 
@@ -26,6 +36,14 @@ function getMimeType(fileName) {
   return types[ext] || 'text/plain';
 }
 
+// DEFAULT_MODE=browse: a bare / opens the file browser; /?project opens project mode
+if (process.env.DEFAULT_MODE === 'browse') {
+  app.get('/', (req, res, next) => {
+    if (Object.keys(req.query).length) return next();
+    res.redirect('/?browse');
+  });
+}
+
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -41,42 +59,47 @@ app.get('/preview-output/*filePath', (req, res) => {
   }
 });
 
-// Serve Ace worker and snippet files with correct MIME type
-app.get('/worker-html.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/ace-builds/src-min-noconflict/worker-html.js'), {
-    headers: { 'Content-Type': 'application/javascript' }
-  });
+// Surfer waveform viewer (VCD/FST/GHW): the web build is only published as the
+// hosted app, so it is passed through from there and runs same-origin with the
+// editor (it can then read /workspace-file URLs, zip entries included).
+const SURFER_ORIGIN = 'https://app.surfer-project.org';
+app.get(/^\/surfer(\/.*)?$/, async (req, res) => {
+  const sub = req.params[0] || '/';
+  if (sub === '/' && !req.path.endsWith('/')) return res.redirect(301, '/surfer/');
+  if (sub.includes('..')) return res.status(400).send('Bad path');
+  try {
+    const headers = {};
+    if (req.headers['if-none-match']) headers['if-none-match'] = req.headers['if-none-match'];
+    const upstream = await fetch(SURFER_ORIGIN + (sub === '/' ? '/index.html' : sub), { headers });
+    res.status(upstream.status);
+    for (const h of ['content-type', 'cache-control', 'etag', 'last-modified']) {
+      const v = upstream.headers.get(h);
+      if (v) res.set(h, v);
+    }
+    if (upstream.status === 304) return res.end();
+    let body = Buffer.from(await upstream.arrayBuffer());
+    if (sub === '/' || sub === '/index.html') {
+      // Surfer's own service worker would take over /surfer/ from ours (zip support)
+      body = Buffer.from(body.toString('utf8').replace(/navigator\.serviceWorker\.register\([^)]*\)/g, 'Promise.resolve()'));
+      res.removeHeader('etag');
+    }
+    res.send(body);
+  } catch (err) {
+    res.status(502).send('Could not reach ' + SURFER_ORIGIN + ': ' + err.message);
+  }
 });
 
-app.get('/snippets/html.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/ace-builds/src-min-noconflict/snippets/html.js'), {
-    headers: { 'Content-Type': 'application/javascript' }
-  });
-});
+// Fritzing (github.com/Kreijstal/fritzing-app, wasm branch), Mogan STEM (TeXmacs
+// fork, github.com/MoganLab/mogan), the office editor for .docx/.pptx (Euro-Office's
+// editors with x2t as WebAssembly, scripts/build-eurooffice.sh) and the Rust
+// toolchain (Rubrc, from its own site) are served from npm through jsDelivr or from
+// upstream at /fritzing, /mogan, /office and /rubrc; see cdn-apps.js
+require('./cdn-apps').register(app);
 
-app.get('/worker-css.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/ace-builds/src-min-noconflict/worker-css.js'), {
-    headers: { 'Content-Type': 'application/javascript' }
-  });
-});
-
-app.get('/snippets/css.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/ace-builds/src-min-noconflict/snippets/css.js'), {
-    headers: { 'Content-Type': 'application/javascript' }
-  });
-});
-
-app.get('/worker-javascript.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/ace-builds/src-min-noconflict/worker-javascript.js'), {
-    headers: { 'Content-Type': 'application/javascript' }
-  });
-});
-
-app.get('/snippets/javascript.js', (req, res) => {
-  res.sendFile(path.join(__dirname, 'node_modules/ace-builds/src-min-noconflict/snippets/javascript.js'), {
-    headers: { 'Content-Type': 'application/javascript' }
-  });
-});
+// EmulatorJS, webmscore, rhwp, the DICOM codecs, Capstone and OpenSCAD are built from
+// source with the system emscripten (~/git/<name>/build.sh), published to npm as
+// @kreijstal/<name> and loaded by the viewers from jsDelivr at pinned versions;
+// ~/git/npm-publish/stage.sh packages them
 
 // Serve raw files from the workspace directory
 app.get('/workspace-file', (req, res) => {
@@ -85,8 +108,40 @@ app.get('/workspace-file', (req, res) => {
 
   const resolved = path.resolve(filePath);
   res.sendFile(resolved, (err) => {
-    if (err) res.status(404).send('Not found');
+    // also called when the client aborts mid-transfer; answering then would throw
+    if (err && !res.headersSent) res.status(404).send('Not found');
   });
+});
+
+// Upload a file: the request body, streamed to disk. Folders on the way are
+// created (folder uploads); an existing file is kept unless overwrite=1
+app.put('/upload-file', (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath || !path.isAbsolute(filePath)) return res.status(400).json({ error: 'Missing or relative path' });
+  const resolved = path.resolve(filePath);
+  if (!req.query.overwrite && fs.existsSync(resolved)) return res.status(409).json({ error: 'already exists' });
+  try {
+    fs.mkdirSync(path.dirname(resolved), { recursive: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+  // Into a temporary file first, so a broken upload leaves nothing half written
+  const tmp = path.join(path.dirname(resolved), `.${path.basename(resolved)}.upload-${process.pid}-${Date.now()}`);
+  const out = fs.createWriteStream(tmp);
+  const fail = (err) => {
+    out.destroy();
+    fs.rm(tmp, { force: true }, () => {});
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  };
+  req.on('aborted', () => fail(new Error('upload aborted')));
+  out.on('error', fail);
+  out.on('finish', () => {
+    fs.rename(tmp, resolved, (err) => {
+      if (err) return fail(err);
+      res.json({ success: true, size: fs.statSync(resolved).size });
+    });
+  });
+  req.pipe(out);
 });
 
 // Download a single file
@@ -118,6 +173,10 @@ app.get('/download-dir', (req, res) => {
   archive.directory(resolved, path.basename(resolved));
   archive.finalize();
 });
+
+// Symbol libraries for the KiCad viewer's "Add symbol"
+require('./kicad-symbols').register(app);
+require('./jupyterlite').register(app);
 
 app.get('/ping', (req, res) => {
   res.send('pong');
