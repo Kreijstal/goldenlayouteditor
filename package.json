@@ -19,7 +19,7 @@
   "author": "",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "express": "^5.0.0",
     "golden-layout": "^2.6.0",
     "js-yaml": "^5.4.2",
