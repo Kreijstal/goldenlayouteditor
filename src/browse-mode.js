@@ -122,6 +122,8 @@ const CSS = `
 .bm-menu-note{font-size:12px;opacity:.5;padding:4px 12px 8px}
 .bm-viewer{position:fixed;inset:0;display:flex;flex-direction:column;background:#1e1e1e;color:#ddd;font-family:system-ui,sans-serif;font-size:14px;z-index:10}
 .bm-viewer-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.bm-path{flex:1;min-width:0;background:transparent;color:#ddd;border:1px solid transparent;border-radius:5px;padding:0 6px;font:inherit;font-size:14px;min-height:30px;text-overflow:ellipsis}
+.bm-path:focus{background:#2d2d2d;border-color:#1177bb;outline:none}
 .bm-textbar{overflow-x:auto;scrollbar-width:none}
 .bm-textbar .bm-enc{flex:1;min-width:0;max-width:280px}
 .bm-viewer-body{flex:1;min-height:0;position:relative;overflow:auto;background:#fff;color:#000}
@@ -620,6 +622,91 @@ async function initBrowseMode(root, deps) {
         actions.hidden = !selectMode && !clipboard;
     }
 
+    // --- Typed paths ---
+    // A text box holding a path: Enter goes there (a folder is listed, a file opened),
+    // Escape or leaving it puts the path back
+    function pathBox(path, onDone) {
+        const box = el('input', 'bm-path');
+        box.type = 'text';
+        box.value = path;
+        box.spellcheck = false;
+        box.autocapitalize = 'off';
+        box.setAttribute('autocorrect', 'off');
+        box.title = 'Type a path and press Enter';
+        const done = () => { if (onDone) onDone(); };
+        box.onkeydown = async (e) => {
+            if (e.key === 'Escape') { box.value = path; box.blur(); done(); }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const target = box.value.trim();
+            if (!target || target === path) { box.blur(); done(); return; }
+            box.disabled = true;
+            const ok = await goToPath(target);
+            box.disabled = false;
+            if (ok) done(); else box.focus();
+        };
+        box.onblur = () => { if (!box.disabled) { box.value = path; done(); } };
+        return box;
+    }
+
+    // The folder path bar as a box, until Enter, Escape or a click elsewhere
+    function editPath() {
+        const box = pathBox(cwd || '/', () => { if (box.isConnected) renderCrumbs(); });
+        crumbs.replaceChildren(box);
+        box.focus();
+        box.select();
+    }
+    crumbs.onclick = (e) => { if (e.target === crumbs) editPath(); };
+
+    // Where a typed path leads: a folder (or archive) to list, a file to open. A path
+    // the browser doesn't know may be the server's under its own name (/home/me → /server/home/me)
+    async function goToPath(raw) {
+        let p = '/' + raw.split('/').filter(s => s && s !== '.').reduce((acc, s) => {
+            if (s === '..') acc.pop(); else acc.push(s);
+            return acc;
+        }, []).join('/');
+        const kindOf = async (path) => {
+            if (path === '/') return 'directory';
+            const dir = path.slice(0, path.lastIndexOf('/')) || '/';
+            const name = path.slice(path.lastIndexOf('/') + 1);
+            try {
+                const r = (isArchivePath(dir) && await listArchive(dir))
+                    || await wsClient.wsRequest({ type: 'browseDir', path: dir, showHidden: true });
+                if (r.error) return null;
+                const f = (r.items || []).find(x => x.name === name);
+                return f ? f.type : null;
+            } catch (_) { return null; }
+        };
+        let kind = await kindOf(p);
+        if (!kind && !p.startsWith('/server/')) {
+            const k = await kindOf('/server' + p);
+            if (k) { p = '/server' + p; kind = k; }
+        }
+        if (!kind) {
+            alert('No such file or folder: ' + raw);
+            return false;
+        }
+        const name = p.slice(p.lastIndexOf('/') + 1);
+        if (kind === 'directory' || (isArchiveName(name) && !viewer)) {
+            closeViewer();
+            await navigate(p);
+            return true;
+        }
+        const dir = p.slice(0, p.lastIndexOf('/')) || '/';
+        if (name.startsWith('.') && !showHidden) {
+            showHidden = true;
+            savePref('hidden', '1');
+        }
+        await navigate(dir);
+        const f = files.find(x => x.name === name);
+        if (!f) {
+            alert('No such file: ' + raw);
+            return false;
+        }
+        await openFile(f);
+        return true;
+    }
+
     // --- Listing ---
     function renderCrumbs() {
         crumbs.innerHTML = '';
@@ -631,9 +718,10 @@ async function initBrowseMode(root, deps) {
             if (i > 0) crumbs.appendChild(el('span', 'bm-sep', '/'));
             const b = el('button', 'bm-crumb', part);
             const target = '/' + parts.slice(0, i + 1).join('/');
-            b.onclick = () => navigate(target);
+            b.onclick = i === parts.length - 1 ? editPath : () => navigate(target);
             crumbs.appendChild(b);
         });
+        if (!parts.length) rootBtn.onclick = editPath;
         crumbs.scrollLeft = crumbs.scrollWidth;
     }
 
@@ -907,7 +995,9 @@ async function initBrowseMode(root, deps) {
         const vbar = el('div', 'bm-bar');
         const back = el('button', 'bm-btn', '←');
         back.onclick = () => history.state && history.state.file ? history.back() : closeViewer();
-        const title = el('div', 'bm-viewer-title', info.file ? info.file.name : v.title);
+        // A file's whole path, in a box to select, copy or type another path into
+        const title = info.file ? pathBox(cwd.replace(/\/$/, '') + '/' + info.file.name)
+            : el('div', 'bm-viewer-title', v.title);
         vbar.append(back, title);
 
         if (info.viewers && info.viewers.length > 1) {
@@ -937,6 +1027,7 @@ async function initBrowseMode(root, deps) {
         const body = el('div', 'bm-viewer-body');
         panel.append(vbar, body);
         document.body.appendChild(panel);
+        if (info.file) title.scrollLeft = title.scrollWidth;
 
         const listeners = {};
         const container = {
