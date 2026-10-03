@@ -816,8 +816,9 @@ async function initBrowseMode(root, deps) {
         else if (changedDir) history.pushState({ dir: cwd }, '', url);
     }
 
-    // Shown again when what it lists changes: the shell's files on its event (src/wanix-plugin.js),
-    // browser storage and picked folders when the window comes back (other tabs and programs)
+    // Shown again when what it lists changes: the shell's files when Wanix says so
+    // (CHANGE_EVENT in src/wanix-plugin.js), browser storage and picked folders when
+    // the window comes back (other tabs and programs change those)
     let listedSig = '';
     let relisting = false; // a listing under way, and whether a change came meanwhile
     let changedMeanwhile = false;
@@ -838,7 +839,10 @@ async function initBrowseMode(root, deps) {
         } while (changedMeanwhile);
         relisting = false;
     }
-    window.addEventListener('gle-wanix-change', relist); // CHANGE_EVENT in src/wanix-plugin.js
+    window.addEventListener('gle-wanix-change', (e) => {
+        const here = cwd && (cwd.split('/').filter(Boolean).join('/') || '.');
+        if (here && e.detail.dirs.includes(here)) relist();
+    });
     window.addEventListener('focus', relist);
     document.addEventListener('visibilitychange', relist);
 

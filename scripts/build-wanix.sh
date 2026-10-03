@@ -9,7 +9,7 @@ set -e
 here=$(cd "$(dirname "$0")" && pwd)
 out="$here/../public"
 src=${WANIX_SRC:-$here/../node_modules/.cache/wanix-src}
-rev=6594fe3763eb8712e81914f78b79243bb403f5cc # main, after 0.4.0-rc2 (whose kernel the page loads)
+rev=6594fe3763eb8712e81914f78b79243bb403f5cc # main, after 0.4.0-rc2: the base of the runtime the page loads (build-wanix-runtime.sh)
 
 [ -d "$src/.git" ] || git clone -q --filter=blob:none https://github.com/tractordev/wanix.git "$src"
 git -C "$src" fetch -q --depth 1 origin "$rev"

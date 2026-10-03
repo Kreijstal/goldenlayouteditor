@@ -19,11 +19,13 @@ const { ensureXtermLoaded, makeTerminal } = require('./terminal');
 const { createLogger } = require('./debug');
 const log = createLogger('Wanix');
 
-const WANIX_VERSION = '0.4.0-rc2';
-const WANIX_URL = `https://cdn.jsdelivr.net/npm/wanix@${WANIX_VERSION}/dist/wanix.min.js`;
+// Wanix with file watching (#watch, below): github.com/Kreijstal/wanix, branch
+// watch, built by scripts/build-wanix-runtime.sh and published as @kreijstal/wanix
+const WANIX_BASE = 'https://cdn.jsdelivr.net/npm/@kreijstal/wanix@0.4.0-watch.1/';
+const WANIX_URL = WANIX_BASE + 'wanix.min.js';
 // The kernel built with Go, not the default TinyGo one: under TinyGo, opening
 // a file that is not there yet with O_CREATE fails, so the shell cannot make files
-const KERNEL_URL = `https://cdn.jsdelivr.net/npm/wanix@${WANIX_VERSION}/dist/wanix.debug.wasm`;
+const KERNEL_URL = WANIX_BASE + 'wanix.debug.wasm';
 // rc, built from Wanix's sources with a fix by scripts/build-wanix.sh (npm run build:wanix)
 const RC_URL = 'wanix-rc.wasm';
 const NS_ID = 'gle-wanix';
@@ -84,12 +86,51 @@ function bootWanix(onProgress) {
         });
         const root = ns.root;
         await makeDirs(root, PROJECT);
+        watchChanges(root);
         // /bin, /etc/tools and /lib from the start, so the editor's tree shows them too
         await installTools(root);
         return { ns, root };
     })();
     booting.catch(() => { booting = null; });
     return booting;
+}
+
+// The namespace's changes, as Wanix reports them on #watch ("<op> <path>" lines,
+// paths from its top): sent on as the window event CHANGE_EVENT, with the folders
+// whose listing changed ('.' for the top) in detail.dirs, a few at a time
+const CHANGE_EVENT = 'gle-wanix-change';
+async function watchChanges(root) {
+    let reader;
+    try {
+        reader = (await root.openReadable('#watch')).getReader();
+    } catch (err) {
+        log.warn('No #watch in this Wanix:', err);
+        return;
+    }
+    const lines = new TextDecoder();
+    let rest = '', dirs = new Set(), timer = null;
+    for (;;) {
+        let chunk;
+        try { chunk = await reader.read(); } catch (err) { log.warn('#watch failed:', err); return; }
+        if (chunk.done) return;
+        const text = rest + lines.decode(chunk.value, { stream: true });
+        const all = text.split('\n');
+        rest = all.pop();
+        for (const line of all) {
+            const p = line.slice(line.indexOf(' ') + 1);
+            if (!p) continue;
+            dirs.add(p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '.');
+            if (/^(create|remove) /.test(line)) dirs.add(p); // the folder itself, made or gone
+        }
+        if (dirs.size && !timer) {
+            timer = setTimeout(() => {
+                const detail = { dirs: [...dirs] };
+                dirs = new Set();
+                timer = null;
+                window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail }));
+            }, 50);
+        }
+    }
 }
 
 // The project is copied in when the first shell starts (not when the editor's
@@ -488,7 +529,7 @@ const gleTools = {
             if (!runner) throw new Error(entry ? `no runner ${entry[0]} (see /etc/tools)` : 'not in /etc/tools');
             const dir = folder.split('/').filter(Boolean).join('/') || '.';
             const io = { out: t => { job.out += t; }, err: t => { job.err += t; } };
-            const handle = runner(root, dir, [...entry.slice(1), ...args], io, code => { job.code = code || 0; noteChange(); });
+            const handle = runner(root, dir, [...entry.slice(1), ...args], io, code => { job.code = code || 0; });
             job.input = handle.input || null;
             job.stop = handle.stop;
         })().catch(err => { job.err += `${name}: ${err.message || err}\n`; job.code = 127; });
@@ -513,17 +554,6 @@ const gleTools = {
     },
 };
 globalThis.gleTools = gleTools;
-
-// Wanix cannot tell when its files change (its fs.WatchFS has no implementations),
-// but they only change through the shells here and the page: the editor's tree
-// listens for this event, sent when a shell prints (a prompt after each command)
-// and when a command of /etc/tools ends
-const CHANGE_EVENT = 'gle-wanix-change';
-let changeTimer = null;
-function noteChange() {
-    clearTimeout(changeTimer);
-    changeTimer = setTimeout(() => window.dispatchEvent(new Event(CHANGE_EVENT)), 100);
-}
 
 // The newest command still running, for the terminal (Ctrl+C, what is typed)
 function runningJob() {
@@ -598,7 +628,7 @@ async function attachShell(term, onProgress, opts = {}) {
             for (;;) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                if (value) { term.write(value); noteChange(); }
+                if (value) term.write(value);
             }
         } catch (err) {
             if (!closed) log.warn('Shell read failed:', err);
