@@ -488,7 +488,7 @@ const gleTools = {
             if (!runner) throw new Error(entry ? `no runner ${entry[0]} (see /etc/tools)` : 'not in /etc/tools');
             const dir = folder.split('/').filter(Boolean).join('/') || '.';
             const io = { out: t => { job.out += t; }, err: t => { job.err += t; } };
-            const handle = runner(root, dir, [...entry.slice(1), ...args], io, code => { job.code = code || 0; });
+            const handle = runner(root, dir, [...entry.slice(1), ...args], io, code => { job.code = code || 0; noteChange(); });
             job.input = handle.input || null;
             job.stop = handle.stop;
         })().catch(err => { job.err += `${name}: ${err.message || err}\n`; job.code = 127; });
@@ -513,6 +513,17 @@ const gleTools = {
     },
 };
 globalThis.gleTools = gleTools;
+
+// Wanix cannot tell when its files change (its fs.WatchFS has no implementations),
+// but they only change through the shells here and the page: the editor's tree
+// listens for this event, sent when a shell prints (a prompt after each command)
+// and when a command of /etc/tools ends
+const CHANGE_EVENT = 'gle-wanix-change';
+let changeTimer = null;
+function noteChange() {
+    clearTimeout(changeTimer);
+    changeTimer = setTimeout(() => window.dispatchEvent(new Event(CHANGE_EVENT)), 100);
+}
 
 // The newest command still running, for the terminal (Ctrl+C, what is typed)
 function runningJob() {
@@ -587,7 +598,7 @@ async function attachShell(term, onProgress, opts = {}) {
             for (;;) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                if (value) term.write(value);
+                if (value) { term.write(value); noteChange(); }
             }
         } catch (err) {
             if (!closed) log.warn('Shell read failed:', err);
@@ -720,4 +731,4 @@ function wanixStarted() {
     return !!booting;
 }
 
-module.exports = { attachShell, noteWrite, wanixRoot, wanixStarted };
+module.exports = { attachShell, noteWrite, wanixRoot, wanixStarted, CHANGE_EVENT };

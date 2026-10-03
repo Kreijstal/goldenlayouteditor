@@ -816,26 +816,31 @@ async function initBrowseMode(root, deps) {
         else if (changedDir) history.pushState({ dir: cwd }, '', url);
     }
 
-    // The shell (and other tabs, for browser storage and picked folders) change files
-    // without telling anyone, so a folder outside the server is listed again now and
-    // then and shown again when that differs
+    // Shown again when what it lists changes: the shell's files on its event (src/wanix-plugin.js),
+    // browser storage and picked folders when the window comes back (other tabs and programs)
     let listedSig = '';
-    let relisting = false;
+    let relisting = false; // a listing under way, and whether a change came meanwhile
+    let changedMeanwhile = false;
     function listingSig(result) {
         return JSON.stringify([result.path, result.error || '', (result.items || []).map(i => [i.name, i.type, i.size, i.mtimeMs])]);
     }
     async function relist() {
-        if (relisting || cwd === null || document.hidden || viewer || isArchivePath(cwd) || wsClient.vfs.isServerPath(cwd)) return;
+        if (cwd === null || document.hidden || viewer || isArchivePath(cwd) || wsClient.vfs.isServerPath(cwd)) return;
+        if (relisting) { changedMeanwhile = true; return; }
         relisting = true;
-        try {
-            const dir = cwd;
-            const result = await wsClient.wsRequest({ type: 'browseDir', path: dir, showHidden });
-            if (dir === cwd && listingSig(result) !== listedSig) await navigate(cwd, { replace: true });
-        } catch (_) { /* shown at the next navigation */ }
+        do {
+            changedMeanwhile = false;
+            try {
+                const dir = cwd;
+                const result = await wsClient.wsRequest({ type: 'browseDir', path: dir, showHidden });
+                if (dir === cwd && listingSig(result) !== listedSig) await navigate(cwd, { replace: true });
+            } catch (_) { /* shown at the next navigation */ }
+        } while (changedMeanwhile);
         relisting = false;
     }
-    setInterval(relist, 2000);
+    window.addEventListener('gle-wanix-change', relist); // CHANGE_EVENT in src/wanix-plugin.js
     window.addEventListener('focus', relist);
+    document.addEventListener('visibilitychange', relist);
 
     // --- Viewer ---
     function closeViewer() {
@@ -844,6 +849,7 @@ async function initBrowseMode(root, deps) {
         viewer.resizeObserver.disconnect();
         viewer.panel.remove();
         viewer = null;
+        relist(); // what changed while it was open (the shell's files, from a terminal)
     }
 
     async function ensureLoaded(file) {
