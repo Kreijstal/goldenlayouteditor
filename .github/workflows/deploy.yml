@@ -35,6 +35,11 @@ jobs:
       - name: Build site (bundle.js)
         run: npm run build
 
+      # GitHub Pages lets browsers keep files 10 minutes: name this build's bundle
+      # in the page, so a reload after a deploy gets it
+      - name: Version bundle.js in index.html
+        run: sed -i 's|src="bundle.js"|src="bundle.js?v=${{ github.sha }}"|' public/index.html && grep -q "bundle.js?v=" public/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
