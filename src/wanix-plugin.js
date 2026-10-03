@@ -84,6 +84,8 @@ function bootWanix(onProgress) {
         });
         const root = ns.root;
         await makeDirs(root, PROJECT);
+        // /bin, /etc/tools and /lib from the start, so the editor's tree shows them too
+        await installTools(root);
         return { ns, root };
     })();
     booting.catch(() => { booting = null; });
@@ -565,7 +567,6 @@ async function attachShell(term, onProgress, opts = {}) {
         const wanted = resolveDir('', opts.wd) || '.';
         try { if ((await root.stat(wanted)).IsDir) start = wanted; } catch { /* stay in the project */ }
     }
-    await installTools(root);
     const task = document.createElement('wanix-task');
     task.setAttribute('cmd', 'rc.wasm');
     task.setAttribute('wd', start);
