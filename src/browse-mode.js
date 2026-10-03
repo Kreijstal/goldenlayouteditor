@@ -771,6 +771,7 @@ async function initBrowseMode(root, deps) {
             return;
         }
         const changedDir = result.path !== cwd;
+        listedSig = listingSig(result);
         readOnly = !!result.readOnly;
         if (readOnly && selectMode && changedDir) selectMode = false;
         cwd = result.path;
@@ -814,6 +815,27 @@ async function initBrowseMode(root, deps) {
         if (opts.replace || !history.state) history.replaceState({ dir: cwd }, '', url);
         else if (changedDir) history.pushState({ dir: cwd }, '', url);
     }
+
+    // The shell (and other tabs, for browser storage and picked folders) change files
+    // without telling anyone, so a folder outside the server is listed again now and
+    // then and shown again when that differs
+    let listedSig = '';
+    let relisting = false;
+    function listingSig(result) {
+        return JSON.stringify([result.path, result.error || '', (result.items || []).map(i => [i.name, i.type, i.size, i.mtimeMs])]);
+    }
+    async function relist() {
+        if (relisting || cwd === null || document.hidden || viewer || isArchivePath(cwd) || wsClient.vfs.isServerPath(cwd)) return;
+        relisting = true;
+        try {
+            const dir = cwd;
+            const result = await wsClient.wsRequest({ type: 'browseDir', path: dir, showHidden });
+            if (dir === cwd && listingSig(result) !== listedSig) await navigate(cwd, { replace: true });
+        } catch (_) { /* shown at the next navigation */ }
+        relisting = false;
+    }
+    setInterval(relist, 2000);
+    window.addEventListener('focus', relist);
 
     // --- Viewer ---
     function closeViewer() {
