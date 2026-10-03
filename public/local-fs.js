@@ -1,11 +1,10 @@
-// --- Local folders, for when there is no server (GitHub Pages) ---
-// The browser's own file system stands in for the server's: folders the user
-// picks (File System Access API, showDirectoryPicker) and the origin's private
-// storage (OPFS, every browser has it), mounted side by side under a virtual
-// root, so /Browser storage/notes/a.txt or /photos/2024/x.jpg. src/local-server.js
-// answers the server's WebSocket messages from here; the URLs viewers fetch
-// (/workspace-file, /download-file, /upload-file) are answered by the service
-// worker (worker.js imports this file) and by the page's own fetch().
+// --- Local folders ---
+// The browser's own file systems: the origin's private storage (OPFS, every
+// browser has it) and folders the user picks (File System Access API,
+// showDirectoryPicker), mounted at the top of the editor's tree (src/vfs.js),
+// so /Browser storage/notes/a.txt or /photos/2024/x.jpg. The URLs viewers fetch
+// (/workspace-file, /download-file, /upload-file) are answered for them by the
+// service worker (worker.js imports this file) and by the page's own fetch().
 //
 // Picked folders are kept in IndexedDB, so they come back after a reload; the
 // browser may then ask again for permission, which only the page can do, on a click.
@@ -62,28 +61,24 @@
     const kvGet = key => kv('readonly', s => s.get(key));
     const kvSet = (key, value) => kv('readwrite', s => s.put(value, key));
 
-    // Whether /workspace-file and the rest are answered here (an origin without a
-    // server). Kept in IndexedDB for the service worker, which may restart at any time
-    let enabled = null;
-    async function isEnabled() {
-        if (enabled === null) {
-            try { enabled = !!(await kvGet('enabled')); } catch (_) { enabled = false; }
+    // Names of the mounts, for routing a request without reading IndexedDB each
+    // time (the page says when they change: forgetMountNames)
+    let mountNames = null;
+    async function isMountName(name) {
+        if (name === OPFS_NAME) return true;
+        if (!mountNames) {
+            try { mountNames = new Set(((await kvGet('mounts')) || []).map(m => m.name)); } catch (_) { mountNames = new Set(); }
         }
-        return enabled;
+        return mountNames.has(name);
     }
-    // The flag if known already (null before the first isEnabled())
-    function knownEnabled() {
-        return enabled;
+    // Whether a path may be on a mount, answered at once when the names are known
+    function mayBeMount(p) {
+        const first = split(p)[0];
+        if (!first) return false;
+        return first === OPFS_NAME || !mountNames || mountNames.has(first);
     }
-    // Forget the cached flag (the page changed it)
-    function reloadEnabled() {
-        enabled = null;
-    }
-    async function setEnabled(on) {
-        on = !!on;
-        if (await isEnabled() === on) return;
-        enabled = on;
-        await kvSet('enabled', on);
+    function forgetMountNames() {
+        mountNames = null;
     }
 
     // --- Mounts ---
@@ -117,6 +112,7 @@
         for (let i = 2; taken.has(name); i++) name = `${handle.name} (${i})`;
         saved.push({ name, handle });
         await kvSet('mounts', saved);
+        forgetMountNames();
         return '/' + name;
     }
 
@@ -124,6 +120,7 @@
     async function removeMount(name) {
         const saved = (await kvGet('mounts')) || [];
         await kvSet('mounts', saved.filter(m => m.name !== name));
+        forgetMountNames();
     }
 
     // Permission for a picked folder: granted, or asked for (page only, after a click)
@@ -214,7 +211,11 @@
         if (e.kind === 'root') return (await mounts()).map(m => ({ name: m.name, kind: 'directory', handle: m.handle, mount: m }));
         if (e.kind !== 'directory') throw fsError(400, `Not a folder: ${normalize(p)}`);
         const out = [];
-        for await (const [name, handle] of e.handle.entries()) out.push({ name, kind: handle.kind, handle });
+        // Wanix keeps its file modes in "#stat" at the top of the private storage
+        const top = split(p).length === 1 && e.mount.opfs;
+        for await (const [name, handle] of e.handle.entries()) {
+            if (!(top && name.startsWith('#'))) out.push({ name, kind: handle.kind, handle });
+        }
         return out;
     }
 
@@ -379,7 +380,15 @@
         }
     }
 
-    // fetch() that answers for local files when this origin has no server; net is the real fetch
+    // The target of a request for a file on a mount, or null
+    async function mountTarget(request) {
+        const target = pathOf(request);
+        if (!target) return null;
+        const first = split(target.path)[0];
+        return first && await isMountName(first) ? target : null;
+    }
+
+    // fetch() that answers for files on the mounts; net is the real fetch
     function localFetch(input, init, net) {
         let request;
         try {
@@ -389,18 +398,15 @@
         } catch (_) {
             return net(input, init);
         }
-        const target = pathOf(request);
-        if (!target) return net(input, init);
-        return isEnabled().then(on => (on ? respond(request, target) : null)).then(r => r || net(input, init));
+        return mountTarget(request).then(t => (t ? respond(request, t) : null)).then(r => r || net(input, init));
     }
 
     const api = {
-        OPFS_NAME, supported, canPickFolders, isEnabled, knownEnabled, setEnabled, reloadEnabled,
+        OPFS_NAME, supported, canPickFolders, isMountName, mayBeMount, forgetMountNames,
         mounts, addFolder, removeMount, ensurePermission, mountOf,
         normalize, split, dirname, basename, join,
         lookup, list, file, stat, exists, writeFile, mkdir, remove, copy, move, freeName, isMountRoot,
-        pathOf, respond, localFetch, mimeOf,
-        active: false, // set by the page while it runs without a server
+        pathOf, mountTarget, respond, localFetch, mimeOf,
     };
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.LocalFS = api;

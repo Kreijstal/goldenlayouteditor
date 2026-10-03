@@ -2030,7 +2030,7 @@ class ProjectFilesComponent {
             if (relPath && currentWorkspacePath) {
                 menu.appendChild(menuItem('Download', '#ddd', () => {
                     const fullPath = currentWorkspacePath + '/' + relPath;
-                    if (wsClient.isLocal()) { // no server to download from
+                    if (!wsClient.vfs.isServerPath(fullPath)) { // not the server's to send
                         downloadFile(fullPath).catch(err => alert('Could not download: ' + err.message));
                         return;
                     }
@@ -2047,7 +2047,7 @@ class ProjectFilesComponent {
         if (!fileId && dirNode && currentWorkspacePath) {
             const dirPath = this._getDirPath(dirNode);
             const fullDirPath = currentWorkspacePath + (dirPath ? '/' + dirPath : '');
-            if (!wsClient.isLocal()) menu.appendChild(menuItem('Download as Zip', '#ddd', () => {
+            if (wsClient.vfs.isServerPath(fullDirPath)) menu.appendChild(menuItem('Download as Zip', '#ddd', () => {
                 const a = document.createElement('a');
                 a.href = '/download-dir?path=' + encodeURIComponent(fullDirPath);
                 a.download = '';

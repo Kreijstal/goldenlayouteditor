@@ -35,11 +35,16 @@ const SERVED_EXTENSIONS = new Set([
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 
+// Whether p is root or below it (root may be / itself)
+function isInside(root, p) {
+  return p === root || p.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
+}
+
 function resolveWorkspaceFile(workspacePath, relativePath) {
   if (!workspacePath || !relativePath) throw new Error('Missing required fields');
   const workspaceRoot = path.resolve(workspacePath);
   const filePath = path.resolve(workspaceRoot, path.normalize(relativePath));
-  if (!filePath.startsWith(workspaceRoot + path.sep) && filePath !== workspaceRoot) {
+  if (!isInside(workspaceRoot, filePath)) {
     throw new Error('Path traversal blocked');
   }
   return { workspaceRoot, filePath };
@@ -757,7 +762,7 @@ const messageHandlers = {
     const workspaceRoot = path.resolve(msg.workspacePath);
     const filePath = path.resolve(workspaceRoot, path.normalize(relativePath));
 
-    if (!filePath.startsWith(workspaceRoot + path.sep) && filePath !== workspaceRoot) {
+    if (!isInside(workspaceRoot, filePath)) {
       warn(`Path traversal blocked: ${relativePath}`);
       reply(ws, { type: 'fileSaved', success: false, error: 'Path traversal blocked', id: msg.id });
       return;
@@ -798,7 +803,7 @@ const messageHandlers = {
     const workspaceRoot = path.resolve(msg.workspacePath);
     const oldPath = path.resolve(workspaceRoot, path.normalize(msg.oldRelativePath));
     const newPath = path.resolve(workspaceRoot, path.normalize(msg.newRelativePath));
-    const inside = (p) => p === workspaceRoot || p.startsWith(workspaceRoot + path.sep);
+    const inside = (p) => isInside(workspaceRoot, p);
     if (!inside(oldPath) || !inside(newPath)) {
       warn(`Path traversal blocked in rename: ${msg.oldRelativePath} -> ${msg.newRelativePath}`);
       reply(ws, { type: 'fileRenamed', success: false, error: 'Path traversal blocked', id: msg.id });
@@ -879,7 +884,7 @@ const messageHandlers = {
     const workspaceRoot = path.resolve(msg.workspacePath);
     const filePath = path.resolve(workspaceRoot, path.normalize(msg.relativePath));
 
-    if (!filePath.startsWith(workspaceRoot + path.sep) && filePath !== workspaceRoot) {
+    if (!isInside(workspaceRoot, filePath)) {
       reply(ws, { type: 'fileRefreshed', success: false, error: 'Path traversal blocked', id: msg.id });
       return;
     }

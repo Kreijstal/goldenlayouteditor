@@ -7,6 +7,7 @@
 // back through the editor's own saveFile.
 const fs = require('fs');
 const path = require('path');
+const { realPath } = require('./virtual-path');
 const cdn = require('./cdn-apps');
 const { rejoinLines } = require('./src/notebook-lines');
 
@@ -20,7 +21,7 @@ const MIME = {
 
 function decodeRoot(token) {
     try {
-        const root = Buffer.from(token, 'base64url').toString('utf8');
+        const root = realPath(Buffer.from(token, 'base64url').toString('utf8'));
         return path.isAbsolute(root) ? path.resolve(root) : null;
     } catch {
         return null;
@@ -195,8 +196,8 @@ async function config() {
 
 function register(app) {
     app.get('/jupyterlite-book', (req, res) => {
-        const file = req.query.path && path.resolve(req.query.path);
-        const stop = req.query.stop ? path.resolve(req.query.stop) : path.parse(file || '/').root;
+        const file = req.query.path && path.resolve(realPath(req.query.path));
+        const stop = req.query.stop ? path.resolve(realPath(req.query.stop)) : path.parse(file || '/').root;
         if (!file) return res.status(400).send('Missing path parameter');
         // Not on disk: inside an archive, which JupyterLite can't see as a folder
         const onDisk = fs.existsSync(file);

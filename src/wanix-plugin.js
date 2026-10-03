@@ -26,6 +26,7 @@ const WANIX_URL = `https://cdn.jsdelivr.net/npm/wanix@${WANIX_VERSION}/dist/wani
 const KERNEL_URL = `https://cdn.jsdelivr.net/npm/wanix@${WANIX_VERSION}/dist/wanix.debug.wasm`;
 const RC_URL = `https://cdn.jsdelivr.net/npm/wanix-extras@${WANIX_VERSION}/dist/rc.wasm`;
 const NS_ID = 'gle-wanix';
+const OPFS_DIR = 'Browser storage'; // LocalFS.OPFS_NAME
 const PROJECT = 'project';
 const MAX_FILES = 1000, MAX_DIRS = 200, MAX_FILE_SIZE = 4 * 1024 * 1024;
 const SKIP_DIR_RE = /^(node_modules|\.git|__pycache__|\.cache)$/;
@@ -46,8 +47,10 @@ function bootWanix(onProgress) {
         const ns = document.createElement('wanix-namespace');
         ns.id = NS_ID;
         ns.setAttribute('wasm', KERNEL_URL);
+        // The browser's private storage is mounted in it as in the editor's tree (src/vfs.js)
         ns.innerHTML = '<wanix-bind dst="." src="#ramfs/new"></wanix-bind>'
-            + `<wanix-bind type="file" dst="rc.wasm" perm="0755" src="${RC_URL}"></wanix-bind>`;
+            + `<wanix-bind type="file" dst="rc.wasm" perm="0755" src="${RC_URL}"></wanix-bind>`
+            + `<wanix-bind dst="${OPFS_DIR}" src="#web/opfs"></wanix-bind>`;
         onProgress('Starting Wanix (6 MB the first time)…');
         await new Promise((resolve, reject) => {
             ns.addEventListener('ready', resolve, { once: true });
@@ -56,12 +59,22 @@ function bootWanix(onProgress) {
         });
         const root = ns.root;
         await makeDirs(root, PROJECT);
-        onProgress('Copying the project in…');
-        await sync.copyIn(root);
         return { ns, root };
     })();
     booting.catch(() => { booting = null; });
     return booting;
+}
+
+// The project is copied in when the first shell starts (not when the editor's
+// tree merely shows the namespace)
+let copying = null;
+function copyProjectIn(root, onProgress) {
+    if (!copying) {
+        onProgress('Copying the project in…');
+        copying = sync.copyIn(root);
+        copying.catch(() => { copying = null; });
+    }
+    return copying;
 }
 
 // Wanix's makeDirAll fails when it has more than one folder to make
@@ -91,6 +104,7 @@ const sync = {
     // The project's files as { rel: { abs } } (workspace) or { rel: { fileId } } (in memory)
     async listSources() {
         const out = new Map();
+        if (!ctx) return out;
         const ws = this.workspace();
         if (ws) {
             const queue = [[ws, '']];
@@ -382,6 +396,7 @@ function runRustHere(root, dir, line, term, done) {
 async function attachShell(term, onProgress, opts = {}) {
     if (!onProgress) onProgress = text => term.writeln(`\x1b[90m${text}\x1b[0m`);
     const { ns, root } = await bootWanix(onProgress);
+    await copyProjectIn(root, onProgress);
     let start = PROJECT;
     if (opts.dir) {
         const wanted = resolveDir(PROJECT, opts.dir);
@@ -558,4 +573,14 @@ registerPlugin({
     },
 });
 
-module.exports = { attachShell, noteWrite };
+// The namespace's root (booting Wanix if needed), for the editor's tree (src/vfs.js)
+async function wanixRoot(onProgress) {
+    return (await bootWanix(onProgress || (() => {}))).root;
+}
+
+// Whether Wanix is up already (its tree can be read without starting it)
+function wanixStarted() {
+    return !!booting;
+}
+
+module.exports = { attachShell, noteWrite, wanixRoot, wanixStarted };

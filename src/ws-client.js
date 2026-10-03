@@ -2,7 +2,7 @@
 const { createLogger, setWsSender, setEnabled } = require('./debug');
 const { renderTree } = require('./tree-renderer');
 const { isMemoryPath } = require('./archive-fallback');
-const localServer = require('./local-server');
+const vfs = require('./vfs');
 const logger = createLogger('WS');
 const log = logger.log.bind(logger);
 const warn = logger.warn.bind(logger);
@@ -28,7 +28,7 @@ function connectWebSocket(url) {
             };
             socket.onclose = (e) => {
                 log('Disconnected', e.code, e.reason);
-                ws = null;
+                if (ws === socket) ws = null; // (the Router stays, without /server)
             };
             socket.onerror = (e) => {
                 warn('Connection error', e);
@@ -54,18 +54,15 @@ function connectWebSocket(url) {
         wsUrl = `${proto}//${window.location.host}/ws`;
     }
 
-    // No server (a static host such as GitHub Pages): the page plays it, on local folders
-    wsReady = connectWebSocket(wsUrl).then(async (socket) => {
-        if (socket) {
-            localServer.stop();
-            return socket;
-        }
-        const local = await localServer.start().catch((err) => { warn('Local folders unavailable:', err); return null; });
-        if (local) {
-            log('No server: using local folders');
-            ws = local;
-        }
-        return local;
+    // The editor talks to the Router (src/vfs.js), which sends what is the server's
+    // to it, under /server, and answers for the rest: the in-browser shell's files
+    // and the browser's own folders. Without a server (a static host such as
+    // GitHub Pages) it has only those.
+    wsReady = connectWebSocket(wsUrl).then((socket) => {
+        const router = vfs.createRouter(socket);
+        if (!socket) log(router ? 'No server: the browser\'s own files only' : 'No server, and no file system in this browser');
+        ws = router;
+        return router;
     });
 })();
 
@@ -270,14 +267,14 @@ function showWorkspaceSelector(onOpen) {
 
     footer.appendChild(favBtn);
     // Without a server: folders from this computer are added (mounted) here
-    if (isLocal() && localServer.LocalFS.canPickFolders()) {
+    if (vfs.canPickFolders()) {
         const addBtn = document.createElement('button');
         addBtn.textContent = '+ Add folder\u2026';
         addBtn.title = 'Open a folder from this computer';
         addBtn.style.cssText = favBtn.style.cssText;
         addBtn.onclick = async () => {
             try {
-                navigateTo(await localServer.LocalFS.addFolder());
+                navigateTo(await vfs.addFolder());
             } catch (err) {
                 if (err.name !== 'AbortError') listContainer.innerHTML = `<div style="padding:16px;color:red;">${err.message}</div>`;
             }
@@ -520,7 +517,7 @@ function isConnected() {
     return ws && ws.readyState === WebSocket.OPEN;
 }
 
-// Whether the page stands in for the server (local folders, see local-server.js)
+// Whether there is no server (only the browser's own files, see vfs.js)
 function isLocal() {
     return !!(ws && ws.local);
 }
@@ -535,7 +532,7 @@ module.exports = {
     sendPreviewFiles,
     isConnected,
     isLocal,
-    localFS: localServer.LocalFS,
+    vfs,
     addMessageListener,
     removeMessageListener,
 };

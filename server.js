@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const { realPath } = require('./virtual-path');
 const fs = require('fs');
 const archiver = require('archiver');
 const { WebSocketServer } = require('ws');
@@ -103,7 +104,7 @@ require('./cdn-apps').register(app);
 
 // Serve raw files from the workspace directory
 app.get('/workspace-file', (req, res) => {
-  const filePath = req.query.path;
+  const filePath = realPath(req.query.path);
   if (!filePath) return res.status(400).send('Missing path parameter');
 
   const resolved = path.resolve(filePath);
@@ -116,7 +117,7 @@ app.get('/workspace-file', (req, res) => {
 // Upload a file: the request body, streamed to disk. Folders on the way are
 // created (folder uploads); an existing file is kept unless overwrite=1
 app.put('/upload-file', (req, res) => {
-  const filePath = req.query.path;
+  const filePath = realPath(req.query.path);
   if (!filePath || !path.isAbsolute(filePath)) return res.status(400).json({ error: 'Missing or relative path' });
   const resolved = path.resolve(filePath);
   if (!req.query.overwrite && fs.existsSync(resolved)) return res.status(409).json({ error: 'already exists' });
@@ -146,7 +147,7 @@ app.put('/upload-file', (req, res) => {
 
 // Download a single file
 app.get('/download-file', (req, res) => {
-  const filePath = req.query.path;
+  const filePath = realPath(req.query.path);
   if (!filePath) return res.status(400).send('Missing path parameter');
   const resolved = path.resolve(filePath);
   res.download(resolved, path.basename(resolved), (err) => {
@@ -156,7 +157,7 @@ app.get('/download-file', (req, res) => {
 
 // Download a directory as a zip
 app.get('/download-dir', (req, res) => {
-  const dirPath = req.query.path;
+  const dirPath = realPath(req.query.path);
   if (!dirPath) return res.status(400).send('Missing path parameter');
   const resolved = path.resolve(dirPath);
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {

@@ -274,7 +274,7 @@ async function initBrowseMode(root, deps) {
     addFolderBtn.hidden = true;
     addFolderBtn.onclick = async () => {
         try {
-            await navigate(await wsClient.localFS.addFolder());
+            await navigate(await wsClient.vfs.addFolder());
         } catch (err) {
             if (err.name !== 'AbortError') alert('Could not open the folder: ' + err.message);
         }
@@ -297,7 +297,7 @@ async function initBrowseMode(root, deps) {
     let uploading = false;
 
     function putFile(file, path, overwrite, onProgress) {
-        if (wsClient.isLocal()) return putLocalFile(file, path, overwrite, onProgress);
+        if (!wsClient.vfs.isServerPath(path)) return putLocalFile(file, path, overwrite, onProgress);
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', `upload-file?path=${encodeURIComponent(path)}${overwrite ? '&overwrite=1' : ''}`);
@@ -314,11 +314,11 @@ async function initBrowseMode(root, deps) {
         });
     }
 
-    // Without a server: written straight into the local folder
+    // Not to the server: written straight into the browser's folder or the shell's namespace
     async function putLocalFile(file, path, overwrite, onProgress) {
-        const fs = wsClient.localFS;
+        const fs = wsClient.vfs;
         if (!overwrite && await fs.exists(path)) return 'exists';
-        await fs.writeFile(path, file, { parents: true });
+        await fs.write(path, file, { parents: true });
         onProgress(file.size);
         return 'ok';
     }
@@ -562,7 +562,7 @@ async function initBrowseMode(root, deps) {
                 render();
             });
             actionButton('\u2B07', 'Download', () => {
-                if (one.type === 'directory' && wsClient.isLocal()) alert('Downloading a folder needs the server');
+                if (one.type === 'directory' && !wsClient.vfs.isServerPath(absPath(one.name))) alert('Only folders on the server can be downloaded (as a zip)');
                 else if (one.type === 'directory') location.href = '/download-dir?path=' + encodeURIComponent(absPath(one.name));
                 else downloadFile(absPath(one.name)).catch(err => alert(`Could not download ${one.name}: ${err.message}`));
             }, { disabled: !one || (readOnly && one.type === 'directory') });
@@ -585,8 +585,9 @@ async function initBrowseMode(root, deps) {
             }, { disabled: !names.length });
             actionButton('\uD83D\uDDD1', 'Move to Trash', async () => {
                 const what = names.length === 1 ? names[0] : names.length + ' items';
-                if (wsClient.isLocal() ? !confirm(`Delete ${what}? Without the server there is no Trash: this cannot be undone. (A folder added with "Add folder" is only removed from the list.)`)
-                    : !confirm(`Move ${what} to Trash?`)) return;
+                const toTrash = names.every(n => wsClient.vfs.isServerPath(absPath(n)));
+                if (toTrash ? !confirm(`Move ${what} to Trash?`)
+                    : !confirm(`Delete ${what}? Only the server has a Trash: files elsewhere cannot be brought back. (A folder added with "Add folder" is only removed from the list.)`)) return;
                 await runOp({ type: 'trashPaths', paths: names.map(absPath) });
             }, { disabled: !names.length, danger: true });
             actionButton('\u2715', 'Done', () => setSelectMode(false));
@@ -639,23 +640,24 @@ async function initBrowseMode(root, deps) {
         return null;
     }
 
-    // Without a server the top level holds the local folders: nothing is created there
-    function isLocalRoot() {
-        return wsClient.isLocal() && cwd === '/';
+    // The top level: the in-browser shell's namespace, with the mounts
+    function isRoot() {
+        return cwd === '/';
     }
 
     function render() {
         hiddenBtn.classList.toggle('on', showHidden);
-        mkdirBtn.hidden = newBtn.hidden = uploadBtn.hidden = readOnly || isLocalRoot();
+        mkdirBtn.hidden = newBtn.hidden = uploadBtn.hidden = readOnly;
         viewBtn.textContent = view === 'list' ? '▦' : '☰';
         upBtn.disabled = !parent || parent === cwd;
         renderActions();
         list.innerHTML = '';
         list.classList.toggle('bm-grid', view === 'grid');
-        if (isLocalRoot()) {
-            const note = el('div', 'bm-empty', wsClient.localFS.canPickFolders()
-                ? 'No server here: files live in this browser (Browser storage) or in folders from this computer you add with "+ Add folder".'
-                : 'No server here: files live in this browser (Browser storage). This browser cannot open folders from the computer; upload files into Browser storage instead.');
+        if (isRoot()) {
+            const note = el('div', 'bm-empty', 'The in-browser shell\'s files (gone on reload), with '
+                + (wsClient.isLocal() ? '' : 'the server\'s in server, ')
+                + 'Browser storage (kept in this browser)'
+                + (wsClient.vfs.canPickFolders() ? ' and folders from this computer ("+ Add folder").' : '. This browser cannot open folders from the computer.'));
             note.style.gridColumn = '1 / -1';
             list.appendChild(note);
         }
@@ -677,7 +679,7 @@ async function initBrowseMode(root, deps) {
         for (const f of shown) {
             const row = el('div', 'bm-row');
             const isDir = f.type === 'directory' || (isArchiveName(f.name) && f.type === 'file' && !f.encrypted && !isFlStudioProject(f));
-            const ico = el('div', 'bm-ico', f.mount ? (f.mount === 'storage' ? '\uD83D\uDCBE' : '\uD83D\uDDC2\uFE0F') : f.type === 'directory' ? ICONS.dir : (ICON_BY_EXT[extOf(f.name)] || ICONS.text));
+            const ico = el('div', 'bm-ico', f.mount ? (f.mount === 'storage' ? '\uD83D\uDCBE' : f.mount === 'server' ? '\uD83D\uDDA5\uFE0F' : '\uD83D\uDDC2\uFE0F') : f.type === 'directory' ? ICONS.dir : (ICON_BY_EXT[extOf(f.name)] || ICONS.text));
             const txt = el('div', 'bm-txt');
             txt.appendChild(el('div', 'bm-name', f.name + (f.symlink ? ' →' : '')));
             txt.appendChild(el('div', 'bm-meta', (f.type === 'directory' ? '' : fmtSize(f.size) + ' · ') + fmtDate(f.mtimeMs)));
@@ -771,7 +773,7 @@ async function initBrowseMode(root, deps) {
             filter = '';
             filterInput.value = '';
         }
-        addFolderBtn.hidden = !isLocalRoot() || !wsClient.localFS.canPickFolders();
+        addFolderBtn.hidden = !isRoot() || !wsClient.vfs.canPickFolders();
         renderCrumbs();
         render();
         if (changedDir) list.scrollTop = 0;
@@ -878,7 +880,7 @@ async function initBrowseMode(root, deps) {
             const dlPath = cwd.replace(/\/$/, '') + '/' + info.file.name;
             dl.href = '/download-file?path=' + encodeURIComponent(dlPath);
             dl.onclick = (e) => {
-                if (!readOnly && !wsClient.isLocal()) return; // a real file on the server: the link itself
+                if (!readOnly && wsClient.vfs.isServerPath(dlPath)) return; // a file on the server: the link itself
                 e.preventDefault();
                 downloadFile(dlPath).catch(err => alert(`Could not download ${info.file.name}: ${err.message}`));
             };

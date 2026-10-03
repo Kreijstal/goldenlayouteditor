@@ -43,8 +43,8 @@ self.addEventListener('message', (event) => {
     const { type, fileName, content } = event.data;
     
     switch (type) {
-        case 'localFsChanged': // the page switched to or from running without a server
-            LocalFS.reloadEnabled();
+        case 'localFsChanged': // a folder was added or removed
+            LocalFS.forgetMountNames();
             break;
         case 'updateFile':
             files.set(fileName, content || '');
@@ -70,10 +70,13 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    const local = LocalFS.pathOf(event.request);
-    // (with a server, as soon as that is known, the request goes straight through)
-    if (local && LocalFS.knownEnabled() !== false) {
-        event.respondWith(LocalFS.isEnabled().then(on => (on ? LocalFS.respond(event.request, local) : null)).then(r => r || netFetch0(event.request)));
+    // Files on the browser's own folders (public/local-fs.js); the rest goes on
+    // to the server (paths under /server too: it takes those)
+    const target = LocalFS.pathOf(event.request);
+    if (target && LocalFS.mayBeMount(target.path)) {
+        event.respondWith(LocalFS.mountTarget(event.request)
+            .then(t => (t ? LocalFS.respond(event.request, t) : null))
+            .then(r => r || netFetch0(event.request)));
         return;
     }
 
