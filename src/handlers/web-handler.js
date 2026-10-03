@@ -300,6 +300,8 @@ function getFileType(fileName) {
             return 'javascript';
         case 'json':
             return 'json';
+        case 'fxg': // Flash XML Graphics
+            return 'xml';
         default: {
             // Everything else by Ace's own extension table; the mode file itself
             // is fetched from esm.sh when first used (see main.js)
@@ -329,6 +331,8 @@ function getAceMode(fileName) {
             return 'javascript';
         case 'json':
             return 'json';
+        case 'fxg': // Flash XML Graphics
+            return 'xml';
         default: {
             // Everything else by Ace's own extension table; the mode file itself
             // is fetched from esm.sh when first used (see main.js)

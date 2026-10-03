@@ -51,6 +51,7 @@ require('./fla-viewer-plugin');
 require('./mathematica-plugin');
 require('./bpmn-plugin');
 require('./gpx-plugin');
+require('./fxg-plugin');
 require('./flp-plugin');
 require('./emulator-plugin');
 require('./gpg-plugin');
@@ -1623,7 +1624,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'webp', 'ico', 'tiff'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tiff'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
@@ -2729,6 +2730,8 @@ const FILE_VIEWERS = [
     // Animated PNG: the frame viewer for .apng; for .png (animated or not, unknown until read) a choice after the editor
     { re: /\.xcf$/i, componentType: 'xcfViewer', tag: 'layers', prefix: 'xcf-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
+    // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
+    { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },
     { re: /\.vcut$/i, componentType: 'videoCut', tag: 'video editor', prefix: 'vcut-' },
     { re: /\.apng$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-' },
     { re: /\.(png|jxl)$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-', afterEditor: true },

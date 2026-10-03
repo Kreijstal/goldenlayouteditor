@@ -58,7 +58,7 @@ const ICONS = {
     archive: '📦', code: '📜', text: '📄', dir: '📁',
 };
 const ICON_BY_EXT = {};
-for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'psd', 'xcf', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
+for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'fxg', 'psd', 'xcf', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
 for (const e of ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', '3gp', 'vcut']) ICON_BY_EXT[e] = ICONS.video;
 for (const e of ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus']) ICON_BY_EXT[e] = ICONS.audio;
 for (const e of ['zip', 'tar', 'gz', 'xz', 'bz2', '7z', 'rar', 'zst', 'iso']) ICON_BY_EXT[e] = ICONS.archive;
