@@ -212,7 +212,7 @@ function register(app) {
         const root = m && decodeRoot(m[1]);
         const abs = root && inside(root, decodeURIComponent(req.path));
         if (!abs) return next();
-        fs.stat(abs, (err, st) => (err || !st.isFile() ? next() : res.sendFile(abs)));
+        fs.stat(abs, (err, st) => (err || !st.isFile() ? next() : res.sendFile(abs, { dotfiles: 'allow' })));
     });
     const statics = cdn.serve('jupyterlite');
     app.use('/jupyterlite/r/:root', (req, res, next) => {
@@ -237,7 +237,7 @@ function register(app) {
                     res.set('Cache-Control', 'no-store').type('application/x-ipynb+json').send(JSON.stringify(nb));
                 });
             }
-            return res.sendFile(abs, { headers: { 'Cache-Control': 'no-store' } }, err => {
+            return res.sendFile(abs, { dotfiles: 'allow', headers: { 'Cache-Control': 'no-store' } }, err => {
                 if (err && !res.headersSent) res.status(404).send('Not found');
             });
         }

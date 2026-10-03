@@ -154,7 +154,8 @@ app.get('/workspace-file', (req, res) => {
   if (!filePath) return res.status(400).send('Missing path parameter');
 
   const resolved = path.resolve(filePath);
-  res.sendFile(resolved, (err) => {
+  // dotfiles: a path through a dot-folder (~/.config/x, repo/.work/y) is still a file to open
+  res.sendFile(resolved, { dotfiles: 'allow' }, (err) => {
     // also called when the client aborts mid-transfer; answering then would throw
     if (err && !res.headersSent) res.status(404).send('Not found');
   });
@@ -196,7 +197,7 @@ app.get('/download-file', (req, res) => {
   const filePath = realPath(req.query.path);
   if (!filePath) return res.status(400).send('Missing path parameter');
   const resolved = path.resolve(filePath);
-  res.download(resolved, path.basename(resolved), (err) => {
+  res.download(resolved, path.basename(resolved), { dotfiles: 'allow' }, (err) => {
     if (err && !res.headersSent) res.status(404).send('Not found');
   });
 });
