@@ -253,7 +253,7 @@ const serviceWorkerReady = new Promise((resolve) => {
 
 // --- WebSocket Client (optional, for server-enhanced mode) ---
 const wsClient = require('./ws-client');
-const { resolveFileUrl, addMemoryFile: addMemoryFileBytes, removeMemoryFile: removeMemoryFileBytes } = require('./archive-fallback');
+const { resolveFileUrl, downloadFile, addMemoryFile: addMemoryFileBytes, removeMemoryFile: removeMemoryFileBytes } = require('./archive-fallback');
 const { displayableImageUrl } = require('./jxl');
 const { attachSubtitles } = require('./subtitles');
 
@@ -2030,6 +2030,10 @@ class ProjectFilesComponent {
             if (relPath && currentWorkspacePath) {
                 menu.appendChild(menuItem('Download', '#ddd', () => {
                     const fullPath = currentWorkspacePath + '/' + relPath;
+                    if (wsClient.isLocal()) { // no server to download from
+                        downloadFile(fullPath).catch(err => alert('Could not download: ' + err.message));
+                        return;
+                    }
                     const a = document.createElement('a');
                     a.href = '/download-file?path=' + encodeURIComponent(fullPath);
                     a.download = '';
@@ -2043,7 +2047,7 @@ class ProjectFilesComponent {
         if (!fileId && dirNode && currentWorkspacePath) {
             const dirPath = this._getDirPath(dirNode);
             const fullDirPath = currentWorkspacePath + (dirPath ? '/' + dirPath : '');
-            menu.appendChild(menuItem('Download as Zip', '#ddd', () => {
+            if (!wsClient.isLocal()) menu.appendChild(menuItem('Download as Zip', '#ddd', () => {
                 const a = document.createElement('a');
                 a.href = '/download-dir?path=' + encodeURIComponent(fullDirPath);
                 a.download = '';

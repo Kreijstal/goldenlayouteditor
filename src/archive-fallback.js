@@ -12,6 +12,9 @@
 // that is never on disk, and their /workspace-file URLs are answered from
 // memory by fetch() and resolveFileUrl(), so their bytes never reach the server.
 
+// Without a server, files on local folders (public/local-fs.js) are answered by the page too
+const LocalFS = require('../public/local-fs.js');
+
 const ARCHIVE_URL_RE = /\/(workspace-file|download-file|zip-list)\?/;
 const BLOB_URL_LIMIT = 64;
 
@@ -125,6 +128,13 @@ function isArchiveFileUrl(url) {
 // A URL for an element's src (or anything else the page's fetch() doesn't
 // reach): unchanged, unless the page answers archive paths itself
 async function resolveFileUrl(url) {
+    // A local file (no server): a blob: URL onto the file itself, nothing copied. The
+    // service worker can't answer navigations outside its scope (iframes, on a host
+    // that serves the editor from a subfolder), so viewers get this instead
+    if (LocalFS.active && url && /\/workspace-file\?/.test(url) && !isArchiveFileUrl(url) && !memoryPathOf(url)) {
+        const p = new URL(url, location.href).searchParams.get('path');
+        return localBlobUrl(p);
+    }
     const memPath = url && memoryPathOf(url);
     if (memPath) {
         const entry = memoryFiles.get(memPath);
@@ -147,20 +157,49 @@ async function resolveFileUrl(url) {
     return blobUrl;
 }
 
+// blob: URLs of local files, a few kept (path -> { url, lastModified })
+const localBlobs = new Map();
+async function localBlobUrl(p) {
+    const file = await LocalFS.file(p);
+    const known = localBlobs.get(p);
+    if (known && known.lastModified === file.lastModified && known.size === file.size) return known.url;
+    if (known) URL.revokeObjectURL(known.url);
+    // Typed by its name, as the server would, for viewers that look at the type
+    const typed = file.type ? file : new File([file], file.name, { type: LocalFS.mimeOf(file.name), lastModified: file.lastModified });
+    const entry = { url: URL.createObjectURL(typed), lastModified: file.lastModified, size: file.size };
+    localBlobs.delete(p);
+    localBlobs.set(p, entry);
+    if (localBlobs.size > BLOB_URL_LIMIT) {
+        const [oldest, old] = localBlobs.entries().next().value;
+        localBlobs.delete(oldest);
+        URL.revokeObjectURL(old.url);
+    }
+    return entry.url;
+}
+
 // Download a file; one inside an archive is read by the page when it answers
 // archive paths itself (the server can't look inside archives)
 async function downloadFile(path) {
     if (isMemoryPath(path)) throw new Error('decrypted contents are not saved');
     const url = '/download-file?path=' + encodeURIComponent(path);
-    if (!pageFallback || !isArchiveFileUrl(url)) {
+    if (LocalFS.active && !isArchiveFileUrl(url)) {
+        saveBlob(await LocalFS.file(path), path);
+        return;
+    }
+    if (LocalFS.active) await ensureArchiveAccess(); // no server to send the browser to
+    else if (!pageFallback || !isArchiveFileUrl(url)) {
         location.href = url;
         return;
     }
-    await pageFallback;
+    else await pageFallback;
     const resp = await window.fetch(url);
     if (!resp.ok) throw new Error(await resp.text() || `HTTP ${resp.status}`);
+    saveBlob(await resp.blob(), path);
+}
+
+function saveBlob(blob, path) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(await resp.blob());
+    a.href = URL.createObjectURL(blob);
     a.download = path.slice(path.lastIndexOf('/') + 1);
     document.body.appendChild(a);
     a.click();

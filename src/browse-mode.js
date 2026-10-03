@@ -268,7 +268,18 @@ async function initBrowseMode(root, deps) {
         uploadInput.value = '';
         uploadFiles(picked);
     };
-    tools.append(filterInput, sortSelect, selectBtn, newBtn, mkdirBtn, uploadBtn, uploadInput);
+    // Without a server: folders from this computer are added at the top level
+    const addFolderBtn = el('button', 'bm-btn', '+ Add folder');
+    addFolderBtn.title = 'Open a folder from this computer';
+    addFolderBtn.hidden = true;
+    addFolderBtn.onclick = async () => {
+        try {
+            await navigate(await wsClient.localFS.addFolder());
+        } catch (err) {
+            if (err.name !== 'AbortError') alert('Could not open the folder: ' + err.message);
+        }
+    };
+    tools.append(filterInput, sortSelect, selectBtn, newBtn, mkdirBtn, uploadBtn, uploadInput, addFolderBtn);
 
     const list = el('div', 'bm-list');
     const actions = el('div', 'bm-actions');
@@ -286,6 +297,7 @@ async function initBrowseMode(root, deps) {
     let uploading = false;
 
     function putFile(file, path, overwrite, onProgress) {
+        if (wsClient.isLocal()) return putLocalFile(file, path, overwrite, onProgress);
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', `upload-file?path=${encodeURIComponent(path)}${overwrite ? '&overwrite=1' : ''}`);
@@ -300,6 +312,15 @@ async function initBrowseMode(root, deps) {
             xhr.onerror = () => reject(new Error('network error'));
             xhr.send(file);
         });
+    }
+
+    // Without a server: written straight into the local folder
+    async function putLocalFile(file, path, overwrite, onProgress) {
+        const fs = wsClient.localFS;
+        if (!overwrite && await fs.exists(path)) return 'exists';
+        await fs.writeFile(path, file, { parents: true });
+        onProgress(file.size);
+        return 'ok';
     }
 
     async function uploadFiles(items) {
@@ -541,7 +562,8 @@ async function initBrowseMode(root, deps) {
                 render();
             });
             actionButton('\u2B07', 'Download', () => {
-                if (one.type === 'directory') location.href = '/download-dir?path=' + encodeURIComponent(absPath(one.name));
+                if (one.type === 'directory' && wsClient.isLocal()) alert('Downloading a folder needs the server');
+                else if (one.type === 'directory') location.href = '/download-dir?path=' + encodeURIComponent(absPath(one.name));
                 else downloadFile(absPath(one.name)).catch(err => alert(`Could not download ${one.name}: ${err.message}`));
             }, { disabled: !one || (readOnly && one.type === 'directory') });
             if (readOnly) {
@@ -563,7 +585,8 @@ async function initBrowseMode(root, deps) {
             }, { disabled: !names.length });
             actionButton('\uD83D\uDDD1', 'Move to Trash', async () => {
                 const what = names.length === 1 ? names[0] : names.length + ' items';
-                if (!confirm(`Move ${what} to Trash?`)) return;
+                if (wsClient.isLocal() ? !confirm(`Delete ${what}? Without the server there is no Trash: this cannot be undone. (A folder added with "Add folder" is only removed from the list.)`)
+                    : !confirm(`Move ${what} to Trash?`)) return;
                 await runOp({ type: 'trashPaths', paths: names.map(absPath) });
             }, { disabled: !names.length, danger: true });
             actionButton('\u2715', 'Done', () => setSelectMode(false));
@@ -616,14 +639,26 @@ async function initBrowseMode(root, deps) {
         return null;
     }
 
+    // Without a server the top level holds the local folders: nothing is created there
+    function isLocalRoot() {
+        return wsClient.isLocal() && cwd === '/';
+    }
+
     function render() {
         hiddenBtn.classList.toggle('on', showHidden);
-        mkdirBtn.hidden = newBtn.hidden = uploadBtn.hidden = readOnly;
+        mkdirBtn.hidden = newBtn.hidden = uploadBtn.hidden = readOnly || isLocalRoot();
         viewBtn.textContent = view === 'list' ? '▦' : '☰';
         upBtn.disabled = !parent || parent === cwd;
         renderActions();
         list.innerHTML = '';
         list.classList.toggle('bm-grid', view === 'grid');
+        if (isLocalRoot()) {
+            const note = el('div', 'bm-empty', wsClient.localFS.canPickFolders()
+                ? 'No server here: files live in this browser (Browser storage) or in folders from this computer you add with "+ Add folder".'
+                : 'No server here: files live in this browser (Browser storage). This browser cannot open folders from the computer; upload files into Browser storage instead.');
+            note.style.gridColumn = '1 / -1';
+            list.appendChild(note);
+        }
         if (thumbIO) thumbIO.disconnect();
         thumbIO = view === 'grid' ? new IntersectionObserver((entries) => {
             for (const entry of entries) {
@@ -642,7 +677,7 @@ async function initBrowseMode(root, deps) {
         for (const f of shown) {
             const row = el('div', 'bm-row');
             const isDir = f.type === 'directory' || (isArchiveName(f.name) && f.type === 'file' && !f.encrypted && !isFlStudioProject(f));
-            const ico = el('div', 'bm-ico', f.type === 'directory' ? ICONS.dir : (ICON_BY_EXT[extOf(f.name)] || ICONS.text));
+            const ico = el('div', 'bm-ico', f.mount ? (f.mount === 'storage' ? '\uD83D\uDCBE' : '\uD83D\uDDC2\uFE0F') : f.type === 'directory' ? ICONS.dir : (ICON_BY_EXT[extOf(f.name)] || ICONS.text));
             const txt = el('div', 'bm-txt');
             txt.appendChild(el('div', 'bm-name', f.name + (f.symlink ? ' →' : '')));
             txt.appendChild(el('div', 'bm-meta', (f.type === 'directory' ? '' : fmtSize(f.size) + ' · ') + fmtDate(f.mtimeMs)));
@@ -736,6 +771,7 @@ async function initBrowseMode(root, deps) {
             filter = '';
             filterInput.value = '';
         }
+        addFolderBtn.hidden = !isLocalRoot() || !wsClient.localFS.canPickFolders();
         renderCrumbs();
         render();
         if (changedDir) list.scrollTop = 0;
@@ -842,7 +878,7 @@ async function initBrowseMode(root, deps) {
             const dlPath = cwd.replace(/\/$/, '') + '/' + info.file.name;
             dl.href = '/download-file?path=' + encodeURIComponent(dlPath);
             dl.onclick = (e) => {
-                if (!readOnly) return; // a real file: the link itself
+                if (!readOnly && !wsClient.isLocal()) return; // a real file on the server: the link itself
                 e.preventDefault();
                 downloadFile(dlPath).catch(err => alert(`Could not download ${info.file.name}: ${err.message}`));
             };
@@ -976,7 +1012,7 @@ async function initBrowseMode(root, deps) {
     // --- Start ---
     const socket = await wsClient.wsReady;
     if (!socket) {
-        list.appendChild(el('div', 'bm-empty', 'File browser needs the server (WebSocket not connected).'));
+        list.appendChild(el('div', 'bm-empty', 'File browser needs the server (WebSocket not connected), or a browser that can open local folders.'));
         return;
     }
     const start = new URLSearchParams(location.search).get('browse');

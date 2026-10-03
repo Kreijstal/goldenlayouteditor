@@ -2,6 +2,7 @@
 const { createLogger, setWsSender, setEnabled } = require('./debug');
 const { renderTree } = require('./tree-renderer');
 const { isMemoryPath } = require('./archive-fallback');
+const localServer = require('./local-server');
 const logger = createLogger('WS');
 const log = logger.log.bind(logger);
 const warn = logger.warn.bind(logger);
@@ -53,7 +54,19 @@ function connectWebSocket(url) {
         wsUrl = `${proto}//${window.location.host}/ws`;
     }
 
-    wsReady = connectWebSocket(wsUrl);
+    // No server (a static host such as GitHub Pages): the page plays it, on local folders
+    wsReady = connectWebSocket(wsUrl).then(async (socket) => {
+        if (socket) {
+            localServer.stop();
+            return socket;
+        }
+        const local = await localServer.start().catch((err) => { warn('Local folders unavailable:', err); return null; });
+        if (local) {
+            log('No server: using local folders');
+            ws = local;
+        }
+        return local;
+    });
 })();
 
 // --- Request/response handling ---
@@ -256,6 +269,21 @@ function showWorkspaceSelector(onOpen) {
     cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff;';
 
     footer.appendChild(favBtn);
+    // Without a server: folders from this computer are added (mounted) here
+    if (isLocal() && localServer.LocalFS.canPickFolders()) {
+        const addBtn = document.createElement('button');
+        addBtn.textContent = '+ Add folder\u2026';
+        addBtn.title = 'Open a folder from this computer';
+        addBtn.style.cssText = favBtn.style.cssText;
+        addBtn.onclick = async () => {
+            try {
+                navigateTo(await localServer.LocalFS.addFolder());
+            } catch (err) {
+                if (err.name !== 'AbortError') listContainer.innerHTML = `<div style="padding:16px;color:red;">${err.message}</div>`;
+            }
+        };
+        footer.appendChild(addBtn);
+    }
     footer.appendChild(cancelBtn);
     footer.appendChild(openBtn);
     modal.appendChild(footer);
@@ -473,14 +501,16 @@ function showWorkspaceSelector(onOpen) {
         }
     };
 
-    // Start with history view
-    showHistory();
+    // Start with history view; without a server, with the folders there are
+    if (isLocal() && !_loadWorkspaceHistory().recent.length) navigateTo('/');
+    else showHistory();
 }
 
 // --- Send preview files via WS ---
 
 async function sendPreviewFiles(files) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    // Without a server the service worker serves the preview
+    if (!ws || ws.readyState !== WebSocket.OPEN || ws.local) return false;
     log('Sending preview files:', Object.keys(files).length, 'files');
     await wsRequest({ type: 'updateFiles', files });
     return true;
@@ -488,6 +518,11 @@ async function sendPreviewFiles(files) {
 
 function isConnected() {
     return ws && ws.readyState === WebSocket.OPEN;
+}
+
+// Whether the page stands in for the server (local folders, see local-server.js)
+function isLocal() {
+    return !!(ws && ws.local);
 }
 
 module.exports = {
@@ -499,6 +534,8 @@ module.exports = {
     showWorkspaceSelector,
     sendPreviewFiles,
     isConnected,
+    isLocal,
+    localFS: localServer.LocalFS,
     addMessageListener,
     removeMessageListener,
 };

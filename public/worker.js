@@ -1,4 +1,8 @@
 // Service Worker for serving files dynamically (offline-capable)
+importScripts('local-fs.js'); // local folders when there is no server: LocalFS
+// Reads of the outermost archive (zip-sw.js's netFetch) reach local folders too
+const netFetch0 = self.fetch.bind(self);
+self.fetch = (input, init) => LocalFS.localFetch(input, init, netFetch0);
 importScripts('zip-sw.js'); // read-only zip browsing: handleZipFetch()
 let files = new Map(); // Store all files by filename
 
@@ -39,6 +43,9 @@ self.addEventListener('message', (event) => {
     const { type, fileName, content } = event.data;
     
     switch (type) {
+        case 'localFsChanged': // the page switched to or from running without a server
+            LocalFS.reloadEnabled();
+            break;
         case 'updateFile':
             files.set(fileName, content || '');
             console.log(`[ServiceWorker] File content updated for ${fileName}`);
@@ -60,6 +67,13 @@ self.addEventListener('fetch', (event) => {
     const zipResponse = handleZipFetch(event.request);
     if (zipResponse) {
         event.respondWith(zipResponse);
+        return;
+    }
+
+    const local = LocalFS.pathOf(event.request);
+    // (with a server, as soon as that is known, the request goes straight through)
+    if (local && LocalFS.knownEnabled() !== false) {
+        event.respondWith(LocalFS.isEnabled().then(on => (on ? LocalFS.respond(event.request, local) : null)).then(r => r || netFetch0(event.request)));
         return;
     }
 
