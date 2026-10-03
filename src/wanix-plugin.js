@@ -24,7 +24,8 @@ const WANIX_URL = `https://cdn.jsdelivr.net/npm/wanix@${WANIX_VERSION}/dist/wani
 // The kernel built with Go, not the default TinyGo one: under TinyGo, opening
 // a file that is not there yet with O_CREATE fails, so the shell cannot make files
 const KERNEL_URL = `https://cdn.jsdelivr.net/npm/wanix@${WANIX_VERSION}/dist/wanix.debug.wasm`;
-const RC_URL = `https://cdn.jsdelivr.net/npm/wanix-extras@${WANIX_VERSION}/dist/rc.wasm`;
+// rc, built from Wanix's sources with a fix by scripts/build-wanix.sh (npm run build:wanix)
+const RC_URL = 'wanix-rc.wasm';
 const NS_ID = 'gle-wanix';
 const OPFS_DIR = 'Browser storage'; // LocalFS.OPFS_NAME
 const PROJECT = 'project';
@@ -39,10 +40,34 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 // ---- the namespace ----
 let booting = null;
 
+// Two bugs of Wanix's worker for Go programs (gojs/worker/worker.js, in 0.4.0-rc2
+// and its main branch), fixed in its source as the kernel makes the worker
+// from it: a #device path is put under the current folder like any relative
+// one, so rc starts no program from a folder other than /; and a program named
+// by an absolute path (/bin/clang, as rc's PATH lookup gives) is not found
+function patchGoWorker() {
+    if (window.Blob.gleGoWorker) return;
+    const NativeBlob = window.Blob;
+    window.Blob = new Proxy(NativeBlob, {
+        construct(target, [parts, options], newTarget) {
+            if (Array.isArray(parts) && parts.length === 1 && typeof parts[0] === 'string' && parts[0].includes('gojs worker started')) {
+                parts = [parts[0]
+                    .replace('if (!path.startsWith("/")) {', 'if (!path.startsWith("/") && !path.startsWith("#")) {')
+                    .replace('fs.readFile(args[0])', 'fs.readFile(args[0].replace(/^\\/+/, ""))')];
+            }
+            return Reflect.construct(target, [parts, options], newTarget);
+        },
+        get(target, key) {
+            return key === 'gleGoWorker' ? true : Reflect.get(target, key);
+        },
+    });
+}
+
 function bootWanix(onProgress) {
     if (booting) return booting;
     booting = (async () => {
         onProgress('Loading Wanix…');
+        patchGoWorker();
         await import(WANIX_URL);
         const ns = document.createElement('wanix-namespace');
         ns.id = NS_ID;
@@ -75,6 +100,11 @@ function copyProjectIn(root, onProgress) {
         copying.catch(() => { copying = null; });
     }
     return copying;
+}
+
+// A path in a folder of the namespace ('.' is its top)
+function inDir(dir, rel) {
+    return dir === '.' || !dir ? rel : `${dir}/${rel}`;
 }
 
 // Wanix's makeDirAll fails when it has more than one folder to make
@@ -166,7 +196,7 @@ const sync = {
         try { entries = await root.readDir(dir); } catch (e) { return; }
         for (const name of entries || []) {
             if (name.endsWith('/')) {
-                if (!SKIP_DIR_RE.test(name.slice(0, -1))) await this.walk(root, `${dir}/${name.slice(0, -1)}`, rel + name, out);
+                if (!SKIP_DIR_RE.test(name.slice(0, -1))) await this.walk(root, inDir(dir, name.slice(0, -1)), rel + name, out);
             } else {
                 out.push(rel + name);
             }
@@ -252,33 +282,241 @@ function asText(bytes) {
     try { return decoder.decode(bytes); } catch (e) { return null; }
 }
 
-// ---- commands run here rather than by rc ----
-// rc can only start Go programs, so a line naming an LLVM tool (from YoWASP:
-// clang for C, C++ and LLVM IR to wasm32-wasip1) or a .wasm file (a WASI
-// program) is run by public/wasi-tools-worker.js instead, on a copy of the
-// shell's current folder; the files it makes or changes are written back, and
-// from there reach the project like any made in the shell. No stdin, and
-// paths must stay inside the current folder.
-const LLVM_TOOLS = new Set(['clang', 'clang++', 'wasm-ld', 'ar', 'ranlib', 'objdump', 'objcopy', 'strip', 'size', 'addr2line', 'c++filt']);
-const TOOLS_WORKER_URL = '/wasi-tools-worker.js';
+// ---- commands the page runs ----
+// rc in Wanix starts Go programs only, so the tools that run in the page are
+// /bin/<name> links to one Go program (scripts/wanix-command), which asks the
+// page to run <name> through gleTools below (#js/gleTools in the shell) and
+// passes its output and exit code on. Which names there are, and what each runs
+// as, is the table /etc/tools: the shell's own file, listed, read and changed
+// there like any other. The runners it names:
+//   llvm <tool>   an LLVM tool from YoWASP (clang for C, C++ and LLVM IR to
+//                 wasm32-wasip1), in public/wasi-tools-worker.js
+//   rust <cmd>    cargo or rustc, in Rubrc (src/rubrc-plugin.js)
+//   wasi          a WASI program: wasi prog.wasm [args]
+//   git           isomorphic-git, on the shell's files (src/wanix-git.js)
+// All but git run on a copy of the command's folder; the files it makes or changes are
+// written back, and from there reach the project like any made in the shell.
+// Paths must stay inside that folder.
+const COMMAND_URL = 'wanix-command.wasm';
+const COMMAND_PATH = 'lib/wanix-command.wasm';
+const TOOLS_TABLE = 'etc/tools';
+const DEFAULT_TOOLS = `# The shell's commands that run in the page: /bin/<name> for each line here,
+# made when a shell starts or one of them runs (so a line added here is a
+# command from then on). A line: <name> <runner> [what the runner runs]
+#   llvm <tool>   an LLVM tool from YoWASP (C, C++, LLVM IR to wasm32-wasip1)
+#   rust <cmd>    cargo or rustc, in Rubrc
+#   wasi          a WASI program (preview 1): wasi prog.wasm [args]
+#   git           isomorphic-git (git help); its settings: /etc/git/config
+# All but git work on a copy of the current folder: paths must stay inside it.
+clang      llvm clang
+clang++    llvm clang++
+wasm-ld    llvm wasm-ld
+ar         llvm ar
+ranlib     llvm ranlib
+objdump    llvm objdump
+objcopy    llvm objcopy
+strip      llvm strip
+size       llvm size
+addr2line  llvm addr2line
+c++filt    llvm c++filt
+cargo      rust cargo
+rustc      rust rustc
+wasi       wasi
+git        git
+`;
+const TOOLS_WORKER_URL = 'wasi-tools-worker.js';
 let toolsWorker = null;
+let toolsQueue = Promise.resolve(); // one command at a time in the worker
 
-// Words of a command line: blanks split, '…' quotes (rc's quoting)
-function splitWords(line) {
-    const words = [];
-    let word = null, quoted = false;
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (quoted) {
-            if (ch === "'" && line[i + 1] === "'") { word += "'"; i++; }
-            else if (ch === "'") quoted = false;
-            else word += ch;
-        } else if (ch === "'") { quoted = true; word = word || ''; }
-        else if (/\s/.test(ch)) { if (word !== null) words.push(word); word = null; }
-        else word = (word || '') + ch;
+// /etc/tools as { name: [runner, ...what it runs] }
+async function readTools(root) {
+    let text;
+    try { text = decoder.decode(await root.readFile(TOOLS_TABLE)); } catch (_) { return {}; }
+    const tools = {};
+    for (const line of text.split('\n')) {
+        const words = line.replace(/#.*/, '').trim().split(/\s+/).filter(Boolean);
+        if (words.length >= 2 && !words[0].includes('/')) tools[words[0]] = words.slice(1);
     }
-    if (word !== null) words.push(word);
-    return words;
+    return tools;
+}
+
+// /etc/tools (unless there), the program, and /bin/<name> for each line
+async function installTools(root) {
+    await makeDirs(root, 'etc');
+    await makeDirs(root, 'lib');
+    await makeDirs(root, 'bin');
+    try { await root.stat(TOOLS_TABLE); } catch (_) { await root.writeFile(TOOLS_TABLE, encoder.encode(DEFAULT_TOOLS)); }
+    try { await root.stat(COMMAND_PATH); } catch (_) {
+        const resp = await fetch(COMMAND_URL);
+        if (!resp.ok) throw new Error(`${COMMAND_URL}: HTTP ${resp.status}`);
+        await root.writeFile(COMMAND_PATH, new Uint8Array(await resp.arrayBuffer()));
+        await root.chmod(COMMAND_PATH, 0o755);
+    }
+    await linkTools(root);
+}
+
+async function linkTools(root) {
+    const have = new Set(((await root.readDir('bin').catch(() => [])) || []).map(n => n.replace(/\/$/, '')));
+    for (const name of Object.keys(await readTools(root))) {
+        if (!have.has(name)) await root.symlink('/' + COMMAND_PATH, `bin/${name}`).catch(err => log.warn('bin/' + name, err));
+    }
+}
+
+// The runners: (root, dir, words, io, done(code)) → { input(text), stop() }.
+// io: { out(text), err(text) }
+const runners = {
+    llvm: (root, dir, [tool, ...args], io, done) => runInWorker(root, dir, tool, args, io, done),
+    wasi: (root, dir, args, io, done) => {
+        if (args.length) return runInWorker(root, dir, 'wasi', args, io, done);
+        io.err('usage: wasi prog.wasm [args]\n');
+        done(2);
+        return { input: null, stop() {} };
+    },
+    rust: (root, dir, words, io, done) => runRust(root, dir, words, io, done),
+    git: (root, dir, args, io, done) => require('./wanix-git').gitRunner(root, dir, args, io, done, {
+        // This site's server, when it is one, passes git's requests on (server.js)
+        serverProxy: () => (ctx && ctx.wsClient && ctx.wsClient.isConnected() && !ctx.wsClient.isLocal() ? new URL('cors-proxy', document.baseURI).href : null),
+    }),
+};
+
+// A tool of public/wasi-tools-worker.js: an LLVM tool, or 'wasi' (args[0] the program)
+function runInWorker(root, dir, tool, args, io, done) {
+    let stopped = false;
+    const decoders = { 1: new TextDecoder(), 2: new TextDecoder() };
+    let progress = false;
+    const finish = code => {
+        if (stopped) return;
+        stopped = true;
+        if (progress) io.err('\r\x1b[K');
+        done(code);
+    };
+    const run = async () => {
+        const files = await readFolder(root, dir);
+        if (stopped) return;
+        if (!toolsWorker) toolsWorker = new Worker(TOOLS_WORKER_URL, { type: 'module' });
+        const worker = toolsWorker;
+        await new Promise(resolve => {
+            const end = code => { finish(code); resolve(); };
+            worker.onmessage = async ({ data }) => {
+                if (data.type === 'out') {
+                    const text = decoders[data.fd].decode(data.data, { stream: true });
+                    if (data.fd === 2) io.err(text); else io.out(text);
+                }
+                else if (data.type === 'progress') { progress = true; io.err(`\r\x1b[90m${data.text}\x1b[0m\x1b[K`); }
+                else if (data.type === 'error') { io.err(`\r\x1b[31m${tool === 'wasi' ? args[0] : tool}: ${data.message}\x1b[0m\n`); end(1); }
+                else if (data.type === 'done') {
+                    for (const [rel, bytes] of Object.entries(data.files)) {
+                        try {
+                            if (rel.includes('/')) await makeDirs(root, inDir(dir, rel.replace(/\/[^/]*$/, '')));
+                            await root.writeFile(inDir(dir, rel), bytes);
+                        } catch (err) {
+                            io.err(`Could not write ${rel}: ${err.message || err}\n`);
+                        }
+                    }
+                    end(data.code);
+                }
+            };
+            worker.onerror = () => end(1);
+            worker.postMessage({ type: 'run', tool, args, files });
+            stopWorker = () => { worker.terminate(); if (toolsWorker === worker) toolsWorker = null; end(130); };
+        });
+    };
+    let stopWorker = null;
+    toolsQueue = toolsQueue.then(run).catch(err => { io.err(`${tool}: ${err.message || err}\n`); finish(1); });
+    return {
+        input: null, // no stdin
+        stop() { if (stopWorker) stopWorker(); else finish(130); },
+    };
+}
+
+// cargo and rustc run in Rubrc, whose / is made to hold the folder; the builds
+// come back into it (target/…/*.wasm, which `wasi target/wasm32-wasip1/debug/app.wasm` runs)
+function runRust(root, dir, words, io, done) {
+    const { runRust: run } = require('./rubrc-plugin');
+    let handle = null, finished = false;
+    const finish = code => { if (!finished) { finished = true; done(code); } };
+    const line = words.map(w => (/^[\w@%+=:,./-]+$/.test(w) ? w : `'${w.replace(/'/g, `'\\''`)}'`)).join(' ');
+    (async () => {
+        const files = await readFolder(root, dir);
+        // The folder as a key for Rubrc's mirror: from the top of the project ('')
+        const key = dir === PROJECT ? '' : dir.startsWith(PROJECT + '/') ? dir.slice(PROJECT.length + 1) : '/' + dir;
+        handle = run(key, files, line, text => io.out(text), text => io.err(`\x1b[90m${text}\x1b[0m\n`));
+        const out = await handle.done;
+        for (const [rel, bytes] of Object.entries(out)) {
+            const path = inDir(dir, rel);
+            try {
+                const old = files[rel];
+                if (old && old.length === bytes.length && old.every((b, i) => b === bytes[i])) continue;
+                if (rel.includes('/')) await makeDirs(root, path.replace(/\/[^/]*$/, ''));
+                await root.writeFile(path, bytes);
+            } catch (err) {
+                io.err(`Could not write ${rel}: ${err.message || err}\n`);
+            }
+        }
+        finish(0);
+    })().catch(err => { io.err(`${words[0]}: ${err.message || err}\n`); finish(1); });
+    return {
+        input: data => { if (handle) handle.input(data); },
+        stop: () => { if (handle) handle.interrupt(); else finish(130); },
+    };
+}
+
+// What /bin/<name> calls (#js/gleTools/<function> in the shell; see
+// scripts/wanix-command/main.go for the encoding). Running commands are jobs.
+const jobs = new Map();
+let lastJob = 0;
+const b64 = {
+    encode: text => { const bytes = encoder.encode(text); let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); },
+    decode: data => new TextDecoder().decode(Uint8Array.from(atob(String(data)), c => c.charCodeAt(0))),
+};
+
+const gleTools = {
+    runners,
+    // name NUL folder NUL args… → the job's number, or a message (base64)
+    start(request) {
+        const [name, folder, ...args] = b64.decode(request).split('\0');
+        const id = ++lastJob;
+        const job = { name, out: '', err: '', code: null, input: null, stop: null, at: Date.now() };
+        jobs.set(id, job);
+        (async () => {
+            const { root } = await bootWanix(() => {});
+            await linkTools(root);
+            const entry = (await readTools(root))[name];
+            const runner = entry && runners[entry[0]];
+            if (!runner) throw new Error(entry ? `no runner ${entry[0]} (see /etc/tools)` : 'not in /etc/tools');
+            const dir = folder.split('/').filter(Boolean).join('/') || '.';
+            const io = { out: t => { job.out += t; }, err: t => { job.err += t; } };
+            const handle = runner(root, dir, [...entry.slice(1), ...args], io, code => { job.code = code || 0; });
+            job.input = handle.input || null;
+            job.stop = handle.stop;
+        })().catch(err => { job.err += `${name}: ${err.message || err}\n`; job.code = 127; });
+        return id;
+    },
+    // job → "running|out|err" or "code|out|err", the output since the last poll
+    poll(id) {
+        const job = jobs.get(Number(id));
+        if (!job) return `1||${b64.encode('no such job\n')}`;
+        const answer = `${job.code === null ? 'running' : job.code}|${b64.encode(job.out)}|${b64.encode(job.err)}`;
+        job.out = job.err = '';
+        if (job.code !== null) jobs.delete(Number(id));
+        return answer;
+    },
+    input(id, data) {
+        const job = jobs.get(Number(id));
+        if (job && job.input) job.input(b64.decode(data));
+    },
+    stop(id) {
+        const job = jobs.get(Number(id));
+        if (job && job.stop) job.stop();
+    },
+};
+globalThis.gleTools = gleTools;
+
+// The newest command still running, for the terminal (Ctrl+C, what is typed)
+function runningJob() {
+    let newest = null;
+    for (const job of jobs.values()) if (job.code === null && (!newest || job.at > newest.at)) newest = job;
+    return newest;
 }
 
 // A folder of the namespace, from where rc is: 'project', 'project/src', …
@@ -298,94 +536,12 @@ async function readFolder(root, dir) {
     const files = {};
     for (const rel of rels.slice(0, MAX_FILES)) {
         try {
-            const st = await root.stat(`${dir}/${rel}`);
+            const st = await root.stat(inDir(dir, rel));
             if (st.Size > MAX_FILE_SIZE) continue;
-            files[rel] = await root.readFile(`${dir}/${rel}`);
+            files[rel] = await root.readFile(inDir(dir, rel));
         } catch (err) { /* gone meanwhile */ }
     }
     return files;
-}
-
-// Runs words[0] (an LLVM tool or a .wasm) in dir; resolves when it is done.
-// Returns a function that stops it.
-function runHere(root, dir, words, term, done) {
-    const tool = LLVM_TOOLS.has(words[0]) ? words[0] : 'wasi';
-    const args = tool === 'wasi' ? words : words.slice(1);
-    let stopped = false;
-    const decoders = { 1: new TextDecoder(), 2: new TextDecoder() };
-    let progress = false;
-    const finish = code => {
-        if (stopped) return;
-        stopped = true;
-        if (progress) term.write('\r\x1b[K');
-        done(code);
-    };
-    (async () => {
-        const files = await readFolder(root, dir);
-        if (!toolsWorker) toolsWorker = new Worker(TOOLS_WORKER_URL, { type: 'module' });
-        const worker = toolsWorker;
-        worker.onmessage = async ({ data }) => {
-            if (data.type === 'out') {
-                // Programs write bare \n; the terminal wants \r\n
-                const text = decoders[data.fd].decode(data.data, { stream: true }).replace(/\r?\n/g, '\r\n');
-                term.write(data.fd === 2 ? `\x1b[31m${text}\x1b[0m` : text);
-            }
-            else if (data.type === 'progress') { progress = true; term.write(`\r\x1b[90m${data.text}\x1b[0m\x1b[K`); }
-            else if (data.type === 'error') { term.writeln(`\r\x1b[31m${words[0]}: ${data.message}\x1b[0m`); finish(1); }
-            else if (data.type === 'done') {
-                for (const [rel, bytes] of Object.entries(data.files)) {
-                    try {
-                        if (rel.includes('/')) await makeDirs(root, `${dir}/${rel.replace(/\/[^/]*$/, '')}`);
-                        await root.writeFile(`${dir}/${rel}`, bytes);
-                    } catch (err) {
-                        term.writeln(`\x1b[31mCould not write ${rel}: ${err.message || err}\x1b[0m`);
-                    }
-                }
-                finish(data.code);
-            }
-        };
-        worker.postMessage({ type: 'run', tool, args, files });
-    })().catch(err => { term.writeln(`\x1b[31m${words[0]}: ${err.message || err}\x1b[0m`); finish(1); });
-    return () => {
-        if (toolsWorker) { toolsWorker.terminate(); toolsWorker = null; }
-        finish(130);
-    };
-}
-
-// ---- Rust ----
-// cargo and rustc run in Rubrc (src/rubrc-plugin.js), whose / is made to hold
-// the current folder; the builds come back into it (target/…/*.wasm, which
-// ./target/wasm32-wasip1/debug/app.wasm then runs here).
-const RUST_TOOLS = new Set(['cargo', 'rustc']);
-
-function runRustHere(root, dir, line, term, done) {
-    const { runRust } = require('./rubrc-plugin');
-    let handle = null, finished = false;
-    const finish = code => { if (!finished) { finished = true; done(code); } };
-    (async () => {
-        const files = await readFolder(root, dir);
-        // The folder as a key for Rubrc's mirror: from the top of the project ('')
-        const key = dir === PROJECT ? '' : dir.startsWith(PROJECT + '/') ? dir.slice(PROJECT.length + 1) : '/' + dir;
-        handle = runRust(key, files, line, text => term.write(text.replace(/\r?\n/g, '\r\n')),
-            text => term.writeln(`\x1b[90m${text}\x1b[0m`));
-        const out = await handle.done;
-        for (const [rel, bytes] of Object.entries(out)) {
-            const path = `${dir}/${rel}`;
-            try {
-                const old = files[rel];
-                if (old && old.length === bytes.length && old.every((b, i) => b === bytes[i])) continue;
-                if (rel.includes('/')) await makeDirs(root, path.replace(/\/[^/]*$/, ''));
-                await root.writeFile(path, bytes);
-            } catch (err) {
-                term.writeln(`\x1b[31mCould not write ${rel}: ${err.message || err}\x1b[0m`);
-            }
-        }
-        finish(0);
-    })().catch(err => { term.writeln(`\r\x1b[31m${line.split(/\s/)[0]}: ${err.message || err}\x1b[0m`); finish(1); });
-    return {
-        input: data => { if (handle) handle.input(data); },
-        stop: () => { if (handle) handle.interrupt(); else finish(130); },
-    };
 }
 
 // ---- a shell on an xterm ----
@@ -409,9 +565,11 @@ async function attachShell(term, onProgress, opts = {}) {
         const wanted = resolveDir('', opts.wd) || '.';
         try { if ((await root.stat(wanted)).IsDir) start = wanted; } catch { /* stay in the project */ }
     }
+    await installTools(root);
     const task = document.createElement('wanix-task');
     task.setAttribute('cmd', 'rc.wasm');
     task.setAttribute('wd', start);
+    task.setAttribute('env', 'PATH=/bin');
     task.setAttribute('term', '');
     task.setAttribute('start', '');
     ns.appendChild(task);
@@ -441,43 +599,19 @@ async function attachShell(term, onProgress, opts = {}) {
 
     const history = [];
     let line = '', back = 0;
-    let cwd = start; // rc's, followed through the cd lines typed
-    let stopHere = null; // while a command runs here
-    let takesInput = null; // and when what it runs reads what is typed (Rust programs)
     const setLine = s => { term.write('\b \b'.repeat([...line].length)); line = s; term.write(s); };
-    const enter = text => {
-        const words = splitWords(text);
-        if (words[0] === 'cd' && words[1]) cwd = resolveDir(cwd, words[1]);
-        if (words.length && RUST_TOOLS.has(words[0])) {
-            const job = runRustHere(root, cwd, text, term, code => {
-                stopHere = null;
-                takesInput = null;
-                if (code) term.writeln(`\x1b[90m[exit ${code}]\x1b[0m`);
-                writer.write(encoder.encode('\n')); // for rc's prompt
-            });
-            stopHere = job.stop;
-            takesInput = job.input;
-            return;
-        }
-        if (words.length && (LLVM_TOOLS.has(words[0]) || /\.wasm$/.test(words[0]))) {
-            stopHere = runHere(root, cwd, words, term, code => {
-                stopHere = null;
-                if (code) term.writeln(`\x1b[90m[exit ${code}]\x1b[0m`);
-                writer.write(encoder.encode('\n')); // for rc's prompt
-                const rest = typedAhead;
-                typedAhead = '';
-                if (rest) setTimeout(() => onData(rest), 100);
-            });
-            return;
-        }
-        writer.write(encoder.encode(text + '\n'));
-    };
-    let typedAhead = '';
     const onData = data => {
-        if (stopHere) {
-            if (data.includes('\x03')) { typedAhead = ''; term.write('^C\r\n'); stopHere(); }
-            else if (takesInput) takesInput(data);
-            else typedAhead += data; // for when it is done, as a terminal would
+        // While a command of /etc/tools runs: Ctrl+C stops it, and what is typed
+        // goes to it if it reads it (Rust programs); otherwise to rc, for after
+        const job = runningJob();
+        if (job && data.includes('\x03')) {
+            term.write('^C\r\n');
+            line = '';
+            if (job.stop) job.stop();
+            return;
+        }
+        if (job && job.input) {
+            job.input(data);
             return;
         }
         if (data === '\x1b[A' || data === '\x1b[B') {
@@ -486,16 +620,13 @@ async function attachShell(term, onProgress, opts = {}) {
             return;
         }
         if (data.startsWith('\x1b')) return; // other keys: no cursor movement within the line
-        const chars = [...data];
-        for (let i = 0; i < chars.length; i++) {
-            const ch = chars[i];
+        for (const ch of data) {
             if (ch === '\r' || ch === '\n') {
                 term.write('\r\n');
                 if (line.trim() && history[history.length - 1] !== line) history.push(line);
-                enter(line);
+                writer.write(encoder.encode(line + '\n'));
                 line = '';
                 back = 0;
-                if (stopHere) { typedAhead += chars.slice(i + 1).join(''); return; }
             } else if (ch === '\x7f' || ch === '\b') {
                 if (line) { line = [...line].slice(0, -1).join(''); term.write('\b \b'); }
             } else if (ch === '\x15') {
@@ -551,8 +682,7 @@ class WanixTerminalComponent {
         if (this.destroyed) return;
         const { terminal, fit } = makeTerminal(this.rootElement, container);
         this.terminal = terminal;
-        terminal.writeln(`Wanix rc shell, in the browser. The project is in ${this.dir ? '/project' : './ (project/)'}; type help.`);
-        terminal.writeln('\x1b[90mAlso cargo/rustc (Rust, to wasm32-wasip1), clang/clang++ (C, C++) and ./prog.wasm to run what they build.\x1b[0m');
+        terminal.writeln(`Wanix rc shell, in the browser. The project is in ${this.dir ? '/project' : './ (project/)'}; help lists the commands.`);
         try {
             const detach = await attachShell(terminal, undefined, { wd: this.dir });
             if (this.destroyed) detach();

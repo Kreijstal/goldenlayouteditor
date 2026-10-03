@@ -1,0 +1,104 @@
+diff --git a/rc/exec_wanix.go b/rc/exec_wanix.go
+index f843e07..38be457 100644
+--- a/rc/exec_wanix.go
++++ b/rc/exec_wanix.go
+@@ -25,12 +25,10 @@ func readString(path string) (string, error) {
+ 
+ func runExternalCommand(ctx context.Context, hc interp.HandlerContext, path string, args []string) (int, error) {
+ 	argv := append([]string{path}, args...)
+-	termID, err := readString("#term/new")
++	selfID, err := readString("#task/self/id")
+ 	if err != nil {
+ 		return 1, err
+ 	}
+-	termPath := filepath.Join("#term", termID)
+-
+ 	// todo: need better auto so we dont have to use gojs here
+ 	taskID, err := readString("#task/new/gojs")
+ 	if err != nil {
+@@ -49,38 +47,15 @@ func runExternalCommand(ctx context.Context, hc interp.HandlerContext, path stri
+ 		return 1, err
+ 	}
+ 
+-	ctlmsg := []string{
+-		fmt.Sprintf("bind %s/program %s/fd/0", termPath, taskPath),
+-		fmt.Sprintf("bind %s/program %s/fd/1", termPath, taskPath),
+-		fmt.Sprintf("bind %s/program %s/fd/2", termPath, taskPath),
+-	}
+-	for _, msg := range ctlmsg {
++	// The program gets the shell's own stdin, stdout and stderr: no terminal of
++	// its own to copy from, whose read outlives the program and stalls the shell's
++	for fd := 0; fd < 3; fd++ {
++		msg := fmt.Sprintf("bind #task/%s/fd/%d %s/fd/%d", selfID, fd, taskPath, fd)
+ 		if err := AppendFile(filepath.Join(taskPath, "ctl"), []byte(msg)); err != nil {
+ 			return 1, err
+ 		}
+ 	}
+ 
+-	termData, err := os.Open(filepath.Join(termPath, "data"))
+-	if err != nil {
+-		return 1, err
+-	}
+-	defer termData.Close()
+-
+-	if shouldForwardStdin(hc.Stdin) {
+-		// todo: do we need to do line discpline?
+-		go func() {
+-			println("copying stdin")
+-			_, _ = io.Copy(termData, hc.Stdin)
+-			println("stdin done")
+-		}()
+-	}
+-
+-	go func() {
+-		println("copying stdout")
+-		_, _ = io.Copy(hc.Stdout, termData)
+-		println("stdout done")
+-	}()
+-
+ 	if err := AppendFile(filepath.Join(taskPath, "ctl"), []byte("start")); err != nil {
+ 		return 1, err
+ 	}
+diff --git a/rc/shell.go b/rc/shell.go
+index 28b4b95..b77adf9 100644
+--- a/rc/shell.go
++++ b/rc/shell.go
+@@ -226,7 +226,37 @@ func printHelp(hc interp.HandlerContext) {
+ 	fmt.Fprintln(hc.Stdout, "")
+ 	fmt.Fprintf(hc.Stdout, "Builtins: %s\n", strings.Join(builtins, ", "))
+ 	fmt.Fprintf(hc.Stdout, "Bundled commands: %s\n", strings.Join(embedded, ", "))
+-	fmt.Fprintln(hc.Stdout, "External commands: resolved via PATH lookup")
++	fmt.Fprintf(hc.Stdout, "External commands (PATH=%s): %s\n", hc.Env.Get("PATH").String(), strings.Join(pathCommandNames(hc), ", "))
++}
++
++// pathCommandNames lists the executables in the PATH directories, each name once.
++func pathCommandNames(hc interp.HandlerContext) []string {
++	var names []string
++	seen := map[string]bool{}
++	for _, dir := range filepath.SplitList(hc.Env.Get("PATH").String()) {
++		if dir == "" {
++			continue
++		}
++		if !filepath.IsAbs(dir) {
++			dir = filepath.Join(hc.Dir, dir)
++		}
++		entries, err := os.ReadDir(dir)
++		if err != nil {
++			continue
++		}
++		for _, e := range entries {
++			if seen[e.Name()] {
++				continue
++			}
++			info, err := os.Stat(filepath.Join(dir, e.Name()))
++			if err != nil || info.IsDir() {
++				continue
++			}
++			seen[e.Name()] = true
++			names = append(names, e.Name())
++		}
++	}
++	return names
+ }
+ 
+ func helpCallHandler() interp.CallHandlerFunc {

@@ -35,6 +35,15 @@ jobs:
       - name: Build site (bundle.js)
         run: npm run build
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      # The in-browser shell's rc and the commands the page runs (scripts/build-wanix.sh)
+      - name: Build wanix-rc.wasm and wanix-command.wasm
+        run: npm run build:wanix
+
       # GitHub Pages lets browsers keep files 10 minutes: name this build's bundle
       # in the page, so a reload after a deploy gets it
       - name: Version bundle.js in index.html

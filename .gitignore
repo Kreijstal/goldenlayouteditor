@@ -1,6 +1,8 @@
 node_modules/
 package-lock.json
 public/bundle.js
+public/wanix-command.wasm
+public/wanix-rc.wasm
 public/preview-output/
 .c9revisions/
 .settings

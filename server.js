@@ -90,6 +90,52 @@ app.get(/^\/surfer(\/.*)?$/, async (req, res) => {
   }
 });
 
+// git in the in-browser shell (src/wanix-git.js) reaches remotes through here, as
+// isomorphic-git's CORS proxy does: /cors-proxy/<host>/<repo path>/info/refs?…,
+// …/git-upload-pack and …/git-receive-pack (git's smart HTTP), nothing else
+const GIT_PATH_RE = /\/(info\/refs|git-upload-pack|git-receive-pack)$/;
+const GIT_HEADERS = ['accept', 'content-type', 'authorization', 'git-protocol', 'user-agent'];
+app.options(/^\/cors-proxy\//, (req, res) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': GIT_HEADERS.join(', '),
+  });
+  res.sendStatus(204);
+});
+app.all(/^\/cors-proxy\/([^/]+)(\/.*)$/, async (req, res) => {
+  const [host, rest] = [req.params[0], req.params[1]];
+  const service = req.query.service;
+  const ok = GIT_PATH_RE.test(rest) && (!rest.endsWith('/info/refs') || /^git-(upload|receive)-pack$/.test(service))
+    && (req.method === 'GET' || req.method === 'POST') && /^[\w.-]+(:\d+)?$/.test(host);
+  if (!ok) return res.status(403).send('Only git smart HTTP requests are passed on');
+  try {
+    const headers = {};
+    for (const h of GIT_HEADERS) if (req.headers[h]) headers[h] = req.headers[h];
+    if (!headers['user-agent']) headers['user-agent'] = 'git/isomorphic-git';
+    let body;
+    if (req.method === 'POST') {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      body = Buffer.concat(chunks);
+    }
+    const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+    const upstream = await fetch(`https://${host}${rest}${query}`, { method: req.method, headers, body });
+    res.status(upstream.status);
+    res.set('Access-Control-Allow-Origin', '*');
+    for (const h of ['content-type', 'cache-control', 'www-authenticate']) {
+      const v = upstream.headers.get(h);
+      if (v) res.set(h, v);
+    }
+    if (!upstream.body) return res.end();
+    for await (const chunk of upstream.body) res.write(chunk);
+    res.end();
+  } catch (err) {
+    if (!res.headersSent) res.status(502).send(`Could not reach ${host}: ${err.message}`);
+    else res.end();
+  }
+});
+
 // Fritzing (github.com/Kreijstal/fritzing-app, wasm branch), Mogan STEM (TeXmacs
 // fork, github.com/MoganLab/mogan), the office editor for .docx/.pptx (Euro-Office's
 // editors with x2t as WebAssembly, scripts/build-eurooffice.sh) and the Rust
