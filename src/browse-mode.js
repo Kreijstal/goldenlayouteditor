@@ -228,7 +228,22 @@ async function initBrowseMode(root, deps) {
     const projectBtn = el('a', 'bm-btn', 'Project');
     projectBtn.title = 'Switch to project mode';
     projectBtn.href = location.pathname + '?project';
-    bar.append(upBtn, crumbs, hiddenBtn, viewBtn, projectBtn);
+    // A shell in the folder shown: the server's for its folders, the in-browser one (Wanix) for the rest
+    const termBtn = el('button', 'bm-btn', '>_');
+    termBtn.title = 'Open a terminal here';
+    termBtn.style.fontFamily = 'monospace';
+    termBtn.onclick = async () => {
+        // Not inside an archive: the folder holding it
+        const parts = (cwd || '/').split('/');
+        const a = parts.findIndex(isArchiveName);
+        const here = a < 0 ? (cwd || '/') : parts.slice(0, a).join('/') || '/';
+        let kind = 'wanix';
+        try { kind = (await wsClient.vfs.where(here)).kind; } catch (_) { /* the shell's own top */ }
+        // Browser storage is in the shell's namespace too; a folder that is not starts it in the project
+        if (kind === 'server') openViewer({ componentType: 'terminal', state: { cwd: here }, title: 'Terminal: ' + here });
+        else openViewer({ componentType: 'wanixTerminal', state: { dir: here }, title: 'Shell: ' + here });
+    };
+    bar.append(upBtn, crumbs, hiddenBtn, viewBtn, termBtn, projectBtn);
 
     const tools = el('div', 'bm-tools');
     const filterInput = el('input', 'bm-filter');

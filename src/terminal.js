@@ -92,6 +92,7 @@ class TerminalComponent {
         this.rootElement = container.element;
         this.rootElement.style.cssText = 'background:#1e1e1e;padding:0;overflow:hidden;';
         this.wsClient = this.constructor._wsClient;
+        this.cwd = state.cwd;
         this.sessionId = state.sessionId || ('pty-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5));
         this.terminal = null;
         this.fitAddon = null;
@@ -128,6 +129,7 @@ class TerminalComponent {
             const result = await this.wsClient.wsRequest({
                 type: 'termSpawn',
                 sessionId: this.sessionId,
+                ...(this.cwd ? { cwd: this.cwd } : {}),
                 ...dims,
             });
 

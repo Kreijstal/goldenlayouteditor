@@ -404,6 +404,11 @@ async function attachShell(term, onProgress, opts = {}) {
             try { await makeDirs(root, wanted); start = wanted; } catch { /* stay at the top */ }
         }
     }
+    // A folder of the namespace itself (the file browser's), if it is one
+    if (opts.wd) {
+        const wanted = resolveDir('', opts.wd) || '.';
+        try { if ((await root.stat(wanted)).IsDir) start = wanted; } catch { /* stay in the project */ }
+    }
     const task = document.createElement('wanix-task');
     task.setAttribute('cmd', 'rc.wasm');
     task.setAttribute('wd', start);
@@ -522,7 +527,8 @@ async function attachShell(term, onProgress, opts = {}) {
 
 // ---- the panel ----
 class WanixTerminalComponent {
-    constructor(container) {
+    constructor(container, state) {
+        this.dir = state && state.dir;
         this.rootElement = container.element;
         this.rootElement.style.cssText = 'background:#1e1e1e;padding:0;overflow:hidden;';
         this.detach = null;
@@ -545,10 +551,10 @@ class WanixTerminalComponent {
         if (this.destroyed) return;
         const { terminal, fit } = makeTerminal(this.rootElement, container);
         this.terminal = terminal;
-        terminal.writeln('Wanix rc shell, in the browser. The project is in ./ (project/); type help.');
+        terminal.writeln(`Wanix rc shell, in the browser. The project is in ${this.dir ? '/project' : './ (project/)'}; type help.`);
         terminal.writeln('\x1b[90mAlso cargo/rustc (Rust, to wasm32-wasip1), clang/clang++ (C, C++) and ./prog.wasm to run what they build.\x1b[0m');
         try {
-            const detach = await attachShell(terminal);
+            const detach = await attachShell(terminal, undefined, { wd: this.dir });
             if (this.destroyed) detach();
             else this.detach = detach;
             fit();
