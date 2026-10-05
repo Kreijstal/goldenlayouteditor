@@ -217,6 +217,12 @@ function fixYed(graph, sourceText) {
             const shadow = own('DropShadow');
             if (shadow) model.setStyle(cell, styleWith(model.getStyle(cell), { shadow: 1 }));
             if (realizer.localName === 'UMLClassNode') fixUmlClass(graph, cell, own, mxGeometry);
+            // <y:Fill hasColor="false"/> is no fill at all (the import paints it white,
+            // over whatever lies beneath); a group's is in its active realizer
+            const realizers = own('Realizers');
+            const shown = realizers ? Array.from(realizers.children)[parseInt(realizers.getAttribute('active') || '0', 10)] : realizer;
+            const fill = shown && Array.from(shown.children).find(c => c.localName === 'Fill');
+            if (fill && fill.getAttribute('hasColor') === 'false') model.setStyle(cell, styleWith(model.getStyle(cell), { fillColor: 'none' }));
         }
 
         // Bends: the import gives them relative to the graph the edge is written in, but
