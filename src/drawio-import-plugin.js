@@ -217,7 +217,33 @@ function fixYed(graph, sourceText) {
             if (realizer.localName === 'UMLClassNode') fixUmlClass(graph, cell, own, mxGeometry);
         }
 
-        // Edge ends, from the drawn positions
+        // Bends: the import gives them relative to the graph the edge is written in, but
+        // draw.io moves an edge into the group holding both its ends, and the bends stay
+        // put, off by the group's position (edges written at the top level between nodes
+        // of one group, as yEd does)
+        const byId = new Map(cells.filter(c => c.vertex).map(c => [idOf(c), c]));
+        const origin = (cell) => {
+            let x = 0, y = 0;
+            for (let c = cell; c && c.geometry; c = c.parent) { x += c.geometry.x; y += c.geometry.y; }
+            return { x, y };
+        };
+        const declaredIn = new Map(yAll(doc, 'edge').map(e => [e.getAttribute('id'), e.parentNode && e.parentNode.parentNode]));
+        for (const edge of cells) {
+            const geo = edge.edge && edge.geometry;
+            if (!geo || !geo.points || !geo.points.length) continue;
+            const owner = declaredIn.get(idOf(edge));
+            if (owner === undefined) continue;
+            const from = owner && owner.localName === 'node' ? origin(byId.get(owner.getAttribute('id'))) : { x: 0, y: 0 };
+            const to = origin(edge.parent);
+            const dx = to.x - from.x, dy = to.y - from.y;
+            if (!dx && !dy) continue;
+            const g = geo.clone();
+            g.points = geo.points.map(p => new mxPoint(p.x - dx, p.y - dy));
+            model.setGeometry(edge, g);
+        }
+
+        // Edge ends, from the drawn positions (the geometry above is already in the model)
+        view.invalidate();
         view.validate();
         for (const edge of cells) {
             if (!edge.edge || !edge.source || !edge.target) continue;
