@@ -90,7 +90,8 @@ const FORMATS = {
             codec.createMxGraph = () => new window.Graph();
             codec.decode(text, resolve, err => reject(err || new Error('Not GraphML')));
         }),
-        prepare: layoutPlainGraph,
+        // Plain graphs are laid out; yEd's get what draw.io's import leaves out
+        prepare: (graph, text) => layoutPlainGraph(graph, text) ? 'auto layout' : (fixYed(graph, text), null),
     },
 };
 
@@ -146,6 +147,174 @@ function layoutPlainGraph(graph, sourceText) {
         model.endUpdate();
     }
     return true;
+}
+
+// Java's logical fonts, which yEd writes, as fonts a browser has
+const JAVA_FONTS = { dialog: 'Helvetica', sansserif: 'Helvetica', serif: 'Times New Roman', dialoginput: 'Courier New', monospaced: 'Courier New' };
+// yEd's arrowheads are larger than draw.io's defaults (6)
+const ARROW_SIZES = { classic: 10, classicThin: 10, block: 10, open: 10, diamond: 14, oval: 8 };
+// draw.io takes an outline from named styles ("rhombus;…"), but the import writes
+// shape=…, which leaves every shape a rectangle to edges
+const ELLIPSE = 'ellipsePerimeter';
+const PERIMETERS = {
+    ellipse: ELLIPSE, cloud: ELLIPSE, 'mxgraph.flowchart.start_1': ELLIPSE, 'mxgraph.flowchart.start_2': ELLIPSE,
+    'mxgraph.flowchart.on-page_reference': ELLIPSE, 'mxgraph.flowchart.or': ELLIPSE, 'mxgraph.flowchart.summing_function': ELLIPSE,
+    rhombus: 'rhombusPerimeter', 'mxgraph.flowchart.decision': 'rhombusPerimeter',
+    triangle: 'trianglePerimeter', hexagon: 'hexagonPerimeter2', parallelogram: 'parallelogramPerimeter',
+    trapezoid: 'trapezoidPerimeter', step: 'stepPerimeter',
+};
+
+function styleWith(style, values) {
+    const parts = (style || '').split(';').filter(p => p && !(p.split('=')[0] in values));
+    for (const [k, v] of Object.entries(values)) if (v != null) parts.push(`${k}=${v}`);
+    return parts.join(';');
+}
+
+const yAll = (el, name) => Array.from(el.getElementsByTagNameNS('*', name));
+const yOne = (el, name) => yAll(el, name)[0] || null;
+
+// What draw.io's GraphML import leaves out of yEd's files, put back from the source:
+//  - UML class nodes (y:UMLClassNode): fill, border, stereotype, attribute and method compartments
+//  - drop shadows (y:DropShadow)
+//  - edge ends: yEd attaches an edge at a port (y:Path sx/sy/tx/ty, from the node's
+//    centre) and clips its first and last segment at the node's outline; draw.io kept the
+//    port but projected it onto the outline from the centre, which slants straight edges
+//  - arrowheads at yEd's size, and Java's logical fonts (Dialog…) as browser fonts
+function fixYed(graph, sourceText) {
+    const { mxGeometry, mxPoint } = window;
+    const doc = new DOMParser().parseFromString(sourceText, 'application/xml');
+    const nodes = new Map(yAll(doc, 'node').map(n => [n.getAttribute('id'), n]));
+    const model = graph.getModel();
+    const view = graph.view;
+    const cells = Object.values(model.cells);
+    const idOf = (cell) => graph.getCellStyle(cell).graphMlID;
+    model.beginUpdate();
+    try {
+        for (const cell of cells) {
+            const style = model.getStyle(cell) || '';
+            const font = /(?:^|;)fontFamily=([^;,]*)(?:;|$)/.exec(style);
+            if (font) {
+                const f = font[1];
+                // Java's logical fonts, and a generic fallback for fonts the browser may lack (Menlo…)
+                const family = JAVA_FONTS[f.toLowerCase()] || (/mono|menlo|monaco|consolas|courier/i.test(f) ? `${f},monospace`
+                    : /serif/i.test(f) && !/sans/i.test(f) ? `${f},serif` : null);
+                if (family) model.setStyle(cell, styleWith(style, { fontFamily: family }));
+            }
+            if (!cell.vertex) continue;
+            const cs = graph.getCellStyle(cell);
+            // its own style: the default style's rectangle perimeter always fills cs.perimeter
+            if (!/(^|;)perimeter=/.test(model.getStyle(cell) || '') && PERIMETERS[cs.shape]) model.setStyle(cell, styleWith(model.getStyle(cell), { perimeter: PERIMETERS[cs.shape] }));
+            const node = nodes.get(idOf(cell));
+            if (!node) continue;
+            // the node's own realizer, not a nested graph's
+            const realizer = Array.from(node.children).filter(c => c.localName === 'data')
+                .map(d => Array.from(d.children).find(c => c.namespaceURI !== doc.documentElement.namespaceURI))
+                .find(Boolean);
+            if (!realizer) continue;
+            const own = (name) => Array.from(realizer.children).find(c => c.localName === name) || null;
+            const shadow = own('DropShadow');
+            if (shadow) model.setStyle(cell, styleWith(model.getStyle(cell), { shadow: 1 }));
+            if (realizer.localName === 'UMLClassNode') fixUmlClass(graph, cell, own, mxGeometry);
+        }
+
+        // Edge ends, from the drawn positions
+        view.validate();
+        for (const edge of cells) {
+            if (!edge.edge || !edge.source || !edge.target) continue;
+            const st = graph.getCellStyle(edge);
+            const values = {};
+            for (const end of ['end', 'start']) {
+                const arrow = st[end + 'Arrow'];
+                if (ARROW_SIZES[arrow] && st[end + 'Size'] == null) values[end + 'Size'] = ARROW_SIZES[arrow];
+            }
+            const es = view.getState(edge);
+            const ss = view.getState(edge.source), ts = view.getState(edge.target);
+            if (es && ss && ts && es.absolutePoints && es.absolutePoints.length >= 2) {
+                const pts = es.absolutePoints;
+                const port = (s, x, y) => x != null ? new mxPoint(s.x + x * s.width, s.y + y * s.height) : new mxPoint(s.getCenterX(), s.getCenterY());
+                const sp = port(ss, st.exitX, st.exitY), tp = port(ts, st.entryX, st.entryY);
+                const clipEnd = (s, p, toward, key) => {
+                    if (st[key + 'X'] == null || st[key + 'Perimeter'] == 0) return;
+                    const b = clipAtOutline(view, s, p, toward);
+                    if (!b) return;
+                    values[key + 'X'] = +((b.x - s.x) / s.width).toFixed(4);
+                    values[key + 'Y'] = +((b.y - s.y) / s.height).toFixed(4);
+                    values[key + 'Perimeter'] = 0;
+                };
+                clipEnd(ss, sp, pts.length > 2 ? pts[1] : tp, 'exit');
+                clipEnd(ts, tp, pts.length > 2 ? pts[pts.length - 2] : sp, 'entry');
+            }
+            if (Object.keys(values).length) model.setStyle(edge, styleWith(model.getStyle(edge), values));
+        }
+    } finally {
+        model.endUpdate();
+    }
+}
+
+// Where the segment from p (inside the shape) to q leaves the shape's outline, by
+// bisection with the shape's own perimeter (rectangle, ellipse, rhombus…); null when
+// p isn't inside or q isn't outside
+function clipAtOutline(view, state, p, q) {
+    const perimeter = view.getPerimeterFunction(state);
+    if (!perimeter) return null;
+    const bounds = view.getPerimeterBounds(state);
+    const cx = bounds.getCenterX(), cy = bounds.getCenterY();
+    const inside = (x, y) => {
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < 1e-6) return true;
+        const o = perimeter(bounds, state, new window.mxPoint(x, y), false);
+        return o && d <= Math.hypot(o.x - cx, o.y - cy) + 0.01;
+    };
+    if (!inside(p.x, p.y) || inside(q.x, q.y)) return null;
+    let a = 0, b = 1;
+    for (let i = 0; i < 40; i++) {
+        const m = (a + b) / 2;
+        if (inside(p.x + (q.x - p.x) * m, p.y + (q.y - p.y) * m)) a = m; else b = m;
+    }
+    return new window.mxPoint(p.x + (q.x - p.x) * b, p.y + (q.y - p.y) * b);
+}
+
+// A yEd UML class box: the name (draw.io's import made its label) with the stereotype
+// above it, then the attribute and the method compartment under lines
+function fixUmlClass(graph, cell, own, mxGeometry) {
+    const model = graph.getModel();
+    const fill = own('Fill'), border = own('BorderStyle'), uml = own('UML');
+    const colour = (el, attr) => el && el.getAttribute(attr) ? el.getAttribute(attr) : null;
+    model.setStyle(cell, styleWith(model.getStyle(cell), {
+        shape: 'rect', html: 1,
+        fillColor: fill && fill.getAttribute('transparent') === 'true' ? 'none' : (colour(fill, 'color') || '#ffffff'),
+        gradientColor: colour(fill, 'color2'),
+        strokeColor: border && border.getAttribute('hasColor') === 'false' ? 'none' : (colour(border, 'color') || '#000000'),
+        strokeWidth: colour(border, 'width') || 1,
+    }));
+    if (!uml || uml.getAttribute('omitDetails') === 'true') return;
+    const w = cell.geometry.width, h = cell.geometry.height;
+    const name = own('NodeLabel');
+    const top = name ? parseFloat(name.getAttribute('y') || 0) + parseFloat(name.getAttribute('height') || 0) + 3 : 22;
+    const stereotype = uml.getAttribute('stereotype');
+    if (stereotype) {
+        const lbl = new window.mxCell(`«${stereotype}»`, new mxGeometry(0, 0, w, 14), 'text;html=1;align=center;verticalAlign=top;fontSize=11;spacing=0;spacingTop=1;');
+        lbl.vertex = true;
+        graph.addCell(lbl, cell);
+    }
+    const lines = (el) => el ? el.textContent.split('\n').map(l => l.trim()).filter(Boolean) : [];
+    const attrs = lines(yOne(uml, 'AttributeLabel')), methods = lines(yOne(uml, 'MethodLabel'));
+    const lineH = 15;
+    const attrsH = attrs.length ? attrs.length * lineH + 6 : Math.max(0, Math.min(8, (h - top) / 2));
+    const sections = [[top, attrs], [top + attrsH, methods]];
+    for (const [y, text] of sections) {
+        if (y >= h - 1) continue;
+        const sep = new window.mxCell('', new mxGeometry(0, y, w, 0),
+            `line;strokeWidth=1;fillColor=none;html=1;strokeColor=${graph.getCellStyle(cell).strokeColor};`);
+        sep.vertex = true;
+        graph.addCell(sep, cell);
+        if (!text.length) continue;
+        const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const body = new window.mxCell(text.map(esc).join('<br>'), new mxGeometry(0, y + 2, w, text.length * lineH + 2),
+            'text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingTop=0;fontSize=12;fontFamily=Helvetica;whiteSpace=nowrap;overflow=hidden;');
+        body.vertex = true;
+        graph.addCell(body, cell);
+    }
 }
 
 class DrawioImportComponent {
@@ -274,7 +443,12 @@ class DrawioImportComponent {
             return this._fail('Could not draw the diagram: ' + err.message);
         }
         const graph = this.graph = this.viewer.graph;
-        const laidOut = this.format.prepare ? this.format.prepare(graph, this.sourceText) : false;
+        let note = null;
+        try {
+            note = this.format.prepare ? this.format.prepare(graph, this.sourceText) : null;
+        } catch (err) {
+            log.error('Fixing up the import failed:', err);
+        }
         // The canvas scrolls; dragging the background pans it, the wheel with Ctrl zooms
         graph.setPanning(true);
         graph.panningHandler.useLeftButtonForPanning = true;
@@ -285,12 +459,17 @@ class DrawioImportComponent {
             up ? graph.zoomIn() : graph.zoomOut();
             mxEvent.consume(evt);
         }, canvas);
+        // Zoomed in, a diagram reaching left of or above the origin would be cut off where
+        // scrolling can't go: keep its top-left corner on the canvas
+        const { mxEvent: E } = window;
+        const keep = () => this._keepReachable();
+        for (const name of [E.SCALE, E.TRANSLATE, E.SCALE_AND_TRANSLATE]) graph.view.addListener(name, keep);
         this._resizeObserver = new ResizeObserver(() => { if (this._fitted) this._zoom('fit'); });
         this._resizeObserver.observe(this.host);
         this._zoom('fit');
         this.svgBtn.disabled = false;
         const cells = Object.keys(graph.model.cells || {}).length;
-        this._status(`${cells} cells` + (laidOut ? ' · auto layout' : ''));
+        this._status(`${cells} cells` + (note ? ' · ' + note : ''));
     }
 
     _zoom(how) {
@@ -305,6 +484,24 @@ class DrawioImportComponent {
             graph.fit(20, false, 0, true, false, false);
             if (graph.view.scale > 1) graph.zoomActual();
             graph.center(true, true);
+        }
+    }
+
+    _keepReachable() {
+        const graph = this.graph;
+        if (!graph || this._shifting) return;
+        const view = graph.view, s = view.scale, border = 20;
+        const b = graph.getGraphBounds();
+        const dx = b.x < border ? (border - b.x) / s : 0;
+        const dy = b.y < border ? (border - b.y) / s : 0;
+        if (!dx && !dy) return;
+        this._shifting = true;
+        try {
+            view.setTranslate(view.translate.x + dx, view.translate.y + dy);
+            graph.container.scrollLeft += dx * s;
+            graph.container.scrollTop += dy * s;
+        } finally {
+            this._shifting = false;
         }
     }
 
