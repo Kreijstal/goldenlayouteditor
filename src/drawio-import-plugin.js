@@ -153,6 +153,8 @@ function layoutPlainGraph(graph, sourceText) {
 const JAVA_FONTS = { dialog: 'Helvetica', sansserif: 'Helvetica', serif: 'Times New Roman', dialoginput: 'Courier New', monospaced: 'Courier New' };
 // yEd's arrowheads are larger than draw.io's defaults (6)
 const ARROW_SIZES = { classic: 10, classicThin: 10, block: 10, open: 10, diamond: 14, oval: 8 };
+// yEd's framed arrowheads, as flexArrow's endWidth (beyond the body) and endSize (a third of the length)
+const FRAMED_HEAD = { width: 8, size: 5 };
 // draw.io takes an outline from named styles ("rhombus;…"), but the import writes
 // shape=…, which leaves every shape a rectangle to edges
 const ELLIPSE = 'ellipsePerimeter';
@@ -247,10 +249,18 @@ function fixYed(graph, sourceText) {
         view.validate();
         for (const edge of cells) {
             if (!edge.edge || !edge.source || !edge.target) continue;
-            // yEd's framed edges (com.yworks.edge.framed) were made draw.io's link shape,
-            // which has no arrowheads: an edge of the line's width, as yEd draws them
+            // yEd's framed edges (com.yworks.edge.framed): an outline the line's width apart,
+            // hollow, with outlined arrowheads; draw.io's import made them its link shape,
+            // which has no arrowheads, but its flexArrow is the same thing
             const raw = graph.getCellStyle(edge);
-            if (raw.shape === 'link') model.setStyle(edge, styleWith(model.getStyle(edge), { shape: null, width: null, strokeWidth: raw.width || 1 }));
+            if (raw.shape === 'link') {
+                const head = (end) => raw[end + 'Arrow'] && raw[end + 'Arrow'] !== 'none';
+                model.setStyle(edge, styleWith(model.getStyle(edge), {
+                    shape: 'flexArrow', width: raw.width || 1, strokeWidth: 1, fillColor: 'none',
+                    endArrow: head('end') ? 'classic' : 'none', startArrow: head('start') ? 'classic' : 'none',
+                    endWidth: FRAMED_HEAD.width, startWidth: FRAMED_HEAD.width, endSize: FRAMED_HEAD.size, startSize: FRAMED_HEAD.size,
+                }));
+            }
             const st = graph.getCellStyle(edge);
             const values = {};
             for (const end of ['end', 'start']) {
