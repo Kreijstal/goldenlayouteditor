@@ -247,6 +247,10 @@ function fixYed(graph, sourceText) {
         view.validate();
         for (const edge of cells) {
             if (!edge.edge || !edge.source || !edge.target) continue;
+            // yEd's framed edges (com.yworks.edge.framed) were made draw.io's link shape,
+            // which has no arrowheads: an edge of the line's width, as yEd draws them
+            const raw = graph.getCellStyle(edge);
+            if (raw.shape === 'link') model.setStyle(edge, styleWith(model.getStyle(edge), { shape: null, width: null, strokeWidth: raw.width || 1 }));
             const st = graph.getCellStyle(edge);
             const values = {};
             for (const end of ['end', 'start']) {
