@@ -50,7 +50,7 @@ require('./fla-plugin');
 require('./fla-viewer-plugin');
 require('./mathematica-plugin');
 require('./bpmn-plugin');
-require('./gliffy-plugin');
+require('./drawio-import-plugin');
 require('./gpx-plugin');
 require('./fxg-plugin');
 require('./flp-plugin');
@@ -2760,6 +2760,7 @@ const FILE_VIEWERS = [
     { re: /\.(bpmn|bpmn20\.xml)$/i, componentType: 'bpmnEditor', tag: 'bpmn', prefix: 'bpmn-' },
     // Gliffy diagrams (JSON), converted and drawn by draw.io
     { re: /\.gliffy$/i, componentType: 'gliffyViewer', tag: 'gliffy', prefix: 'gliffy-' },
+    { re: /\.graphml$/i, componentType: 'graphmlViewer', tag: 'graphml', prefix: 'graphml-' },
     { re: /\.flp$/i, componentType: 'flpViewer', tag: 'flp', prefix: 'flp-' },
     // OpenPGP-encrypted files: asks for the passphrase, then shows the contents in their own viewer
     // MHTML web archives (saved by Chrome, IE, Word): the page rebuilt from its parts, sandboxed
