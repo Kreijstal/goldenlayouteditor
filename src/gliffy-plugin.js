@@ -58,6 +58,7 @@ class GliffyViewerComponent {
     <button type="button" data-zoom="in" title="Zoom in">+</button>
     <button type="button" data-zoom="fit" title="Fit the diagram to the view">Fit</button>
     <button type="button" data-zoom="actual" title="Actual size">1:1</button>
+    <button type="button" class="gliffy-svg" title="Download the diagram as SVG" disabled>SVG</button>
     <span class="gliffy-status"></span>
   </div>
   <div class="gliffy-host"><div class="gliffy-message">Loading…</div></div>
@@ -69,6 +70,8 @@ class GliffyViewerComponent {
         this.root.querySelectorAll('[data-zoom]').forEach(b => {
             b.onclick = () => this._zoom(b.dataset.zoom);
         });
+        this.svgBtn = this.root.querySelector('.gliffy-svg');
+        this.svgBtn.onclick = () => this._saveSvg();
         if (container.on) container.on('destroy', () => this._destroy());
         this._init();
     }
@@ -86,6 +89,7 @@ class GliffyViewerComponent {
 .gliffy-title{font-weight:600;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-right:4px}
 .gliffy-toolbar button{background:#373e47;color:#e6edf3;border:1px solid #545d68;border-radius:4px;padding:3px 10px;font:inherit;cursor:pointer;flex-shrink:0}
 .gliffy-toolbar button:hover{background:#444c56}
+.gliffy-toolbar button:disabled{opacity:.5;cursor:default}
 .gliffy-status{margin-left:auto;color:#adbac7;font-size:12px;overflow:hidden;text-overflow:ellipsis}
 .gliffy-host{position:relative;flex:1;min-height:0;color:#000;background:#fff}
 .gliffy-canvas{position:absolute;inset:0;overflow:auto;cursor:grab;touch-action:none}
@@ -152,6 +156,7 @@ class GliffyViewerComponent {
         this._resizeObserver = new ResizeObserver(() => { if (this._fitted) this._zoom('fit'); });
         this._resizeObserver.observe(this.host);
         this._zoom('fit');
+        this.svgBtn.disabled = false;
         const cells = Object.keys(graph.model.cells || {}).length;
         this._status(`${cells} cells`);
         log.log(`Opened ${this._path() || this.fileData.name} (${cells} cells)`);
@@ -170,6 +175,28 @@ class GliffyViewerComponent {
             if (graph.view.scale > 1) graph.zoomActual();
             graph.center(true, true);
         }
+    }
+
+    // The whole diagram at actual size on white, as draw.io exports it; theme 'light'
+    // pins its light-dark() colours, so a dark-themed viewer doesn't invert it
+    _saveSvg() {
+        const graph = this.graph;
+        if (!graph) return;
+        let svg;
+        try {
+            svg = graph.getSvg('#ffffff', 1, 10, false, null, true, null, null, null, null, null, 'light');
+        } catch (err) {
+            log.error('SVG export failed:', err);
+            return this._status('SVG export failed: ' + err.message);
+        }
+        const text = '<?xml version="1.0" encoding="UTF-8"?>\n' + window.mxUtils.getXml(svg);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([text], { type: 'image/svg+xml' }));
+        a.download = (this.fileData.name || 'diagram.gliffy').replace(GLIFFY_RE, '') + '.svg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     }
 
     _status(text) {
