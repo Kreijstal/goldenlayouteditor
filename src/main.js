@@ -6,6 +6,7 @@ const { getPlugins } = require('./plugins');
 const { renderTree } = require('./tree-renderer');
 const { isMobile, MobileLayout, createContainerAdapter } = require('./mobile-layout');
 const { initBrowseMode } = require('./browse-mode');
+const { mountPdfViewer } = require('./pdf-viewer');
 const { createClientApi } = require('./client-api');
 const { installClientRpc } = require('./client-rpc');
 const debug = require('./debug');
@@ -789,6 +790,7 @@ class EditorComponent {
                 log.log(`Editor: Destroying viewer for ${logName}`);
                 if (this._flaViewer && this._flaViewer.destroy) this._flaViewer.destroy();
                 if (this._subtitles) this._subtitles.destroy();
+                if (this._pdfViewer) this._pdfViewer.destroy();
             });
             return;
         }
@@ -930,7 +932,7 @@ class EditorComponent {
         } else if (ext === 'binary') {
             this._initHexViewer(url);
         } else if (ext === 'pdf') {
-            this._initPdfViewer(url);
+            this._initPdfViewer(url, fileData, fullPath);
         } else {
             // Other types: use iframe
             const iframe = document.createElement('iframe');
@@ -952,33 +954,9 @@ class EditorComponent {
         }
     }
 
-    async _initPdfViewer(url) {
-        this.rootElement.style.cssText += 'overflow:auto;background:#525659;';
-        const container = document.createElement('div');
-        container.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;';
-        this.rootElement.appendChild(container);
-
-        try {
-            const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.9.155/build/pdf.mjs');
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.9.155/build/pdf.worker.mjs';
-
-            // In-memory files (decrypted, extracted from DICOM) are blob: URLs, which this pdf.js can't
-            // fetch itself (it fails building the request headers): hand it the bytes
-            const source = url.startsWith('blob:') ? { data: await (await fetch(url)).arrayBuffer() } : url;
-            const pdf = await pdfjsLib.getDocument(source).promise;
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 1.5 });
-                const canvas = document.createElement('canvas');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                canvas.style.cssText = 'max-width:100%;height:auto;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
-                container.appendChild(canvas);
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-            }
-        } catch (err) {
-            container.innerHTML = `<div style="color:#f88;padding:20px;">Failed to load PDF: ${err.message}</div>`;
-        }
+    async _initPdfViewer(url, fileData, fullPath) {
+        // a decrypted file is only in memory: nothing to save it over
+        this._pdfViewer = await mountPdfViewer(this.rootElement, { url, path: fileData.memoryOnly ? null : fullPath });
     }
 
     _initHexViewer(url) {
