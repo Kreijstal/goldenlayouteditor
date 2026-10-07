@@ -36,6 +36,7 @@ const SERVED_EXTENSIONS = new Set([
   'pcx', 'dcx',
   'sgi', // not .rgb/.rgba/.bw/.int/.inta: raw dumps and other things too (SGI_MAYBE_RE)
   'ras', 'sun', 'im1', 'im8', 'im24', 'im32', // not .rs: Rust far more often (SUN_MAYBE_RE)
+  'ilbm', 'lbm', 'ham', 'ham8', // not .iff: sound, animations... too (IFF_MAYBE_RE)
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
@@ -45,6 +46,9 @@ const SERVED_EXTENSIONS = new Set([
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 // The name a Sun raster shares with Rust: one only if its magic number is 0x59a66a95
 const SUN_MAYBE_RE = /\.rs$/i;
+// IFF's name for anything: an Amiga picture only if its FORM is ILBM, PBM or ACBM
+const IFF_MAYBE_RE = /\.iff$/i;
+const IFF_PICTURE_TYPES = ['ILBM', 'PBM ', 'ACBM'];
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -579,9 +583,11 @@ const messageHandlers = {
             try {
               const buf = await fs.promises.readFile(fullPath);
               // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
-              // (or a Sun raster by Rust's, .rs)
+              // (or a Sun raster by Rust's, .rs, or an Amiga picture by IFF's, .iff)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
-                || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)) {
+                || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
+                || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
+                  && IFF_PICTURE_TYPES.includes(buf.toString('latin1', 8, 12)))) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

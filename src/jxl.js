@@ -7,8 +7,8 @@
 // (src/heif.js), a Netpbm file's first image PNG (src/netpbm.js), a
 // Radiance HDR picture's PNG, tone mapped (src/rgbe.js), a TGA's PNG
 // (src/tga.js), a QOI's PNG (src/qoi.js), a PCX's (a DCX's first page)
-// PNG (src/pcx.js), an SGI image's PNG (src/sgi.js) and a Sun raster's PNG
-// (src/sunras.js).
+// PNG (src/pcx.js), an SGI image's PNG (src/sgi.js), a Sun raster's PNG
+// (src/sunras.js) and an Amiga IFF picture's PNG (src/ilbm.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -20,6 +20,7 @@ const { isQoiName, qoiImage } = require('./qoi');
 const { isPcxName, pcxPage } = require('./pcx');
 const { isSgiName, sgiImage } = require('./sgi');
 const { isSunName, sunImage } = require('./sunras');
+const { isIlbmName, ilbmImage } = require('./ilbm');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -78,11 +79,11 @@ function jxlDecode(bytes) {
 }
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
-// TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI and Sun raster,
-// or where the browser shows JPEG XL; else a blob: URL of the decoded PNG/APNG
-// (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX), the PNG
-// (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster; a .rgb, .bw... or .rs only once
-// known to be one), the
+// TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster and
+// IFF ILBM, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX),
+// the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM; a .rgb, .bw..., .rs
+// or .iff only once known to be one), the
 // primary image's PNG (HEIF) or the tone mapped PNG (Radiance; a .pic only
 // once known to be one)
 async function displayableImageUrl(url, name) {
@@ -95,6 +96,7 @@ async function displayableImageUrl(url, name) {
     if (isPcxName(name)) return (await pcxPage(url, 0)).url;
     if (isSgiName(name)) return (await sgiImage(url)).url;
     if (isSunName(name)) return (await sunImage(url)).url;
+    if (isIlbmName(name)) return (await ilbmImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
