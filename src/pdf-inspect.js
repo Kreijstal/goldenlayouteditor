@@ -11,6 +11,7 @@
 // enough of the graphics and text state to place what they draw.
 const { createLogger } = require('./debug');
 const { createStepper, STEP_STYLE } = require('./pdf-step');
+const { pageFonts, textBoxes, fontSub, showFont, FONT_STYLE } = require('./pdf-fonts');
 
 const log = createLogger('PDF inspect');
 // jsDelivr, not esm.sh: it finds its .wasm beside itself (import.meta.url)
@@ -329,7 +330,7 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
     if (!document.getElementById('pi-style')) {
         const style = el('style');
         style.id = 'pi-style';
-        style.textContent = STYLE + STEP_STYLE;
+        style.textContent = STYLE + STEP_STYLE + FONT_STYLE;
         document.head.appendChild(style);
     }
     panel.classList.add('pi-panel');
@@ -379,6 +380,58 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
             if (r.bottom < view.top || r.top > view.bottom || r.right < view.left || r.left > view.right) first.scrollIntoView({ block: 'center', inline: 'center' });
         }
         return list.length;
+    }
+
+    // ---- Fonts as pdf.js loaded them (the Font Inspector) ----
+    const pdfFonts = new Map(); // page index → Promise of Map(loadedName → entry with its areas)
+    function fontsOfPage(i) {
+        if (!pdfFonts.has(i)) pdfFonts.set(i, (async () => {
+            const p = pages()[i];
+            const fonts = await pageFonts(pdfjs, p.page);
+            for (const e of fonts.values()) e.areas = (await textBoxes(p.page, e.name)).map(box => ({ page: i, box }));
+            return fonts;
+        })());
+        return pdfFonts.get(i);
+    }
+    // the fonts of all pages, each once (its glyphs and areas from every page)
+    async function allFonts() {
+        const all = new Map();
+        for (let i = 0; i < pages().length; i++) {
+            for (const e of (await fontsOfPage(i)).values()) {
+                let a = all.get(e.name);
+                if (!a) all.set(e.name, a = { name: e.name, font: e.font, glyphs: new Map(), shows: 0, areas: [], pages: [] });
+                a.shows += e.shows;
+                a.areas.push(...e.areas);
+                a.pages.push(i);
+                for (const [k, g] of e.glyphs) {
+                    const had = a.glyphs.get(k);
+                    if (had) had.count += g.count; else a.glyphs.set(k, { ...g });
+                }
+            }
+        }
+        return all;
+    }
+    function fontNode(e, pagesUsed) {
+        return {
+            label: (e.font && e.font.name) || e.name,
+            sub: fontSub(e),
+            hover: () => e.areas,
+            select: () => showFont(detail, e, { pages: pagesUsed, saveBeside }),
+        };
+    }
+    // a node whose children come later: "Reading…" until they do
+    function later(node, load) {
+        let got = null, started = false;
+        node.kids = () => {
+            if (got) return got;
+            if (!started) {
+                started = true;
+                load().then(k => { got = k.length ? k : [{ label: 'None' }]; }, err => { got = [{ label: 'Could not read: ' + err.message }]; })
+                    .then(() => { if (node.row && node.row.querySelector('.pi-tw').textContent === '▾') { node.collapse(); node.expand(); } });
+            }
+            return [{ label: 'Reading…' }];
+        };
+        return node;
     }
 
     // ---- Fonts: enough to measure text ----
@@ -862,6 +915,8 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
                 if (pp.ref.isIndirect()) out.push(objNode(pp.ref.asIndirect(), 'Page object'));
                 const ops = { label: 'Content', sub: `${pp.root.children.length} at top level, ${pp.src.length} B`, kids: () => pp.root.children.map(c => astNode(c, i)), hover: () => [{ page: i, box: pp.pageBox }], select: () => showContent(i), isContent: true };
                 out.push(ops);
+                if (pdfjs) out.push(later({ label: 'Fonts', sub: 'as pdf.js loaded them' }, async () =>
+                    [...(await fontsOfPage(i)).values()].map(e => fontNode(e, [i]))));
                 if (pdfjs) out.push({ label: 'Step through drawing', sub: 'as pdf.js draws it', select: () => {
                     const p = pages()[i];
                     if (!p || !p.canvas) return;
@@ -1126,6 +1181,8 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
             return out;
         } }, tree);
         sections.pages = render({ label: 'Pages', cls: 'pi-sec', sub: String(doc.countPages()), kids: () => Array.from({ length: doc.countPages() }, (_, i) => pageNode(i)) }, tree);
+        if (pdfjs) sections.fonts = render(later({ label: 'Fonts', cls: 'pi-sec', sub: 'as pdf.js loaded them' }, async () =>
+            [...(await allFonts()).values()].map(e => fontNode(e, e.pages))), tree);
         sections.objects = render({ label: 'Objects', cls: 'pi-sec', sub: String(count - 1), kids: () => Array.from({ length: count - 1 }, (_, k) => Object.assign(objNode(k + 1), { num: k + 1 })) }, tree);
         if (info.streams.length) {
             sections.objstm = render({ label: 'Object streams', cls: 'pi-sec', sub: `${info.streams.length}, holding ${info.inStream.size} objects`, kids: () => info.streams.map(s => objNode(s.num)) }, tree);
@@ -1137,6 +1194,7 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
         try {
             info = await openDocument(getBytes());
             parsed = [];
+            pdfFonts.clear();
             uses.clear();
             fontCache.clear();
             build();
