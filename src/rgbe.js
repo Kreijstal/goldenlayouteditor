@@ -281,7 +281,7 @@ function rgbeImage(url, exposure = 0, tone = 'clip') {
         })();
         toned.set(key, p);
         p.catch(err => { toned.delete(key); log.warn('Radiance decode failed:', err); });
-        if (toned.size > 16) {
+        if (toned.size > 64) {
             const [oldKey, old] = toned.entries().next().value;
             toned.delete(oldKey);
             old.then(d => URL.revokeObjectURL(d.url)).catch(() => {});
