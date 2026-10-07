@@ -13,6 +13,7 @@ const { createLogger } = require('./debug');
 const { insideArchive } = require('./browse-mode');
 const { createInspector } = require('./pdf-inspect');
 const { ensureRuffleLoaded } = require('./ruffle-plugin');
+const { createForms } = require('./pdf-forms');
 
 const log = createLogger('PDF');
 const PDFJS = 'https://esm.sh/pdfjs-dist@4.9.155/build/';
@@ -75,6 +76,8 @@ const STYLE = `
 .pdfv-media ruffle-player{width:100%;height:100%;display:block;}
 .pdfv-media .pdfv-media-close{position:absolute;top:-24px;right:0;padding:2px 7px;}
 .pdfv-page.deleted .pdfv-media{display:none;}
+.pdfv-page.deleted .annotationLayer{display:none;}
+.pdfv-inspecting .annotationLayer,.pdfv-inspecting .annotationLayer *{pointer-events:none!important;}
 `;
 
 function el(tag, cls, text) {
@@ -130,6 +133,8 @@ async function mountPdfViewer(root, { url, path }) {
     const inspectBtn = btn('Inspect', 'The file\'s objects and what each draws (a debug view)');
     const qdfBtn = btn('Readable copy…', 'Save a copy with every stream decompressed and every object written out on its own, indented (as qpdf\'s QDF mode)');
     qdfBtn.hidden = true;
+    const scriptsBtn = btn('Run scripts', 'Run the PDF\'s JavaScript (form calculations and checks, buttons, page and open actions) in pdf.js\'s sandbox');
+    scriptsBtn.hidden = true;
     const status = el('span', 'pdfv-status');
     bar.appendChild(status);
 
@@ -159,7 +164,7 @@ async function mountPdfViewer(root, { url, path }) {
     if (!path) sep2.hidden = selectAllBtn.hidden = selLeft.hidden = selRight.hidden = exportBtn.hidden = true;
     const setStatus = (text, isError) => { status.textContent = text; status.classList.toggle('error', !!isError); };
 
-    let pdfjs, bytes, doc, pages = [], libDoc = null;
+    let pdfjs, bytes, doc, pages = [], libDoc = null, forms = null;
     let busy = false, lastPicked = null;
     const plural = (n, what) => `${n} ${what}${n === 1 ? '' : 's'}`;
     const kept = () => pages.filter(p => !p.deleted);
@@ -168,7 +173,8 @@ async function mountPdfViewer(root, { url, path }) {
         const turned = pages.filter(p => p.extra && !p.deleted).length;
         const deleted = pages.length - kept().length;
         const nKept = kept().length, nSel = selected().length;
-        saveBtn.disabled = busy || !(turned || deleted) || !nKept;
+        const filled = !!(forms && forms.changed);
+        saveBtn.disabled = busy || !(turned || deleted || filled) || !nKept;
         saveAsBtn.disabled = busy || !nKept;
         selLeft.disabled = selRight.disabled = busy || !nSel;
         selectAllBtn.disabled = busy || !nKept;
@@ -180,7 +186,7 @@ async function mountPdfViewer(root, { url, path }) {
             else fillFormats();
         }
         if (busy) return;
-        const changes = [turned && `${plural(turned, 'page')} turned`, deleted && `${plural(deleted, 'page')} deleted`].filter(Boolean);
+        const changes = [turned && `${plural(turned, 'page')} turned`, deleted && `${plural(deleted, 'page')} deleted`, filled && 'form filled in'].filter(Boolean);
         if (!nKept) setStatus('Every page is deleted: a PDF needs at least one', true);
         else setStatus([changes.length ? changes.join(', ') + ', not saved' : plural(pages.length, 'page'), nSel && `${nSel} selected`].filter(Boolean).join(' · '));
     };
@@ -209,7 +215,9 @@ async function mountPdfViewer(root, { url, path }) {
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         if (p.task) p.task.cancel();
-        p.task = p.page.render({ canvasContext: canvas.getContext('2d'), viewport });
+        // fields are drawn by the form layer above, live
+        const annotationMode = forms && forms.hasFields ? pdfjs.AnnotationMode.ENABLE_FORMS : pdfjs.AnnotationMode.ENABLE;
+        p.task = p.page.render({ canvasContext: canvas.getContext('2d'), viewport, annotationMode });
         try {
             await p.task.promise;
         } catch (err) {
@@ -219,6 +227,7 @@ async function mountPdfViewer(root, { url, path }) {
         p.canvas.replaceWith(canvas);
         p.canvas = canvas;
         placeMedia(p, viewport);
+        if (forms) await forms.layer(p, viewport).catch(err => log.error('Form layer failed:', err));
     }
 
     // Flash in the PDF (RichMedia annotations): played by Ruffle where the
@@ -329,12 +338,24 @@ async function mountPdfViewer(root, { url, path }) {
     }
 
     async function load(data) {
+        const wasRunning = !!(forms && forms.running);
+        if (forms) await forms.destroy();
+        forms = null;
         if (doc) doc.destroy();
         pagesEl.textContent = '';
         pages = [];
         lastPicked = null;
         // pdf.js takes the buffer away from us (to its worker): give it a copy
         doc = await pdfjs.getDocument({ data: data.slice() }).promise;
+        forms = await createForms({
+            pdfjs, sandboxSrc: PDFJS + 'pdf.sandbox.mjs', doc, root, pages: () => pages,
+            goToPage: (i) => { if (pages[i]) pages[i].wrap.scrollIntoView({ block: 'start' }); },
+            onChange: () => refresh(),
+            say: (text) => setStatus(text, true),
+        }).catch(err => { log.error('Forms failed:', err); return null; });
+        scriptsBtn.hidden = !(forms && forms.hasScripts);
+        scriptsBtn.classList.remove('on');
+        scriptsBtn.textContent = 'Run scripts';
         for (let i = 1; i <= doc.numPages; i++) {
             const page = await doc.getPage(i);
             const p = { page, num: i, extra: 0, deleted: false, selected: false, wrap: el('div', 'pdfv-page'), canvas: el('canvas') };
@@ -377,12 +398,15 @@ async function mountPdfViewer(root, { url, path }) {
             await draw(p);
         }
         refresh();
+        if (wasRunning && forms && forms.hasScripts) await setScripts(true);
     }
 
     // A PDF of some of the pages (all those kept, by default) as they are shown
     async function pdfOf(list = kept()) {
         const { PDFDocument, degrees } = await import(PDF_LIB);
-        const src = await PDFDocument.load(bytes, { updateMetadata: false });
+        // with the fields as filled in
+        const base = forms && forms.changed ? await forms.bytes() : bytes;
+        const src = await PDFDocument.load(base, { updateMetadata: false });
         const turn = (page, extra) => { if (extra) page.setRotation(degrees((page.getRotation().angle + extra + 360) % 360)); };
         let out;
         if (list.length === kept().length && list.every((p, i) => p === kept()[i])) {
@@ -410,7 +434,7 @@ async function mountPdfViewer(root, { url, path }) {
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#fff'; // JPEG has no transparency, and a PDF page is paper
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await p.page.render({ canvasContext: ctx, viewport }).promise;
+        await p.page.render({ canvasContext: ctx, viewport, annotationMode: pdfjs.AnnotationMode.ENABLE_STORAGE }).promise;
         const mime = FORMATS[format].mime;
         const blob = await new Promise(res => canvas.toBlob(res, mime, 0.92));
         if (!blob || blob.type !== mime) throw new Error(`this browser can't write ${FORMATS[format].label}`);
@@ -560,6 +584,22 @@ async function mountPdfViewer(root, { url, path }) {
             saveBeside: path ? (name, ext, make, working) => saveBeside(`${baseName()}-${name}`, ext, make, working) : null,
         });
     };
+    async function setScripts(on) {
+        scriptsBtn.disabled = true;
+        try {
+            if (on) setStatus('Starting the scripts…');
+            await forms.setRunning(on);
+            scriptsBtn.classList.toggle('on', forms.running);
+            scriptsBtn.textContent = forms.running ? 'Stop scripts' : 'Run scripts';
+            refresh();
+        } catch (err) {
+            log.error('Scripts failed:', err);
+            setStatus('Could not run the scripts: ' + err.message, true);
+        } finally {
+            scriptsBtn.disabled = false;
+        }
+    }
+    scriptsBtn.onclick = () => setScripts(!forms.running);
     qdfBtn.onclick = () => saveBeside(`${baseName()}-qdf.pdf`, 'pdf', () => inspector.readableCopy(), 'Writing…');
 
     selectAllBtn.onclick = () => {
@@ -594,7 +634,7 @@ async function mountPdfViewer(root, { url, path }) {
         setStatus('');
         [selLeft, selRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
     }
-    return { destroy() { if (inspector) inspector.destroy(); if (doc) doc.destroy(); } };
+    return { destroy() { if (inspector) inspector.destroy(); if (forms) forms.destroy(); if (doc) doc.destroy(); } };
 }
 
 module.exports = { mountPdfViewer };
