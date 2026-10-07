@@ -15,14 +15,14 @@ const log = createLogger('Browse');
 
 // Extensions EditorComponent can play/show directly; these default to it
 // instead of the inspector plugins project mode prefers.
-const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|fla)$/i;
+const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
 
 // Zip-format archives the browser opens as read-only folders. Listing and file
 // reads are answered by the service worker (public/zip-sw.js; without one, the
 // page runs it itself, see archive-fallback.js), keep in sync.
 const ZIP_EXTENSIONS = new Set(['zip', 'jar', 'war', 'ear', 'aar', 'apk', 'xapk', 'ipa', 'whl', 'nupkg', 'cbz', 'xpi', 'vsix', 'crx', 'kmz', '3mf']);
 // Extensions with a dedicated viewer (mirrors SERVED_EXTENSIONS in ws-handler.js)
-const SERVED_EXTENSIONS = new Set(('pdf djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
+const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
     + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_TEXT_SIZE = 5 * 1024 * 1024;
 
@@ -63,7 +63,7 @@ for (const e of ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg'
 for (const e of ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus']) ICON_BY_EXT[e] = ICONS.audio;
 for (const e of ['zip', 'tar', 'gz', 'xz', 'bz2', '7z', 'rar', 'zst', 'iso']) ICON_BY_EXT[e] = ICONS.archive;
 for (const e of ['js', 'ts', 'py', 'c', 'h', 'cpp', 'rs', 'go', 'java', 'sh', 'html', 'css', 'json']) ICON_BY_EXT[e] = ICONS.code;
-ICON_BY_EXT.pdf = ICONS.pdf;
+ICON_BY_EXT.pdf = ICON_BY_EXT.ai = ICONS.pdf;
 ICON_BY_EXT.chm = '📘';
 ICON_BY_EXT.hwp = ICON_BY_EXT.hwpx = '📝';
 ICON_BY_EXT.vrm = '🧍';

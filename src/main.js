@@ -932,7 +932,7 @@ class EditorComponent {
             this._initFlaViewer(url, fileData.name);
         } else if (ext === 'binary') {
             this._initHexViewer(url);
-        } else if (ext === 'pdf') {
+        } else if (ext === 'pdf' || ext === 'ai') {
             this._initPdfViewer(url, fileData, fullPath);
         } else {
             // Other types: use iframe
@@ -957,7 +957,9 @@ class EditorComponent {
 
     async _initPdfViewer(url, fileData, fullPath) {
         // a decrypted file is only in memory: nothing to save it over
-        this._pdfViewer = await mountPdfViewer(this.rootElement, { url, path: fileData.memoryOnly ? null : fullPath });
+        // an Illustrator file is a PDF with Illustrator's own copy of the artwork beside it: never rewritten
+        const illustrator = /\.ai$/i.test(fileData.name || fullPath || '');
+        this._pdfViewer = await mountPdfViewer(this.rootElement, { url, path: fileData.memoryOnly ? null : fullPath, illustrator });
     }
 
     _initHexViewer(url) {
@@ -1234,7 +1236,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;}
 import { mountFLAViewer } from '/fla-viewer/fla-viewer.js';
 mountFLAViewer(document.getElementById('root'), { url: ${JSON.stringify(url)}, name: ${JSON.stringify(previewFile.name)} });
 </script></body></html>`;
-            } else if (ext === 'pdf') {
+            } else if (ext === 'pdf' || ext === 'ai') {
                 previewHtml = `<html><head><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{overflow:auto;background:#525659;}
@@ -1608,7 +1610,7 @@ class ProjectFilesComponent {
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
-        if (ext === 'pdf') return '\uD83D\uDCCA';
+        if (ext === 'pdf' || ext === 'ai') return '\uD83D\uDCCA';
         if (imageExts.includes(ext)) return '\uD83D\uDDBC\uFE0F';
         if (audioExts.includes(ext)) return '\uD83C\uDFB5';
         if (videoExts.includes(ext)) return '\uD83C\uDFAC';

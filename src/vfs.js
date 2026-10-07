@@ -22,7 +22,7 @@ const log = createLogger('VFS');
 const SERVER = 'server';
 const { normalize, split, join, dirname, basename } = LocalFS;
 // Extensions with a dedicated viewer, never read as text (mirrors SERVED_EXTENSIONS in ws-handler.js)
-const SERVED_EXTENSIONS = new Set(('pdf djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
+const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
     + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;

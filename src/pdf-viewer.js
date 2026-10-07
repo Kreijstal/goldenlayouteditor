@@ -113,8 +113,9 @@ function download(blob, name) {
 }
 
 // root: the element to fill; url: the file's bytes; path: where it is saved to
-// (null: nowhere, e.g. a decrypted file only in memory: nothing is written out)
-async function mountPdfViewer(root, { url, path }) {
+// (null: nowhere, e.g. a decrypted file only in memory: nothing is written out);
+// illustrator: an Adobe Illustrator file, shown and exported but never saved over
+async function mountPdfViewer(root, { url, path, illustrator }) {
     if (!document.getElementById('pdfv-style')) {
         const style = el('style');
         style.id = 'pdfv-style';
@@ -163,6 +164,9 @@ async function mountPdfViewer(root, { url, path }) {
 
     const writable = !!path && !insideArchive(path);
     if (!writable) saveBtn.hidden = saveAsBtn.hidden = true;
+    // Illustrator keeps its own copy of the artwork beside the PDF one: a rewritten
+    // PDF would leave the two out of step, so changes go to a new PDF only
+    if (illustrator) saveBtn.hidden = true;
     // a file only in memory (decrypted) is never written out, exports included
     if (!path) sep2.hidden = selectAllBtn.hidden = selLeft.hidden = selRight.hidden = exportBtn.hidden = true;
     const setStatus = (text, isError) => { status.textContent = text; status.classList.toggle('error', !!isError); };
@@ -646,7 +650,7 @@ async function mountPdfViewer(root, { url, path }) {
         });
     }
 
-    const baseName = () => path.slice(path.lastIndexOf('/') + 1).replace(/\.pdf$/i, '');
+    const baseName = () => path.slice(path.lastIndexOf('/') + 1).replace(/\.(pdf|ai)$/i, '');
 
     selLeft.onclick = () => selected().forEach(p => turn(p, -90));
     selRight.onclick = () => selected().forEach(p => turn(p, 90));
@@ -739,6 +743,7 @@ async function mountPdfViewer(root, { url, path }) {
         pdfjs = await import(PDFJS + 'pdf.mjs');
         pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.mjs';
         bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        if (illustrator) checkIllustrator(bytes);
         await load(bytes);
     } catch (err) {
         log.error('Load failed:', err);
@@ -748,6 +753,14 @@ async function mountPdfViewer(root, { url, path }) {
         [selLeft, selRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
     }
     return { destroy() { if (inspector) inspector.destroy(); movies.forEach(stopMovie); if (forms) forms.destroy(); if (doc) doc.destroy(); } };
+}
+
+// An Illustrator file before version 9 is PostScript, not PDF
+function checkIllustrator(bytes) {
+    const head = new TextDecoder('latin1').decode(bytes.subarray(0, 1024));
+    if (head.includes('%PDF-')) return;
+    if (head.startsWith('%!PS')) throw new Error('this is an Illustrator 8 (or older) file: PostScript, which this viewer does not read. Illustrator 9 and later save it as PDF.');
+    throw new Error('this is not an Illustrator file this viewer reads (it is not PDF-based)');
 }
 
 module.exports = { mountPdfViewer };

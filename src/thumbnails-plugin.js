@@ -12,7 +12,7 @@ let _pdfLibPromise = null;
 
 const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg']);
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
-const PDF_EXTS = new Set(['pdf']);
+const PDF_EXTS = new Set(['pdf', 'ai']);
 
 function extOf(name) {
     const i = name.lastIndexOf('.');
