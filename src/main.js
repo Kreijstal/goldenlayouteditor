@@ -67,6 +67,7 @@ const { hasElfMagic, mayBeElf } = require('./elf-plugin');
 require('./score-plugin');
 require('./chm-plugin');
 require('./hlp-plugin');
+require('./djvu-plugin');
 
 // Modes, workers and snippets load on demand from the same ace-builds on esm.sh, as
 // the files themselves (?raw)
@@ -2690,6 +2691,7 @@ const FILE_VIEWERS = [
     { re: /\.(vsd|vsdx)$/i, componentType: 'vsdxViewer', tag: 'vsdx', prefix: 'vsdx-' },
     { re: /\.swf$/i, componentType: 'ruffleSwf', tag: 'swf', prefix: 'swf-' },
     { re: /\.epub$/i, componentType: 'epubReader', tag: 'epub', prefix: 'epub-' },
+    { re: /\.(djvu|djv)$/i, componentType: 'djvuViewer', tag: 'djvu', prefix: 'djvu-' },
     { re: /\.psd$/i, componentType: 'psdViewer', tag: 'psd', prefix: 'psd-' },
     { re: /\.ipynb$/i, componentType: 'jupyterLite', tag: 'jupyter', prefix: 'jupyter-' },
     // Mathematica notebooks (a .nb file is a Notebook[...] expression, usually after a comment)
