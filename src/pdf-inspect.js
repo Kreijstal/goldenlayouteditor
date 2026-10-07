@@ -10,6 +10,7 @@
 // (WebAssembly) reads the objects; the content streams are parsed here, with
 // enough of the graphics and text state to place what they draw.
 const { createLogger } = require('./debug');
+const { createStepper, STEP_STYLE } = require('./pdf-step');
 
 const log = createLogger('PDF inspect');
 // jsDelivr, not esm.sh: it finds its .wasm beside itself (import.meta.url)
@@ -324,11 +325,11 @@ function toUnicode(cmap) {
 
 function countKeys(d) { let k = 0; d.forEach(() => k++); return k; }
 
-function createInspector({ panel, pages, getBytes, saveBeside, onClose }) {
+function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs }) {
     if (!document.getElementById('pi-style')) {
         const style = el('style');
         style.id = 'pi-style';
-        style.textContent = STYLE;
+        style.textContent = STYLE + STEP_STYLE;
         document.head.appendChild(style);
     }
     panel.classList.add('pi-panel');
@@ -345,6 +346,11 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose }) {
     const fontCache = new Map();
     let selectedRow = null;
     let selectedHl = [];
+    let stepping = null;       // the page being stepped through
+    function stopStepping() {
+        if (stepping) stepping.destroy();
+        stepping = null;
+    }
 
     // ---- Highlights on the pages ----
     function clearHl(cls) {
@@ -780,6 +786,7 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose }) {
         clearHl('sel');
         if (node.hover) showHl(node.hover(), 'sel', true);
         if (node.select) {
+            stopStepping();
             detail.textContent = '';
             try { node.select(); } catch (err) { detail.appendChild(el('div', 'pi-meta', 'Could not show it: ' + err.message)); log.error(err); }
         }
@@ -855,6 +862,11 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose }) {
                 if (pp.ref.isIndirect()) out.push(objNode(pp.ref.asIndirect(), 'Page object'));
                 const ops = { label: 'Content', sub: `${pp.root.children.length} at top level, ${pp.src.length} B`, kids: () => pp.root.children.map(c => astNode(c, i)), hover: () => [{ page: i, box: pp.pageBox }], select: () => showContent(i), isContent: true };
                 out.push(ops);
+                if (pdfjs) out.push({ label: 'Step through drawing', sub: 'as pdf.js draws it', select: () => {
+                    const p = pages()[i];
+                    if (!p || !p.canvas) return;
+                    stepping = createStepper({ pdfjs, p, number: i + 1, panel: detail });
+                } });
                 const annots = pp.ref.get('Annots');
                 if (annots.isArray() && annots.length) {
                     out.push({ label: 'Annotations', sub: String(annots.length), kids: () => Array.from({ length: annots.length }, (_, k) => {
@@ -1149,9 +1161,11 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose }) {
     load();
     return {
         pickAt,
-        reload: load,
+        reload() { stopStepping(); return load(); },
         readableCopy,
-        destroy() { clearHl('sel'); clearHl(); if (onClose) onClose(); },
+        // the page is drawn again (turned): stepping through it is over
+        pageDrawn(p) { if (stepping && stepping.page === p) { stopStepping(); detail.textContent = ''; } },
+        destroy() { stopStepping(); clearHl('sel'); clearHl(); if (onClose) onClose(); },
     };
 }
 

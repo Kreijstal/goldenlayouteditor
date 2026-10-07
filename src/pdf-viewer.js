@@ -218,6 +218,7 @@ async function mountPdfViewer(root, { url, path }) {
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         if (p.task) p.task.cancel();
+        if (inspector) inspector.pageDrawn(p);
         // fields are drawn by the form layer above, live
         const annotationMode = forms && forms.hasFields ? pdfjs.AnnotationMode.ENABLE_FORMS : pdfjs.AnnotationMode.ENABLE;
         p.task = p.page.render({ canvasContext: canvas.getContext('2d'), viewport, annotationMode });
@@ -456,7 +457,7 @@ async function mountPdfViewer(root, { url, path }) {
         pages = [];
         lastPicked = null;
         // pdf.js takes the buffer away from us (to its worker): give it a copy
-        doc = await pdfjs.getDocument({ data: data.slice() }).promise;
+        doc = await pdfjs.getDocument({ data: data.slice(), pdfBug: true }).promise; // pdfBug: so Inspect can step through a page's drawing
         forms = await createForms({
             pdfjs, sandboxSrc: PDFJS + 'pdf.sandbox.mjs', doc, root, pages: () => pages,
             goToPage: (i) => { if (pages[i]) pages[i].wrap.scrollIntoView({ block: 'start' }); },
@@ -692,6 +693,7 @@ async function mountPdfViewer(root, { url, path }) {
             panel: side,
             pages: () => pages,
             getBytes: () => bytes,
+            pdfjs,
             saveBeside: path ? (name, ext, make, working) => saveBeside(`${baseName()}-${name}`, ext, make, working) : null,
         });
     };
