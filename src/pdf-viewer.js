@@ -112,14 +112,13 @@ async function mountPdfViewer(root, { url, path }) {
     root.style.cssText += 'overflow:hidden;display:flex;flex-direction:column;background:#525659;';
     const bar = el('div', 'pdfv-bar');
     const btn = (label, title, parent = bar) => { const b = el('button', null, label); b.title = title; parent.appendChild(b); return b; };
-    const allLeft = btn('↺ All', 'Turn every page a quarter left');
-    const allRight = btn('↻ All', 'Turn every page a quarter right');
-    bar.appendChild(el('span', 'pdfv-sep'));
     const saveBtn = btn('Save', 'Save the changes into this file');
     const saveAsBtn = btn('Save as…', 'Save as a new PDF beside this one');
     const sep2 = el('span', 'pdfv-sep');
     bar.appendChild(sep2);
     const selectAllBtn = btn('Select all', 'Select every page (Shift-click a page\'s box for a range)');
+    const selLeft = btn('↺', 'Turn the selected pages a quarter left');
+    const selRight = btn('↻', 'Turn the selected pages a quarter right');
     const exportBtn = btn('Export…', 'Export the selected pages');
     bar.appendChild(el('span', 'pdfv-sep'));
     const inspectBtn = btn('Inspect', 'The file\'s objects and what each draws (a debug view)');
@@ -151,7 +150,7 @@ async function mountPdfViewer(root, { url, path }) {
     const writable = !!path && !insideArchive(path);
     if (!writable) saveBtn.hidden = saveAsBtn.hidden = true;
     // a file only in memory (decrypted) is never written out, exports included
-    if (!path) sep2.hidden = selectAllBtn.hidden = exportBtn.hidden = true;
+    if (!path) sep2.hidden = selectAllBtn.hidden = selLeft.hidden = selRight.hidden = exportBtn.hidden = true;
     const setStatus = (text, isError) => { status.textContent = text; status.classList.toggle('error', !!isError); };
 
     let pdfjs, bytes, doc, pages = [];
@@ -165,7 +164,7 @@ async function mountPdfViewer(root, { url, path }) {
         const nKept = kept().length, nSel = selected().length;
         saveBtn.disabled = busy || !(turned || deleted) || !nKept;
         saveAsBtn.disabled = busy || !nKept;
-        allLeft.disabled = allRight.disabled = busy || !nKept;
+        selLeft.disabled = selRight.disabled = busy || !nSel;
         selectAllBtn.disabled = busy || !nKept;
         selectAllBtn.textContent = nKept && nSel === nKept ? 'Select none' : 'Select all';
         exportBtn.disabled = busy || !nSel;
@@ -418,8 +417,8 @@ async function mountPdfViewer(root, { url, path }) {
 
     const baseName = () => path.slice(path.lastIndexOf('/') + 1).replace(/\.pdf$/i, '');
 
-    allLeft.onclick = () => kept().forEach(p => turn(p, -90));
-    allRight.onclick = () => kept().forEach(p => turn(p, 90));
+    selLeft.onclick = () => selected().forEach(p => turn(p, -90));
+    selRight.onclick = () => selected().forEach(p => turn(p, 90));
     saveBtn.onclick = () => job('Saving…', async () => {
         const data = await pdfOf();
         await put(path, new Blob([data], { type: 'application/pdf' }), true);
@@ -498,7 +497,7 @@ async function mountPdfViewer(root, { url, path }) {
         pagesEl.innerHTML = '';
         pagesEl.appendChild(el('div', null, 'Failed to load PDF: ' + err.message)).style.cssText = 'color:#f88;padding:20px;';
         setStatus('');
-        [allLeft, allRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
+        [selLeft, selRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
     }
     return { destroy() { if (inspector) inspector.destroy(); if (doc) doc.destroy(); } };
 }
