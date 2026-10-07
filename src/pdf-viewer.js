@@ -7,9 +7,11 @@
 // as a PDF, a zip of images or text. Saving goes through /upload-file, so it
 // lands wherever the file is: the server, the browser's storage, a folder from
 // this computer, the shell's files. Inside an archive nothing is saved over;
-// exports are downloaded instead.
+// exports are downloaded instead. Inspect opens the file's structure beside
+// the pages (src/pdf-inspect.js).
 const { createLogger } = require('./debug');
 const { insideArchive } = require('./browse-mode');
+const { createInspector } = require('./pdf-inspect');
 
 const log = createLogger('PDF');
 const PDFJS = 'https://esm.sh/pdfjs-dist@4.9.155/build/';
@@ -43,6 +45,14 @@ const STYLE = `
 .pdfv-status.error{color:#f88;}
 .pdfv-export{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-top:4px;}
 .pdfv-export[hidden]{display:none;}
+.pdfv-body{flex:1;min-height:0;display:flex;}
+.pdfv-scroll{flex:1;min-width:0;overflow:auto;}
+.pdfv-side{flex:0 0 42%;max-width:80%;min-width:180px;}
+.pdfv-split{flex:0 0 5px;cursor:col-resize;background:#2a2c2e;}
+.pdfv-split:hover{background:#4a9eff;}
+@media (max-width:700px){.pdfv-body{flex-direction:column;}.pdfv-side{flex-basis:45%;max-width:none;min-width:0;min-height:120px;}.pdfv-split{display:none;}}
+.pdfv-inspecting .pdfv-page canvas{cursor:crosshair;}
+.pdfv-bar button.on{background:#264f78;border-color:#4a9eff;}
 .pdfv-pages{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;}
 .pdfv-page{position:relative;max-width:100%;outline:3px solid transparent;outline-offset:2px;}
 .pdfv-page.selected{outline-color:#4a9eff;}
@@ -99,7 +109,7 @@ async function mountPdfViewer(root, { url, path }) {
         style.textContent = STYLE;
         document.head.appendChild(style);
     }
-    root.style.cssText += 'overflow:auto;background:#525659;';
+    root.style.cssText += 'overflow:hidden;display:flex;flex-direction:column;background:#525659;';
     const bar = el('div', 'pdfv-bar');
     const btn = (label, title, parent = bar) => { const b = el('button', null, label); b.title = title; parent.appendChild(b); return b; };
     const allLeft = btn('↺ All', 'Turn every page a quarter left');
@@ -111,6 +121,10 @@ async function mountPdfViewer(root, { url, path }) {
     bar.appendChild(sep2);
     const selectAllBtn = btn('Select all', 'Select every page (Shift-click a page\'s box for a range)');
     const exportBtn = btn('Export…', 'Export the selected pages');
+    bar.appendChild(el('span', 'pdfv-sep'));
+    const inspectBtn = btn('Inspect', 'The file\'s objects and what each draws (a debug view)');
+    const qdfBtn = btn('Readable copy…', 'Save a copy with every stream decompressed and every object written out on its own, indented (as qpdf\'s QDF mode)');
+    qdfBtn.hidden = true;
     const status = el('span', 'pdfv-status');
     bar.appendChild(status);
 
@@ -128,7 +142,11 @@ async function mountPdfViewer(root, { url, path }) {
     bar.appendChild(exportRow);
 
     const pagesEl = el('div', 'pdfv-pages');
-    root.append(bar, pagesEl);
+    const body = el('div', 'pdfv-body');
+    const scroller = el('div', 'pdfv-scroll');
+    scroller.appendChild(pagesEl);
+    body.appendChild(scroller);
+    root.append(bar, body);
 
     const writable = !!path && !insideArchive(path);
     if (!writable) saveBtn.hidden = saveAsBtn.hidden = true;
@@ -254,6 +272,12 @@ async function mountPdfViewer(root, { url, path }) {
             pickLabel.append(p.box, document.createTextNode(String(i)));
             if (!path) pickLabel.hidden = true;
             p.wrap.append(p.canvas, el('div', 'pdfv-gone', 'Deleted'), pickLabel, tools, el('span', 'pdfv-num', String(i)));
+            // Inspecting: a click on the page finds what is drawn there
+            p.wrap.addEventListener('click', (e) => {
+                if (!inspector || e.target.tagName !== 'CANVAS') return;
+                const r = p.canvas.getBoundingClientRect();
+                inspector.pickAt(pages.indexOf(p), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+            });
             pagesEl.appendChild(p.wrap);
             pages.push(p);
             await draw(p);
@@ -403,10 +427,47 @@ async function mountPdfViewer(root, { url, path }) {
         bytes = data;
         busy = false;
         await load(bytes);
+        if (inspector) inspector.reload();
         return `Saved ${baseName()}.pdf ${new Date().toLocaleTimeString()}`;
     });
     saveAsBtn.onclick = () => saveBeside(`${baseName()}-edited.pdf`, 'pdf',
         async () => new Blob([await pdfOf()], { type: 'application/pdf' }), 'Saving…');
+    // ---- Inspect ----
+    let inspector = null, side = null, split = null;
+    inspectBtn.onclick = () => {
+        if (inspector) {
+            inspector.destroy();
+            inspector = null;
+            side.remove();
+            split.remove();
+            inspectBtn.classList.remove('on');
+            root.classList.remove('pdfv-inspecting');
+            qdfBtn.hidden = true;
+            return;
+        }
+        side = el('div', 'pdfv-side');
+        split = el('div', 'pdfv-split');
+        body.insertBefore(split, scroller);
+        body.insertBefore(side, split);
+        // drag the divider to share the width
+        split.onpointerdown = (e) => {
+            split.setPointerCapture(e.pointerId);
+            const left = body.getBoundingClientRect().left;
+            split.onpointermove = (m) => { side.style.flexBasis = Math.max(180, m.clientX - left) + 'px'; };
+            split.onpointerup = () => { split.onpointermove = null; };
+        };
+        inspectBtn.classList.add('on');
+        root.classList.add('pdfv-inspecting');
+        qdfBtn.hidden = !path;
+        inspector = createInspector({
+            panel: side,
+            pages: () => pages,
+            getBytes: () => bytes,
+            saveBeside: path ? (name, ext, make, working) => saveBeside(`${baseName()}-${name}`, ext, make, working) : null,
+        });
+    };
+    qdfBtn.onclick = () => saveBeside(`${baseName()}-qdf.pdf`, 'pdf', () => inspector.readableCopy(), 'Writing…');
+
     selectAllBtn.onclick = () => {
         const all = selected().length !== kept().length;
         kept().forEach(p => pick(p, all));
@@ -437,9 +498,9 @@ async function mountPdfViewer(root, { url, path }) {
         pagesEl.innerHTML = '';
         pagesEl.appendChild(el('div', null, 'Failed to load PDF: ' + err.message)).style.cssText = 'color:#f88;padding:20px;';
         setStatus('');
-        [allLeft, allRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn].forEach(b => { b.disabled = true; });
+        [allLeft, allRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
     }
-    return { destroy() { if (doc) doc.destroy(); } };
+    return { destroy() { if (inspector) inspector.destroy(); if (doc) doc.destroy(); } };
 }
 
 module.exports = { mountPdfViewer };
