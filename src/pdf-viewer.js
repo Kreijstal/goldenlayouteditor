@@ -12,7 +12,7 @@
 const { createLogger } = require('./debug');
 const { insideArchive } = require('./browse-mode');
 const { createInspector } = require('./pdf-inspect');
-const { ensureRuffleLoaded } = require('./ruffle-plugin');
+const { playFlash } = require('./pdf-flash');
 const { createForms } = require('./pdf-forms');
 
 const log = createLogger('PDF');
@@ -73,9 +73,12 @@ const STYLE = `
 .pdfv-page.deleted .pdfv-gone{display:flex;}
 .pdfv-media{position:absolute;display:flex;align-items:center;justify-content:center;outline:1px dashed rgba(74,158,255,.8);}
 .pdfv-media>button{background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:4px;padding:5px 10px;font:13px sans-serif;cursor:pointer;}
-.pdfv-media ruffle-player{width:100%;height:100%;display:block;}
+.pdfv-media iframe{width:100%;height:100%;display:block;}
 .pdfv-media .pdfv-media-close{position:absolute;top:-24px;right:0;padding:2px 7px;}
-.pdfv-page.deleted .pdfv-media{display:none;}
+.pdfv-page .annotationLayer{z-index:0;} /* its fields stack inside it, under what follows */
+.pdfv-exec{position:absolute;cursor:pointer;}
+.pdfv-exec:hover{outline:1px dashed rgba(74,158,255,.8);}
+.pdfv-page.deleted :is(.pdfv-media,.pdfv-exec){display:none;}
 .pdfv-page.deleted .annotationLayer{display:none;}
 .pdfv-inspecting .annotationLayer,.pdfv-inspecting .annotationLayer *{pointer-events:none!important;}
 `;
@@ -230,8 +233,11 @@ async function mountPdfViewer(root, { url, path }) {
         if (forms) await forms.layer(p, viewport).catch(err => log.error('Form layer failed:', err));
     }
 
-    // Flash in the PDF (RichMedia annotations): played by Ruffle where the
-    // annotation sits, on a click (Acrobat played them; nothing does now)
+    // Flash in the PDF (RichMedia annotations, as LaTeX's media9 makes):
+    // played by Ruffle where the annotation sits, on a click, or as the page
+    // opens or shows when the file says so; and the buttons that command a
+    // movie (RichMediaExecute: media9's \mediabutton) command it here too
+    const movies = new Map(); // annotation id (pdf.js's "12R") → its movie
     async function findMedia(p) {
         const annots = await p.page.getAnnotations().catch(() => []);
         p.media = annots.filter(a => a.subtype === 'RichMedia' && a.rect).map(a => {
@@ -239,9 +245,11 @@ async function mountPdfViewer(root, { url, path }) {
             const play = el('button', null, '▶ Flash');
             play.title = 'Play the Flash (SWF) in this annotation with Ruffle';
             box.appendChild(play);
-            play.onclick = () => playMedia(box, play, a.id);
+            const m = { id: a.id, rect: a.rect, box, play };
+            play.onclick = () => startMovie(m).catch(() => {});
             p.wrap.appendChild(box);
-            return { rect: a.rect, box };
+            movies.set(a.id, m);
+            return m;
         });
     }
 
@@ -255,25 +263,125 @@ async function mountPdfViewer(root, { url, path }) {
         }
     }
 
-    async function playMedia(box, play, id) {
-        play.disabled = true;
-        play.textContent = 'Loading…';
-        try {
-            const { data, name, flashVars } = await swfOf(id);
-            const api = await ensureRuffleLoaded();
-            const player = api.createPlayer();
-            const close = el('button', 'pdfv-media-close', '✕');
-            close.title = 'Stop';
-            close.onclick = () => { player.remove(); close.remove(); play.hidden = false; play.disabled = false; play.textContent = '▶ Flash'; };
-            play.hidden = true;
-            box.append(player, close);
-            await player.load({ data, swfFileName: name, parameters: flashVars, allowScriptAccess: false, openUrlMode: 'confirm' });
-        } catch (err) {
+    function startMovie(m) {
+        if (m.starting) return m.starting;
+        m.play.disabled = true;
+        m.play.textContent = 'Loading…';
+        m.starting = (async () => {
+            const movie = await swfOf(m.id);
+            m.play.hidden = true;
+            m.handle = await playFlash(m.box, movie);
+            m.close = el('button', 'pdfv-media-close', '✕');
+            m.close.title = 'Stop';
+            m.close.onclick = () => stopMovie(m);
+            m.box.appendChild(m.close);
+            return m.handle;
+        })();
+        m.starting.catch(err => {
             log.error('Flash failed:', err);
-            play.disabled = false;
-            play.textContent = '▶ Flash';
+            stopMovie(m);
             setStatus('Could not play the Flash: ' + err.message, true);
+        });
+        return m.starting;
+    }
+
+    function stopMovie(m) {
+        if (m.handle) m.handle.destroy();
+        if (m.close) m.close.remove();
+        m.handle = m.close = m.starting = null;
+        m.play.hidden = false;
+        m.play.disabled = false;
+        m.play.textContent = '▶ Flash';
+    }
+
+    // The file read by pdf-lib (for what pdf.js leaves out), and its helpers
+    async function libOf() {
+        const lib = await import(PDF_LIB);
+        const { PDFDocument, PDFName, PDFDict, PDFArray, PDFRawStream, PDFString, PDFHexString, decodePDFRawStream } = lib;
+        if (!libDoc || libDoc.bytes !== bytes) libDoc = { bytes, doc: await PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true }) };
+        const look = (d, k) => (d instanceof PDFDict ? d.lookup(PDFName.of(k)) : undefined);
+        const items = (a) => (a instanceof PDFArray ? a.asArray().map((_, i) => a.lookup(i)) : []);
+        const text = (v) => (v instanceof PDFString || v instanceof PDFHexString ? v.decodeText() : v instanceof PDFRawStream ? new TextDecoder().decode(decodePDFRawStream(v).decode()) : undefined);
+        const name = (v) => (v instanceof PDFName ? v.decodeText() : undefined);
+        // a PDF value as JavaScript's
+        const value = (v) => v instanceof PDFArray ? items(v).map(value) : text(v) ?? name(v)
+            ?? (typeof v?.asNumber === 'function' ? v.asNumber() : typeof v?.asBoolean === 'function' ? v.asBoolean() : null);
+        const idOf = (ref) => `${ref.objectNumber}R${ref.generationNumber || ''}`;
+        return { lib, doc: libDoc.doc, look, items, text, name, value, idOf };
+    }
+
+    // After the pages: when each movie starts, and the buttons commanding them
+    async function findControls() {
+        if (!movies.size) return;
+        const { lib, doc: ldoc, look, items, name, value, idOf } = await libOf();
+        const { PDFName, PDFDict, PDFArray, PDFRef } = lib;
+        for (const m of movies.values()) {
+            const r = /^(\d+)R(\d*)$/.exec(m.id);
+            const annot = r && ldoc.context.lookup(PDFRef.of(+r[1], +(r[2] || 0)));
+            const when = name(look(look(look(annot, 'RichMediaSettings'), 'Activation'), 'Condition'));
+            if (when === 'PO' || when === 'PV') startWhenShown(m);
         }
+        ldoc.getPages().forEach((page, i) => {
+            const p = pages[i];
+            if (!p) return;
+            for (const annot of items(page.node.lookup(PDFName.of('Annots')))) {
+                const commands = [];
+                const walk = (action, depth) => {
+                    if (action instanceof PDFArray) return items(action).forEach(a => walk(a, depth + 1));
+                    if (!(action instanceof PDFDict) || depth > 32) return;
+                    if (name(look(action, 'S')) === 'RichMediaExecute') {
+                        const target = action.get(PDFName.of('TA'));
+                        const cmd = look(action, 'CMD');
+                        const args = cmd instanceof PDFDict ? value(look(cmd, 'A')) : null;
+                        commands.push({
+                            target: target instanceof PDFRef ? idOf(target) : null,
+                            call: cmd instanceof PDFDict ? value(look(cmd, 'C')) : null,
+                            args: args == null ? [] : Array.isArray(args) ? args : [args],
+                        });
+                    }
+                    walk(look(action, 'Next'), depth + 1);
+                };
+                walk(look(annot, 'A'), 0);
+                const aa = look(annot, 'AA');
+                if (aa instanceof PDFDict) ['U', 'D'].forEach(k => walk(look(aa, k), 0));
+                const live = commands.filter(c => c.call && movies.has(c.target));
+                const rect = items(look(annot, 'Rect')).map(value);
+                if (!live.length || rect.length !== 4) continue;
+                const box = el('div', 'pdfv-exec');
+                box.title = 'Movie: ' + live.map(c => c.call).join(', ');
+                box.onclick = () => command(live);
+                p.wrap.appendChild(box);
+                p.media.push({ rect, box });
+            }
+            if (p.canvas.width) placeMedia(p, p.page.getViewport({ scale: SCALE, rotation: rotation(p) }));
+        });
+    }
+
+    async function command(list) {
+        for (const c of list) {
+            const m = movies.get(c.target);
+            try {
+                const handle = await startMovie(m);
+                // a movie just started offers its functions a moment later
+                for (let tries = 0; ; tries++) {
+                    try { await handle.call(c.call, c.args); break; } catch (err) {
+                        if (!/offers no/.test(err.message) || tries > 30) throw err;
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+                }
+            } catch (err) {
+                setStatus(`The movie's ${c.call} failed: ${err.message}`, true);
+            }
+        }
+    }
+
+    function startWhenShown(m) {
+        const seen = new IntersectionObserver((entries) => {
+            if (!entries.some(e => e.isIntersecting)) return;
+            seen.disconnect();
+            if (!m.box.closest('.pdfv-page.deleted')) startMovie(m).catch(() => {});
+        }, { root: scroller, threshold: 0.1 });
+        seen.observe(m.box);
     }
 
     // The SWF of a RichMedia annotation (pdf.js names it "12R"): its Flash
@@ -281,12 +389,8 @@ async function mountPdfViewer(root, { url, path }) {
     async function swfOf(id) {
         const m = /^(\d+)R(\d*)$/.exec(id || '');
         if (!m) throw new Error('the annotation is not an object of its own');
-        const lib = await import(PDF_LIB);
-        const { PDFDocument, PDFRef, PDFName, PDFDict, PDFArray, PDFRawStream, PDFString, PDFHexString, decodePDFRawStream } = lib;
-        if (!libDoc || libDoc.bytes !== bytes) libDoc = { bytes, doc: await PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true }) };
-        const look = (d, k) => (d instanceof PDFDict ? d.lookup(PDFName.of(k)) : undefined);
-        const items = (a) => (a instanceof PDFArray ? a.asArray().map((_, i) => a.lookup(i)) : []);
-        const text = (v) => (v instanceof PDFString || v instanceof PDFHexString ? v.decodeText() : v instanceof PDFRawStream ? new TextDecoder().decode(decodePDFRawStream(v).decode()) : undefined);
+        const { lib, look, items, text } = await libOf();
+        const { PDFRef, PDFRawStream, decodePDFRawStream } = lib;
         const fileOf = (spec) => {
             const ef = look(spec, 'EF');
             const stream = look(ef, 'F') || look(ef, 'UF');
@@ -297,22 +401,26 @@ async function mountPdfViewer(root, { url, path }) {
         const isSwf = (f) => f && /^[FCZ]WS/.test(String.fromCharCode(f.data[0], f.data[1], f.data[2]));
         const annot = libDoc.doc.context.lookup(PDFRef.of(+m[1], +(m[2] || 0)));
         const content = look(annot, 'RichMediaContent');
-        for (const config of items(look(content, 'Configurations'))) {
-            for (const inst of items(look(config, 'Instances'))) {
-                const f = fileOf(look(inst, 'Asset'));
-                if (isSwf(f)) return { ...f, flashVars: text(look(look(inst, 'Params'), 'FlashVars')) || '' };
-            }
-        }
+        // the annotation's files by name: what the movie loads (media9's
+        // VPlayer.swf plays its video so) is looked up among them
         const named = [];
         const walk = (node, depth) => {
             const names = items(look(node, 'Names'));
-            for (let i = 1; i < names.length; i += 2) named.push(names[i]);
+            for (let i = 1; i < names.length; i += 2) named.push([text(names[i - 1]), names[i]]);
             if (depth < 8) items(look(node, 'Kids')).forEach(k => walk(k, depth + 1));
         };
         walk(look(content, 'Assets'), 0);
-        for (const spec of named) {
+        const assets = () => named.map(([key, spec]) => ({ key, file: fileOf(spec) })).filter(a => a.key && a.file)
+            .map(a => ({ name: a.key, data: a.file.data }));
+        for (const config of items(look(content, 'Configurations'))) {
+            for (const inst of items(look(config, 'Instances'))) {
+                const f = fileOf(look(inst, 'Asset'));
+                if (isSwf(f)) return { ...f, flashVars: text(look(look(inst, 'Params'), 'FlashVars')) || '', assets: assets() };
+            }
+        }
+        for (const [, spec] of named) {
             const f = fileOf(spec);
-            if (isSwf(f)) return { ...f, flashVars: '' };
+            if (isSwf(f)) return { ...f, flashVars: '', assets: assets() };
         }
         throw new Error('no SWF in this annotation');
     }
@@ -341,6 +449,8 @@ async function mountPdfViewer(root, { url, path }) {
         const wasRunning = !!(forms && forms.running);
         if (forms) await forms.destroy();
         forms = null;
+        movies.forEach(stopMovie);
+        movies.clear();
         if (doc) doc.destroy();
         pagesEl.textContent = '';
         pages = [];
@@ -398,6 +508,7 @@ async function mountPdfViewer(root, { url, path }) {
             await draw(p);
         }
         refresh();
+        await findControls().catch(err => log.error('Media controls:', err));
         if (wasRunning && forms && forms.hasScripts) await setScripts(true);
     }
 
@@ -634,7 +745,7 @@ async function mountPdfViewer(root, { url, path }) {
         setStatus('');
         [selLeft, selRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
     }
-    return { destroy() { if (inspector) inspector.destroy(); if (forms) forms.destroy(); if (doc) doc.destroy(); } };
+    return { destroy() { if (inspector) inspector.destroy(); movies.forEach(stopMovie); if (forms) forms.destroy(); if (doc) doc.destroy(); } };
 }
 
 module.exports = { mountPdfViewer };

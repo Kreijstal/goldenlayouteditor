@@ -4,7 +4,7 @@ const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
 
 const log = createLogger('Ruffle');
-const RUFFLE_VERSION = '0.2.0-nightly.2026.4.26';
+const RUFFLE_VERSION = '0.6.0';
 const RUFFLE_URL = `https://unpkg.com/@ruffle-rs/ruffle@${RUFFLE_VERSION}`;
 const RUFFLE_PUBLIC_PATH = `https://unpkg.com/@ruffle-rs/ruffle@${RUFFLE_VERSION}/`;
 
@@ -296,4 +296,4 @@ registerPlugin({
     },
 });
 
-module.exports = { ensureRuffleLoaded };
+module.exports = { ensureRuffleLoaded, RUFFLE_URL, RUFFLE_PUBLIC_PATH };
