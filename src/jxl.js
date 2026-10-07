@@ -8,7 +8,8 @@
 // Radiance HDR picture's PNG, tone mapped (src/rgbe.js), a TGA's PNG
 // (src/tga.js), a QOI's PNG (src/qoi.js), a PCX's (a DCX's first page)
 // PNG (src/pcx.js), an SGI image's PNG (src/sgi.js), a Sun raster's PNG
-// (src/sunras.js) and an Amiga IFF picture's PNG (src/ilbm.js).
+// (src/sunras.js), an Amiga IFF picture's PNG (src/ilbm.js) and a FITS
+// file's first image's PNG, zscaled (src/fits.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -21,6 +22,7 @@ const { isPcxName, pcxPage } = require('./pcx');
 const { isSgiName, sgiImage } = require('./sgi');
 const { isSunName, sunImage } = require('./sunras');
 const { isIlbmName, ilbmImage } = require('./ilbm');
+const { isFitsName, isFzName, fitsPage } = require('./fits');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -79,9 +81,10 @@ function jxlDecode(bytes) {
 }
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
-// TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster and
-// IFF ILBM, or where the browser shows JPEG XL; else a blob: URL of the decoded
-// PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX),
+// TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
+// ILBM and FITS, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
+// FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM; a .rgb, .bw..., .rs
 // or .iff only once known to be one), the
 // primary image's PNG (HEIF) or the tone mapped PNG (Radiance; a .pic only
@@ -97,6 +100,7 @@ async function displayableImageUrl(url, name) {
     if (isSgiName(name)) return (await sgiImage(url)).url;
     if (isSunName(name)) return (await sunImage(url)).url;
     if (isIlbmName(name)) return (await ilbmImage(url)).url;
+    if (isFitsName(name) || isFzName(name)) return (await fitsPage(url, 0)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

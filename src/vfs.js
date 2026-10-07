@@ -23,7 +23,7 @@ const SERVER = 'server';
 const { normalize, split, join, dirname, basename } = LocalFS;
 // Extensions with a dedicated viewer, never read as text (mirrors SERVED_EXTENSIONS in ws-handler.js)
 const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
-    + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
+    + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 fits fit fts mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 // Names an SGI image shares with other files (mirrors SGI_MAYBE_RE in ws-handler.js)
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 // ...and a Sun raster (mirrors SUN_MAYBE_RE in ws-handler.js)
@@ -31,6 +31,8 @@ const SUN_MAYBE_RE = /\.rs$/i;
 // ...and an Amiga picture (mirrors IFF_MAYBE_RE in ws-handler.js)
 const IFF_MAYBE_RE = /\.iff$/i;
 const IFF_PICTURE_RE = /^FORM[\s\S]{4}(ILBM|PBM |ACBM)/;
+// ...and fpack's FITS, with Fritzing's sketch (mirrors FZ_MAYBE_RE in ws-handler.js)
+const FZ_MAYBE_RE = /\.fz$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -666,13 +668,15 @@ const handlers = {
                 else if (e.size > MAX_FILE_SIZE) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                 else {
                     const blob = await read(join(dir, e.name));
-                    // an SGI image by another name (.rgb, .bw...), a Sun raster by Rust's (.rs) or an
-                    // Amiga picture by IFF's (.iff): binary, its viewer tells by the magic number
-                    const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff ? new Uint8Array(await blob.slice(0, 12).arrayBuffer()) : null;
+                    // an SGI image by another name (.rgb, .bw...), a Sun raster by Rust's (.rs), an
+                    // Amiga picture by IFF's (.iff) or FITS by Fritzing's (.fz): binary, its viewer
+                    // tells by the magic number
+                    const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz ? new Uint8Array(await blob.slice(0, 12).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
-                        || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head))))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
+                        || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
+                        || (fz && String.fromCharCode(...head).startsWith('SIMPLE  =')))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });
                 }
             }
