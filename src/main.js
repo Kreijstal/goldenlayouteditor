@@ -268,6 +268,7 @@ const { isSgiMaybeName, isSgiUrl } = require('./sgi');
 const { isSunMaybeName, isSunUrl } = require('./sunras');
 const { isIlbmName, isIlbmMaybeName, isIlbmUrl, ilbmImage, applyPixelAspect } = require('./ilbm');
 const { isFitsName, isFzName, isFitsUrl, addFitsControls } = require('./fits');
+const { isJxrMaybeName, isJxrUrl, jxrImage } = require('./jxr');
 const { attachSubtitles } = require('./subtitles');
 
 // Current workspace path (null = in-memory only)
@@ -901,7 +902,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -918,6 +919,8 @@ class EditorComponent {
         if (ext === 'binary' && isIlbmMaybeName(fileData.name) && await isIlbmUrl(url).catch(() => false)) ext = 'lbm';
         // a binary .fz is FITS (fpack's tiles) if it starts as FITS does (else a Fritzing sketch)
         if (ext === 'binary' && isFzName(fileData.name) && await isFitsUrl(url).catch(() => false)) ext = 'fits';
+        // a binary .wdp/.hdp is JPEG XR (HD Photo's names) if it starts as one (else a WinDev project...)
+        if (ext === 'binary' && isJxrMaybeName(fileData.name) && await isJxrUrl(url).catch(() => false)) ext = 'jxr';
 
         if (IMAGE_EXTS.has(ext)) {
             const img = document.createElement('img');
@@ -974,6 +977,15 @@ class EditorComponent {
             if (isRgbeName(fileData.name) || radiancePic) {
                 this.rootElement.style.position = 'relative';
                 addRgbeControls(this.rootElement, img, url);
+            }
+            // a JPEG XR picture: its pixel format; a high dynamic range one, its exposure and tone curve
+            if (ext === 'jxr') {
+                jxrImage(url).then(d => {
+                    img.title = `${d.label}, ${d.width}×${d.height}`;
+                    if (!d.hdr) return;
+                    this.rootElement.style.position = 'relative';
+                    addRgbeControls(this.rootElement, img, url, jxrImage);
+                }).catch(() => {});
             }
         } else if (VIDEO_EXTS.has(ext)) {
             const video = document.createElement('video');
@@ -1256,7 +1268,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1268,6 +1280,8 @@ class PreviewComponent {
             if (ext === 'binary' && isIlbmMaybeName(previewFile.name) && await isIlbmUrl(url).catch(() => false)) ext = 'lbm';
             // a binary .fz: FITS if it starts as FITS does
             if (ext === 'binary' && isFzName(previewFile.name) && await isFitsUrl(url).catch(() => false)) ext = 'fits';
+            // a binary .wdp/.hdp: JPEG XR if it starts as one
+            if (ext === 'binary' && isJxrMaybeName(previewFile.name) && await isJxrUrl(url).catch(() => false)) ext = 'jxr';
             let previewHtml;
 
             if (IMAGE_EXTS.has(ext)) {
@@ -1682,7 +1696,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'wdp', 'hdp'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';

@@ -291,8 +291,10 @@ function rgbeImage(url, exposure = 0, tone = 'clip') {
 }
 
 // An exposure slider (stops) and the tone curve over an image viewer's <img>
-// of the Radiance picture at url (root is the viewer's element, positioned)
-function addRgbeControls(root, img, url) {
+// of the Radiance picture at url (root is the viewer's element, positioned);
+// imageOf(url, exposure, tone) is how it is tone mapped, rgbeImage's for a
+// Radiance picture (src/jxr.js's for a high dynamic range JPEG XR)
+function addRgbeControls(root, img, url, imageOf = rgbeImage) {
     const bar = document.createElement('div');
     bar.style.cssText = 'position:absolute;top:8px;right:8px;display:flex;gap:6px;align-items:center;z-index:1;'
         + 'background:rgba(0,0,0,0.6);color:#fff;border-radius:4px;padding:2px 6px;font:12px sans-serif;';
@@ -323,7 +325,7 @@ function addRgbeControls(root, img, url) {
         // while the slider moves, once it rests for a moment
         timer = setTimeout(async () => {
             try {
-                const d = await rgbeImage(url, ev, tone.value);
+                const d = await imageOf(url, ev, tone.value);
                 if (mine === turn) img.src = d.url;
             } catch (err) {
                 if (mine === turn) value.textContent = err.message;
@@ -333,10 +335,10 @@ function addRgbeControls(root, img, url) {
     slider.oninput = show;
     slider.ondblclick = () => { slider.value = '0'; show(); };
     tone.onchange = show;
-    rgbeImage(url).then(d => { bar.title = `${d.label}, ${d.width}×${d.height}`; }).catch(() => {});
+    imageOf(url).then(d => { bar.title = `${d.label}, ${d.width}×${d.height}`; }).catch(() => {});
     root.appendChild(bar);
     value.textContent = '0 EV';
     return bar;
 }
 
-module.exports = { isRgbeName, isPicName, isRadiance, isRadianceUrl, rgbeDecode, rgbeToneMap, rgbeImage, addRgbeControls };
+module.exports = { isRgbeName, isPicName, isRadiance, isRadianceUrl, rgbeDecode, rgbeToneMap, rgbeImage, addRgbeControls, srgb, rgbaToPng };
