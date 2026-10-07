@@ -78,8 +78,9 @@ function tiffPage(url, page = 0) {
 }
 
 // Page buttons over an image viewer's <img> for a TIFF with more than one page
-// (root is the viewer's element, positioned)
-function addTiffPager(root, img, url, pages) {
+// (root is the viewer's element, positioned); pageOf(url, page) is how a page
+// is decoded, tiffPage's for a TIFF (src/heif.js's for a HEIF collection)
+function addTiffPager(root, img, url, pages, pageOf = tiffPage) {
     if (pages.length < 2) return null;
     const bar = document.createElement('div');
     bar.style.cssText = 'position:absolute;top:8px;right:8px;display:flex;gap:4px;align-items:center;z-index:1;'
@@ -107,7 +108,7 @@ function addTiffPager(root, img, url, pages) {
         next.disabled = page === pages.length - 1;
         const mine = ++turn;
         try {
-            const d = await tiffPage(url, page);
+            const d = await pageOf(url, page);
             if (mine === turn) img.src = d.url;
         } catch (err) {
             if (mine === turn) info.textContent = `${page + 1} / ${pages.length}: ${err.message}`;

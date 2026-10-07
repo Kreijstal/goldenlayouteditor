@@ -3,10 +3,12 @@
 // decoded in a worker (public/jxl-worker.js, jxl-oxide as WebAssembly) to PNG,
 // or APNG for animations, which any <img> shows. TinyVG (.tvg), which no
 // browser shows, becomes SVG here too (src/tvg.js), a TIFF's first page PNG
-// (src/tiff.js) and JPEG 2000 PNG (src/jp2.js).
+// (src/tiff.js), JPEG 2000 PNG (src/jp2.js) and a HEIF's primary image PNG
+// (src/heif.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
+const { isHeifName, heifPage } = require('./heif');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -65,11 +67,12 @@ function jxlDecode(bytes) {
 }
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
-// TIFF and JPEG 2000, or where the browser shows JPEG XL; else a blob: URL of the
-// decoded PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF) or
-// the PNG (JPEG 2000)
+// TIFF, JPEG 2000 and HEIF, or where the browser shows JPEG XL; else a blob: URL
+// of the decoded PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG
+// (TIFF), the PNG (JPEG 2000) or the primary image's PNG (HEIF)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
+    if (isHeifName(name)) return (await heifPage(url, 0)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

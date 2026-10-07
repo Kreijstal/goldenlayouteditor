@@ -259,6 +259,7 @@ const wsClient = require('./ws-client');
 const { resolveFileUrl, downloadFile, addMemoryFile: addMemoryFileBytes, removeMemoryFile: removeMemoryFileBytes } = require('./archive-fallback');
 const { displayableImageUrl } = require('./jxl');
 const { isTiffName, tiffPage, addTiffPager } = require('./tiff');
+const { isHeifName, heifPage } = require('./heif');
 const { attachSubtitles } = require('./subtitles');
 
 // Current workspace path (null = in-memory only)
@@ -892,7 +893,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         const ext = fileData.viewType;
@@ -913,6 +914,13 @@ class EditorComponent {
                 tiffPage(url, 0).then(first => {
                     this.rootElement.style.position = 'relative';
                     addTiffPager(this.rootElement, img, url, first.pages);
+                }).catch(() => {});
+            }
+            // a HEIF collection (a burst, a Live Photo's still): the same buttons for its images
+            if (isHeifName(fileData.name)) {
+                heifPage(url, 0).then(first => {
+                    this.rootElement.style.position = 'relative';
+                    addTiffPager(this.rootElement, img, url, first.pages, heifPage);
                 }).catch(() => {});
             }
         } else if (VIDEO_EXTS.has(ext)) {
@@ -1196,7 +1204,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             const ext = previewFile.viewType;
@@ -1614,7 +1622,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
