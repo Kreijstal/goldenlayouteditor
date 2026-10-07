@@ -2,10 +2,12 @@
 // Safari shows JPEG XL; other browsers (mostly) don't. There, .jxl files are
 // decoded in a worker (public/jxl-worker.js, jxl-oxide as WebAssembly) to PNG,
 // or APNG for animations, which any <img> shows. TinyVG (.tvg), which no
-// browser shows, becomes SVG here too (src/tvg.js), and a TIFF's first page PNG (src/tiff.js).
+// browser shows, becomes SVG here too (src/tvg.js), a TIFF's first page PNG
+// (src/tiff.js) and JPEG 2000 PNG (src/jp2.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
+const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -62,13 +64,15 @@ function jxlDecode(bytes) {
     });
 }
 
-// A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG and
-// TIFF, or where the browser shows JPEG XL; else a blob: URL of the decoded PNG/APNG
-// (JPEG XL), the SVG (TinyVG) or the first page's PNG (TIFF)
+// A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
+// TIFF and JPEG 2000, or where the browser shows JPEG XL; else a blob: URL of the
+// decoded PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF) or
+// the PNG (JPEG 2000)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     const tvg = TVG_RE.test(name || '');
-    if (!tvg && (!JXL_RE.test(name || '') || await jxlNative())) return url;
+    const jp2 = isJp2Name(name);
+    if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
     let p = converted.get(url);
     if (!p) {
         p = (async () => {
@@ -76,11 +80,11 @@ async function displayableImageUrl(url, name) {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const bytes = new Uint8Array(await resp.arrayBuffer());
             if (tvg) return URL.createObjectURL(new Blob([tvgToSvg(bytes)], { type: 'image/svg+xml' }));
-            const r = await jxlDecode(bytes);
+            const r = jp2 ? await jp2Decode(bytes) : await jxlDecode(bytes);
             return URL.createObjectURL(new Blob([r.png], { type: 'image/png' }));
         })();
         converted.set(url, p);
-        p.catch(err => { converted.delete(url); log.warn(`${tvg ? 'TinyVG' : 'JPEG XL'} decode failed:`, err); });
+        p.catch(err => { converted.delete(url); log.warn(`${tvg ? 'TinyVG' : jp2 ? 'JPEG 2000' : 'JPEG XL'} decode failed:`, err); });
         if (converted.size > 64) {
             const [oldUrl, old] = converted.entries().next().value;
             converted.delete(oldUrl);
