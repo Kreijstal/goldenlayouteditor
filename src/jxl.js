@@ -2,9 +2,10 @@
 // Safari shows JPEG XL; other browsers (mostly) don't. There, .jxl files are
 // decoded in a worker (public/jxl-worker.js, jxl-oxide as WebAssembly) to PNG,
 // or APNG for animations, which any <img> shows. TinyVG (.tvg), which no
-// browser shows, becomes SVG here too (src/tvg.js).
+// browser shows, becomes SVG here too (src/tvg.js), and a TIFF's first page PNG (src/tiff.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
+const { isTiffName, tiffPage } = require('./tiff');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -61,10 +62,11 @@ function jxlDecode(bytes) {
     });
 }
 
-// A URL an <img> can show: the file's own for anything but JPEG XL and TinyVG,
-// or where the browser shows JPEG XL; else a blob: URL of the decoded PNG/APNG
-// (JPEG XL) or the SVG (TinyVG)
+// A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG and
+// TIFF, or where the browser shows JPEG XL; else a blob: URL of the decoded PNG/APNG
+// (JPEG XL), the SVG (TinyVG) or the first page's PNG (TIFF)
 async function displayableImageUrl(url, name) {
+    if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     const tvg = TVG_RE.test(name || '');
     if (!tvg && (!JXL_RE.test(name || '') || await jxlNative())) return url;
     let p = converted.get(url);

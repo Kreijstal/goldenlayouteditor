@@ -26,7 +26,7 @@ const SERVED_EXTENSIONS = new Set([
   'fst', 'ghw',
   'wasm',
   'fla', 'xfl',
-  'png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg',
+  'png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff',
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
