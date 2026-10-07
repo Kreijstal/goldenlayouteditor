@@ -6,8 +6,8 @@
 // (src/tiff.js), JPEG 2000 PNG (src/jp2.js), a HEIF's primary image PNG
 // (src/heif.js), a Netpbm file's first image PNG (src/netpbm.js), a
 // Radiance HDR picture's PNG, tone mapped (src/rgbe.js), a TGA's PNG
-// (src/tga.js), a QOI's PNG (src/qoi.js) and a PCX's (a DCX's first page)
-// PNG (src/pcx.js).
+// (src/tga.js), a QOI's PNG (src/qoi.js), a PCX's (a DCX's first page)
+// PNG (src/pcx.js) and an SGI image's PNG (src/sgi.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -17,6 +17,7 @@ const { isRgbeName, isPicName, rgbeImage } = require('./rgbe');
 const { isTgaName, tgaImage } = require('./tga');
 const { isQoiName, qoiImage } = require('./qoi');
 const { isPcxName, pcxPage } = require('./pcx');
+const { isSgiName, sgiImage } = require('./sgi');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -75,11 +76,12 @@ function jxlDecode(bytes) {
 }
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
-// TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI and PCX, or where the
-// browser shows JPEG XL; else a blob: URL of the decoded PNG/APNG (JPEG XL), the
-// SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX), the PNG (JPEG 2000,
-// TGA, QOI, PCX), the primary image's PNG (HEIF) or the tone mapped PNG
-// (Radiance; a .pic only once known to be one)
+// TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX and SGI, or where
+// the browser shows JPEG XL; else a blob: URL of the decoded PNG/APNG (JPEG XL),
+// the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX), the PNG (JPEG
+// 2000, TGA, QOI, PCX, SGI; a .rgb, .bw... only once known to be one), the
+// primary image's PNG (HEIF) or the tone mapped PNG (Radiance; a .pic only
+// once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -88,6 +90,7 @@ async function displayableImageUrl(url, name) {
     if (isTgaName(name)) return (await tgaImage(url)).url;
     if (isQoiName(name)) return (await qoiImage(url)).url;
     if (isPcxName(name)) return (await pcxPage(url, 0)).url;
+    if (isSgiName(name)) return (await sgiImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

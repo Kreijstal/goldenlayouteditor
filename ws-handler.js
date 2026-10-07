@@ -34,10 +34,14 @@ const SERVED_EXTENSIONS = new Set([
   'tga', 'tpic', 'icb', 'vda', 'vst', // .icb/.vda/.vst: only if a TGA (.vst is a Visio template too)
   'qoi',
   'pcx', 'dcx',
+  'sgi', // not .rgb/.rgba/.bw/.int/.inta: raw dumps and other things too (SGI_MAYBE_RE)
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
 ]);
+
+// Names an SGI image shares with other files: one only if its magic number is SGI's
+const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -570,7 +574,14 @@ const messageHandlers = {
               continue;
             }
             try {
-              const content = await fs.promises.readFile(fullPath, 'utf-8');
+              const buf = await fs.promises.readFile(fullPath);
+              // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
+              if (SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474) {
+                children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
+                fileCount++;
+                continue;
+              }
+              const content = buf.toString('utf-8');
               children.push({ name: entry.name, type: 'file', content });
               fileCount++;
             } catch (readErr) {
