@@ -295,3 +295,5 @@ registerPlugin({
         RuffleSwfComponent._ctx = ctx;
     },
 });
+
+module.exports = { ensureRuffleLoaded };

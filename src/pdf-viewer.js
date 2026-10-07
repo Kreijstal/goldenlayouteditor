@@ -12,6 +12,7 @@
 const { createLogger } = require('./debug');
 const { insideArchive } = require('./browse-mode');
 const { createInspector } = require('./pdf-inspect');
+const { ensureRuffleLoaded } = require('./ruffle-plugin');
 
 const log = createLogger('PDF');
 const PDFJS = 'https://esm.sh/pdfjs-dist@4.9.155/build/';
@@ -69,6 +70,11 @@ const STYLE = `
 .pdfv-page.deleted .pdfv-turn button:not(.pdfv-del),.pdfv-page.deleted .pdfv-pick{display:none;}
 .pdfv-gone{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:#c00;font:bold 20px sans-serif;pointer-events:none;}
 .pdfv-page.deleted .pdfv-gone{display:flex;}
+.pdfv-media{position:absolute;display:flex;align-items:center;justify-content:center;outline:1px dashed rgba(74,158,255,.8);}
+.pdfv-media>button{background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:4px;padding:5px 10px;font:13px sans-serif;cursor:pointer;}
+.pdfv-media ruffle-player{width:100%;height:100%;display:block;}
+.pdfv-media .pdfv-media-close{position:absolute;top:-24px;right:0;padding:2px 7px;}
+.pdfv-page.deleted .pdfv-media{display:none;}
 `;
 
 function el(tag, cls, text) {
@@ -153,7 +159,7 @@ async function mountPdfViewer(root, { url, path }) {
     if (!path) sep2.hidden = selectAllBtn.hidden = selLeft.hidden = selRight.hidden = exportBtn.hidden = true;
     const setStatus = (text, isError) => { status.textContent = text; status.classList.toggle('error', !!isError); };
 
-    let pdfjs, bytes, doc, pages = [];
+    let pdfjs, bytes, doc, pages = [], libDoc = null;
     let busy = false, lastPicked = null;
     const plural = (n, what) => `${n} ${what}${n === 1 ? '' : 's'}`;
     const kept = () => pages.filter(p => !p.deleted);
@@ -212,6 +218,94 @@ async function mountPdfViewer(root, { url, path }) {
         }
         p.canvas.replaceWith(canvas);
         p.canvas = canvas;
+        placeMedia(p, viewport);
+    }
+
+    // Flash in the PDF (RichMedia annotations): played by Ruffle where the
+    // annotation sits, on a click (Acrobat played them; nothing does now)
+    async function findMedia(p) {
+        const annots = await p.page.getAnnotations().catch(() => []);
+        p.media = annots.filter(a => a.subtype === 'RichMedia' && a.rect).map(a => {
+            const box = el('div', 'pdfv-media');
+            const play = el('button', null, '▶ Flash');
+            play.title = 'Play the Flash (SWF) in this annotation with Ruffle';
+            box.appendChild(play);
+            play.onclick = () => playMedia(box, play, a.id);
+            p.wrap.appendChild(box);
+            return { rect: a.rect, box };
+        });
+    }
+
+    function placeMedia(p, viewport) {
+        for (const m of p.media || []) {
+            const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(m.rect);
+            Object.assign(m.box.style, {
+                left: Math.min(x1, x2) / viewport.width * 100 + '%', top: Math.min(y1, y2) / viewport.height * 100 + '%',
+                width: Math.abs(x2 - x1) / viewport.width * 100 + '%', height: Math.abs(y2 - y1) / viewport.height * 100 + '%',
+            });
+        }
+    }
+
+    async function playMedia(box, play, id) {
+        play.disabled = true;
+        play.textContent = 'Loading…';
+        try {
+            const { data, name, flashVars } = await swfOf(id);
+            const api = await ensureRuffleLoaded();
+            const player = api.createPlayer();
+            const close = el('button', 'pdfv-media-close', '✕');
+            close.title = 'Stop';
+            close.onclick = () => { player.remove(); close.remove(); play.hidden = false; play.disabled = false; play.textContent = '▶ Flash'; };
+            play.hidden = true;
+            box.append(player, close);
+            await player.load({ data, swfFileName: name, parameters: flashVars, allowScriptAccess: false, openUrlMode: 'confirm' });
+        } catch (err) {
+            log.error('Flash failed:', err);
+            play.disabled = false;
+            play.textContent = '▶ Flash';
+            setStatus('Could not play the Flash: ' + err.message, true);
+        }
+    }
+
+    // The SWF of a RichMedia annotation (pdf.js names it "12R"): its Flash
+    // instance's asset, else the first SWF among the assets; with its FlashVars
+    async function swfOf(id) {
+        const m = /^(\d+)R(\d*)$/.exec(id || '');
+        if (!m) throw new Error('the annotation is not an object of its own');
+        const lib = await import(PDF_LIB);
+        const { PDFDocument, PDFRef, PDFName, PDFDict, PDFArray, PDFRawStream, PDFString, PDFHexString, decodePDFRawStream } = lib;
+        if (!libDoc || libDoc.bytes !== bytes) libDoc = { bytes, doc: await PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true }) };
+        const look = (d, k) => (d instanceof PDFDict ? d.lookup(PDFName.of(k)) : undefined);
+        const items = (a) => (a instanceof PDFArray ? a.asArray().map((_, i) => a.lookup(i)) : []);
+        const text = (v) => (v instanceof PDFString || v instanceof PDFHexString ? v.decodeText() : v instanceof PDFRawStream ? new TextDecoder().decode(decodePDFRawStream(v).decode()) : undefined);
+        const fileOf = (spec) => {
+            const ef = look(spec, 'EF');
+            const stream = look(ef, 'F') || look(ef, 'UF');
+            if (!stream) return null;
+            const data = stream instanceof PDFRawStream ? decodePDFRawStream(stream).decode() : stream.getContents();
+            return { data, name: text(look(spec, 'UF')) || text(look(spec, 'F')) || 'movie.swf' };
+        };
+        const isSwf = (f) => f && /^[FCZ]WS/.test(String.fromCharCode(f.data[0], f.data[1], f.data[2]));
+        const annot = libDoc.doc.context.lookup(PDFRef.of(+m[1], +(m[2] || 0)));
+        const content = look(annot, 'RichMediaContent');
+        for (const config of items(look(content, 'Configurations'))) {
+            for (const inst of items(look(config, 'Instances'))) {
+                const f = fileOf(look(inst, 'Asset'));
+                if (isSwf(f)) return { ...f, flashVars: text(look(look(inst, 'Params'), 'FlashVars')) || '' };
+            }
+        }
+        const named = [];
+        const walk = (node, depth) => {
+            const names = items(look(node, 'Names'));
+            for (let i = 1; i < names.length; i += 2) named.push(names[i]);
+            if (depth < 8) items(look(node, 'Kids')).forEach(k => walk(k, depth + 1));
+        };
+        walk(look(content, 'Assets'), 0);
+        for (const spec of named) {
+            const f = fileOf(spec);
+            if (isSwf(f)) return { ...f, flashVars: '' };
+        }
+        throw new Error('no SWF in this annotation');
     }
 
     function remove(p, del) {
@@ -279,6 +373,7 @@ async function mountPdfViewer(root, { url, path }) {
             });
             pagesEl.appendChild(p.wrap);
             pages.push(p);
+            await findMedia(p);
             await draw(p);
         }
         refresh();

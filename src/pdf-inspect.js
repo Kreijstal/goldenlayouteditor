@@ -1001,7 +1001,10 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose }) {
             })();
             const save = el('button', null, 'Save decoded…');
             save.disabled = !decoded;
-            save.onclick = () => saveBeside(`obj${num}.bin`, 'bin', async () => new Blob([decoded]), 'Saving…');
+            // an embedded Flash movie (PDF RichMedia) is known by its first bytes
+            const decExt = decoded && decoded.length > 3 && /^[FCZ]WS$/.test(String.fromCharCode(decoded[0], decoded[1], decoded[2])) ? 'swf' : 'bin';
+            if (decExt === 'swf') save.textContent = 'Save as SWF…';
+            save.onclick = () => saveBeside(`obj${num}.${decExt}`, decExt, async () => new Blob([decoded]), 'Saving…');
             const saveRaw = el('button', null, ext === 'DCTDecode' ? 'Save as JPEG…' : ext === 'JPXDecode' ? 'Save as JPEG 2000…' : 'Save raw…');
             const rawExt = ext === 'DCTDecode' ? 'jpg' : ext === 'JPXDecode' ? 'jp2' : 'bin';
             saveRaw.onclick = () => saveBeside(`obj${num}-raw.${rawExt}`, rawExt, async () => new Blob([raw]), 'Saving…');
