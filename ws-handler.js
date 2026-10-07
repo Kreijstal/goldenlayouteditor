@@ -30,6 +30,7 @@ const SERVED_EXTENSIONS = new Set([
   'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc',
   'heic', 'heif', 'hif',
   'pbm', 'pgm', 'ppm', 'pnm', 'pam',
+  'hdr', 'rgbe', 'xyze', 'pic', // .pic: shown as a picture only if Radiance's
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',

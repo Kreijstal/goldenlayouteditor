@@ -4,12 +4,14 @@
 // or APNG for animations, which any <img> shows. TinyVG (.tvg), which no
 // browser shows, becomes SVG here too (src/tvg.js), a TIFF's first page PNG
 // (src/tiff.js), JPEG 2000 PNG (src/jp2.js), a HEIF's primary image PNG
-// (src/heif.js) and a Netpbm file's first image PNG (src/netpbm.js).
+// (src/heif.js), a Netpbm file's first image PNG (src/netpbm.js) and a
+// Radiance HDR picture's PNG, tone mapped (src/rgbe.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
 const { isHeifName, heifPage } = require('./heif');
 const { isNetpbmName, netpbmPage } = require('./netpbm');
+const { isRgbeName, isPicName, rgbeImage } = require('./rgbe');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -68,13 +70,15 @@ function jxlDecode(bytes) {
 }
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
-// TIFF, JPEG 2000, HEIF and Netpbm, or where the browser shows JPEG XL; else a
-// blob: URL of the decoded PNG/APNG (JPEG XL), the SVG (TinyVG), the first
-// page's PNG (TIFF, Netpbm), the PNG (JPEG 2000) or the primary image's PNG (HEIF)
+// TIFF, JPEG 2000, HEIF, Netpbm and Radiance, or where the browser shows JPEG
+// XL; else a blob: URL of the decoded PNG/APNG (JPEG XL), the SVG (TinyVG), the
+// first page's PNG (TIFF, Netpbm), the PNG (JPEG 2000), the primary image's PNG
+// (HEIF) or the tone mapped PNG (Radiance; a .pic only once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
     if (isNetpbmName(name)) return (await netpbmPage(url, 0)).url;
+    if (isRgbeName(name) || isPicName(name)) return (await rgbeImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
