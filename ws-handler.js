@@ -35,6 +35,7 @@ const SERVED_EXTENSIONS = new Set([
   'qoi',
   'pcx', 'dcx',
   'sgi', // not .rgb/.rgba/.bw/.int/.inta: raw dumps and other things too (SGI_MAYBE_RE)
+  'ras', 'sun', 'im1', 'im8', 'im24', 'im32', // not .rs: Rust far more often (SUN_MAYBE_RE)
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
@@ -42,6 +43,8 @@ const SERVED_EXTENSIONS = new Set([
 
 // Names an SGI image shares with other files: one only if its magic number is SGI's
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
+// The name a Sun raster shares with Rust: one only if its magic number is 0x59a66a95
+const SUN_MAYBE_RE = /\.rs$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -576,7 +579,9 @@ const messageHandlers = {
             try {
               const buf = await fs.promises.readFile(fullPath);
               // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
-              if (SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474) {
+              // (or a Sun raster by Rust's, .rs)
+              if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
+                || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;
