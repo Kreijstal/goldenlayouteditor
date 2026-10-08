@@ -30,8 +30,8 @@
 // or Cineon film scan's PNG, log to linear, by ImageMagick (src/dpx.js), a
 // DirectDraw Surface's first level's PNG (src/dds.js), and an OpenEXR file's
 // first layer's PNG, tone mapped (src/exr.js), a JBIG2 file's first page's PNG, by
-// MuPDF (src/jbig2.js), and an MNG animation's first frame's PNG or a JNG's PNG, by
-// ImageMagick (src/mng.js).
+// MuPDF (src/jbig2.js), an MNG animation's first frame's PNG or a JNG's PNG, by
+// ImageMagick (src/mng.js), and a JPEG-LS image's PNG, by CharLS (src/jls.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -72,6 +72,7 @@ const { isCursorName, cursorImage } = require('./cur');
 const { isIcnsName, icnsImage } = require('./icns');
 const { isDdsName, ddsImage } = require('./dds');
 const { isExrName, exrImage } = require('./exr');
+const { isJlsName, jlsImage } = require('./jls');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -156,7 +157,8 @@ function jxlDecode(bytes) {
 // a logarithmic one turned linear (DPX: .dpx; Cineon: a .cin only once known to be one) or
 // the first level's PNG (DirectDraw Surface: .dds) or the first layer's PNG, tone
 // mapped (OpenEXR: .exr) or the first page's PNG (JBIG2: .jb2, .jbig2) or the first
-// frame's PNG (MNG: a .mng only once known to be one) or the PNG (JNG: .jng)
+// frame's PNG (MNG: a .mng only once known to be one) or the PNG (JNG: .jng) or the
+// PNG, more than 8 bits windowed to their range (JPEG-LS: .jls)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -201,6 +203,7 @@ async function displayableImageUrl(url, name) {
     // a .mng: MNG if it starts as one (else Ott's text)
     if (isMngName(name) && await isMngUrl(url).catch(() => false)) return (await mngImage(url)).url;
     if (isJngName(name)) return (await jngImage(url)).url;
+    if (isJlsName(name)) return (await jlsImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
