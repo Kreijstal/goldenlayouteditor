@@ -29,6 +29,10 @@ const RHINO3DM_PATH = 'https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/';
 // STEP, IGES and OpenCASCADE BREP are read by occt-import-js in a worker (public/occt-worker.js)
 const OCCT_WORKER_URL = 'occt-worker.js';
 const CAD_FORMATS = { step: 'step', stp: 'step', p21: 'step', iges: 'iges', igs: 'iges', brep: 'brep' };
+// Formats three.js has no loader for, converted to GLB by assimpjs (Assimp as WebAssembly, from jsDelivr).
+// On the page itself: Assimp's OpenGEX parser recurses deeper than a worker's stack allows
+const ASSIMPJS_PATH = 'https://cdn.jsdelivr.net/npm/assimpjs@0.0.10/dist/';
+const ASSIMP_FORMATS = { ogex: 'OpenGEX' };
 // OpenSCAD renders in a worker (public/openscad-worker.js), which loads the WebAssembly build
 const OPENSCAD_WORKER_URL = 'openscad-worker.js';
 const { parseParameters, toScad } = require('./scad-params');
@@ -41,9 +45,9 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep)$/i;
-// Formats read from the file alone (by a three.js loader or OpenCASCADE): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex)$/i;
+// Formats read from the file alone (by a three.js loader, OpenCASCADE or Assimp): these get thumbnails too
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex)$/i;
 // Names other files have too: a .ply, .amf or .stp only when it starts as a PLY, AMF or STEP file
 const SHARED_NAME_RE = /\.(ply|amf|stp)$/i;
 const THUMB_SIZE = 256;
@@ -195,6 +199,45 @@ function occtRead(format, buffer) {
     });
 }
 
+// --- Assimp (OpenGEX) ---
+let _assimp = null;
+
+function ensureAssimp() {
+    if (!_assimp) {
+        _assimp = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = ASSIMPJS_PATH + 'assimpjs.js';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Could not load assimpjs'));
+            document.head.appendChild(script);
+        }).then(() => window.assimpjs({ locateFile: file => ASSIMPJS_PATH + file }));
+        _assimp.catch(() => { _assimp = null; });
+    }
+    return _assimp;
+}
+
+// The file as binary glTF; the name's extension picks Assimp's importer
+async function assimpToGlb(name, buffer) {
+    const ajs = await ensureAssimp();
+    const files = new ajs.FileList();
+    files.AddFile(name, new Uint8Array(buffer));
+    let result;
+    try {
+        result = ajs.ConvertFileList(files, 'glb2');
+    } catch (err) {
+        _assimp = null; // a WebAssembly trap leaves the module unusable: a new one next time
+        throw new Error(`Assimp could not read this file (${err && err.message || err})`);
+    }
+    if (!result.IsSuccess() || result.FileCount() === 0) throw new Error(`Assimp could not read this file (${result.GetErrorCode()})`);
+    return result.GetFile(0).GetContent().slice().buffer;
+}
+
+// OpenGEX's up axis, from its Metric (key = "up") structure; "z" when it has none (the spec's default)
+function ogexUpAxis(buffer) {
+    const m = /Metric\s*\(\s*key\s*=\s*"up"\s*\)\s*\{\s*string\s*\{\s*"([yz])"/.exec(new TextDecoder().decode(buffer));
+    return m ? m[1] : 'z';
+}
+
 const CAD_DEFAULT_COLOR = 0x9ad0ff;
 
 // The assembly tree OpenCASCADE read, as groups of meshes (one per body, its B-rep faces
@@ -313,6 +356,10 @@ async function parseModel(libs, ext, buffer, manager) {
         const format = CAD_FORMATS[ext];
         if (format === 'step' && !looksLikeStep(headText(new Uint8Array(buffer)))) throw new Error('not a STEP file (no ISO-10303-21 header)');
         object = buildCadObject(THREE, await occtRead(format, buffer));
+    } else if (ASSIMP_FORMATS[ext]) {
+        // Assimp keeps the file's axes: a Z-up scene is turned Y-up here
+        object = await parseGltf(new libs.GLTFLoader(manager), await assimpToGlb('model.' + ext, buffer), '', true);
+        if (ext === 'ogex' && ogexUpAxis(buffer) === 'z') object.rotation.x = -Math.PI / 2;
     } else {
         throw new Error(`Unsupported model format: ${ext}`);
     }
@@ -727,9 +774,11 @@ class Model3dComponent {
                 const dir = this.localFile ? '' : (this.sourcePath || '').replace(/\/[^/]*$/, '');
                 const manager = resourceManager(this.THREE, dir);
                 if (CAD_FORMATS[ext]) this.statusEl.textContent = 'Reading with OpenCASCADE...';
+                if (ASSIMP_FORMATS[ext]) this.statusEl.textContent = 'Reading with Assimp...';
                 object = await parseModel(libs, ext, buffer, manager);
                 manager.settled().then(() => dropMissingTextures(object));
                 if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
+                if (ASSIMP_FORMATS[ext]) this.extraStats = { format: ASSIMP_FORMATS[ext], reader: 'assimpjs 0.0.10 (Assimp)' };
             }
             this._setModel(object);
         } catch (err) {
