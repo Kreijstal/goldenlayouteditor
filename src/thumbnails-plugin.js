@@ -11,6 +11,7 @@ const { isEcwName, ecwImage } = require('./ecw');
 const { isOdgName, odgThumbnail } = require('./odg');
 const { isPicName, isRadianceUrl } = require('./rgbe');
 const { isPictUrl } = require('./pict');
+const { isPictorUrl } = require('./pictor');
 const { isCalsUrl } = require('./cals');
 const { isCineonUrl } = require('./dpx');
 const { isMngUrl } = require('./mng');
@@ -128,8 +129,8 @@ async function renderImageClient(file, container) {
     if (isPgfName(file.name) && !await isPgfUrl(url).catch(() => false)) return;
     // ...and a .drw that is not Micrografx's (Pro/ENGINEER's, Caddie's...)
     if (isDrwName(file.name) && !await isDrwUrl(url).catch(() => false)) return;
-    // ...and a .pic that is neither QuickDraw PICT nor Radiance's (Softimage's, PC Paint's...)
-    if (isPicName(file.name) && !await isPictUrl(url).catch(() => false) && !await isRadianceUrl(url).catch(() => false)) return;
+    // ...and a .pic that is neither QuickDraw PICT nor PICtor (PC Paint's) nor Radiance's (Softimage's...)
+    if (isPicName(file.name) && !await isPictUrl(url).catch(() => false) && !await isPictorUrl(url).catch(() => false) && !await isRadianceUrl(url).catch(() => false)) return;
     // ...and a .cal that is not a CALS raster (a calendar...)
     if (/\.cal$/i.test(file.name) && !await isCalsUrl(url).catch(() => false)) return;
     // ...and a .cin that is not a Cineon film scan (an input method's table...)

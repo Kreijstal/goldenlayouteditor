@@ -33,7 +33,8 @@
 // MuPDF (src/jbig2.js), an MNG animation's first frame's PNG or a JNG's PNG, by
 // ImageMagick (src/mng.js), a JPEG-LS image's PNG, by CharLS (src/jls.js), a MIFF
 // file's first image's PNG (src/miff.js) and a WBMP's PNG (src/wbmp.js), by
-// ImageMagick, and an X Window dump's PNG, by FFmpeg (src/xwd.js).
+// ImageMagick, and an X Window dump's PNG (src/xwd.js) and a PICtor picture's
+// PNG (src/pictor.js), by FFmpeg.
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -78,6 +79,7 @@ const { isJlsName, jlsImage } = require('./jls');
 const { isMiffName, miffPage } = require('./miff');
 const { isWbmpName, wbmpImage } = require('./wbmp');
 const { isXwdName, xwdImage } = require('./xwd');
+const { isPictorUrl, pictorImage } = require('./pictor');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -164,13 +166,14 @@ function jxlDecode(bytes) {
 // mapped (OpenEXR: .exr) or the first page's PNG (JBIG2: .jb2, .jbig2) or the first
 // frame's PNG (MNG: a .mng only once known to be one) or the PNG (JNG: .jng) or the
 // PNG, more than 8 bits windowed to their range (JPEG-LS: .jls) or the first image's PNG
-// (MIFF: .miff) or the PNG (WBMP: .wbmp; X Window dump: .xwd)
+// (MIFF: .miff) or the PNG (WBMP: .wbmp; X Window dump: .xwd; PICtor: a .pic only once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
     if (isNetpbmName(name)) return (await netpbmPage(url, 0)).url;
-    // a .pic: QuickDraw PICT if it starts as one, else Radiance's
+    // a .pic: QuickDraw PICT if it starts as one, PICtor (PC Paint) if it starts as one, else Radiance's
     if (isPictName(name) || (isPicName(name) && await isPictUrl(url).catch(() => false))) return (await pictImage(url)).url;
+    if (isPicName(name) && await isPictorUrl(url).catch(() => false)) return (await pictorImage(url)).url;
     if (isRgbeName(name) || isPicName(name)) return (await rgbeImage(url)).url;
     if (isTgaName(name)) return (await tgaImage(url)).url;
     if (isQoiName(name)) return (await qoiImage(url)).url;

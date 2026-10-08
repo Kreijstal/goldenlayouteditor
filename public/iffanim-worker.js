@@ -1,5 +1,5 @@
-// FFmpeg in a worker, for Amiga IFF and FLIC animations (src/iffanim.js) and X Window
-// dumps (src/xwd.js): ffmpeg.wasm's
+// FFmpeg in a worker, for Amiga IFF and FLIC animations (src/iffanim.js), X Window
+// dumps (src/xwd.js) and PICtor pictures (src/pictor.js): ffmpeg.wasm's
 // core (@ffmpeg/core, FFmpeg compiled to WebAssembly), its 32 MB .wasm fetched
 // from jsDelivr the first time one is opened. FFmpeg's iff demuxer and iff_ilbm
 // decoder read an ANIM's first ILBM and its DLTA deltas (ANHD's operations 0-5,
@@ -7,7 +7,8 @@
 // animations (.anm, LPF) are FFmpeg's too, and so are Autodesk Animator's FLICs
 // (flic demuxer and decoder: FLI's 64-level palettes, FLC's 256, Animator Pro's
 // 15/16/24-bit FLX frames). X Window dumps are its xwd_pipe demuxer's and xwd
-// decoder's (ZPixmap dumps only).
+// decoder's (ZPixmap dumps only), PICtor pictures its pictor_pipe demuxer's and
+// pictor decoder's.
 //   → { id, bytes, frames }     ← { id, raw, times, log } | { id, error }
 // raw: the first `frames` frames' RGBA, one after another; times: FFmpeg's
 // framecrc of them (the time base, the size, the pixel aspect, each frame's pts).

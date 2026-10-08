@@ -46,7 +46,7 @@ const SERVED_EXTENSIONS = new Set([
   'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc',
   'heic', 'heif', 'hif',
   'pbm', 'pgm', 'ppm', 'pnm', 'pam',
-  'hdr', 'rgbe', 'xyze', 'pic', // .pic: shown as a picture only if Radiance's or QuickDraw PICT's
+  'hdr', 'rgbe', 'xyze', 'pic', // .pic: shown as a picture only if Radiance's, QuickDraw PICT's or PICtor's (PC Paint's)
   'pict', 'pct',
   'cals', 'ct1', // not .cal: calendars and others too (CAL_MAYBE_RE)
   'dpx', // not .cin: input methods' tables too (CIN_MAYBE_RE)
