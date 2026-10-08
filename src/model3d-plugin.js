@@ -36,6 +36,9 @@ const ASSIMP_FORMATS = { ogex: 'OpenGEX' };
 // PRC (3D PDF's B-rep / tessellation format) converted to GLB by @needle-tools/prc's prc-convert (WebAssembly,
 // from jsDelivr), on the page like Assimp
 const NEEDLE_PRC_URL = 'https://cdn.jsdelivr.net/npm/@needle-tools/prc@0.1.0/dist/index.js';
+// SketchUp (.skp, 2013-2020's MFC archive and 2021+'s VFF container) read by openskp (plain JavaScript, from
+// esm.sh) and written out as binary glTF, its instancing kept
+const OPENSKP_URL = 'https://esm.sh/openskp@1.3.0';
 // OpenSCAD renders in a worker (public/openscad-worker.js), which loads the WebAssembly build
 const OPENSCAD_WORKER_URL = 'openscad-worker.js';
 const { parseParameters, toScad } = require('./scad-params');
@@ -48,9 +51,9 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc)$/i;
-// Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp or prc-convert): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc|skp)$/i;
+// Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert or openskp): these get thumbnails too
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc|skp)$/i;
 // Names other files have too: a .ply, .amf, .stp or .prc only when it starts as a PLY, AMF, STEP or PRC file
 // (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs)
 const SHARED_NAME_RE = /\.(ply|amf|stp|prc)$/i;
@@ -271,6 +274,25 @@ async function prcToGlb(buffer) {
     }
 }
 
+// --- openskp (SketchUp) ---
+let _openskp = null;
+
+function ensureOpenskp() {
+    if (!_openskp) {
+        _openskp = import(OPENSKP_URL);
+        _openskp.catch(() => { _openskp = null; });
+    }
+    return _openskp;
+}
+
+// The SketchUp model as binary glTF (metres, Y-up), with its textures; faces SketchUp hides left out
+async function skpToGlb(buffer) {
+    const openskp = await ensureOpenskp();
+    const scene = openskp.buildInstancedScene(buffer, { respectEdgeVisibility: true });
+    const glb = openskp.toInstancedGLB(scene, { textures: true });
+    return glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength);
+}
+
 const CAD_DEFAULT_COLOR = 0x9ad0ff;
 
 // The assembly tree OpenCASCADE read, as groups of meshes (one per body, its B-rep faces
@@ -396,6 +418,8 @@ async function parseModel(libs, ext, buffer, manager) {
     } else if (ext === 'prc') {
         if (!looksLikePrc(headText(new Uint8Array(buffer)))) throw new Error('not a PRC file (no PRC header)');
         object = await parseGltf(new libs.GLTFLoader(manager), await prcToGlb(buffer), '', true);
+    } else if (ext === 'skp') {
+        object = await parseGltf(new libs.GLTFLoader(manager), await skpToGlb(buffer), '', true);
     } else {
         throw new Error(`Unsupported model format: ${ext}`);
     }
@@ -644,7 +668,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.prc';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.prc,.skp';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -812,11 +836,13 @@ class Model3dComponent {
                 if (CAD_FORMATS[ext]) this.statusEl.textContent = 'Reading with OpenCASCADE...';
                 if (ASSIMP_FORMATS[ext]) this.statusEl.textContent = 'Reading with Assimp...';
                 if (ext === 'prc') this.statusEl.textContent = 'Reading with prc-convert...';
+                if (ext === 'skp') this.statusEl.textContent = 'Reading with openskp...';
                 object = await parseModel(libs, ext, buffer, manager);
                 manager.settled().then(() => dropMissingTextures(object));
                 if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
                 if (ASSIMP_FORMATS[ext]) this.extraStats = { format: ASSIMP_FORMATS[ext], reader: 'assimpjs 0.0.10 (Assimp)' };
                 if (ext === 'prc') this.extraStats = { format: 'PRC', reader: '@needle-tools/prc 0.1.0 (prc-convert)' };
+                if (ext === 'skp') this.extraStats = { format: 'SketchUp', reader: 'openskp 1.3.0' };
             }
             this._setModel(object);
         } catch (err) {
