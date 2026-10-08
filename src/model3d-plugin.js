@@ -26,6 +26,9 @@ const EXTRA_LOADERS = {
 };
 // Rhino's openNURBS (WebAssembly) for .3dm, the version three's 3DMLoader comes with
 const RHINO3DM_PATH = 'https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/';
+// STEP, IGES and OpenCASCADE BREP are read by occt-import-js in a worker (public/occt-worker.js)
+const OCCT_WORKER_URL = 'occt-worker.js';
+const CAD_FORMATS = { step: 'step', stp: 'step', p21: 'step', iges: 'iges', igs: 'iges', brep: 'brep' };
 // OpenSCAD renders in a worker (public/openscad-worker.js), which loads the WebAssembly build
 const OPENSCAD_WORKER_URL = 'openscad-worker.js';
 const { parseParameters, toScad } = require('./scad-params');
@@ -38,11 +41,11 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm)$/i;
-// Formats a three.js loader reads from the file alone: these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm)$/i;
-// Names other files have too: a .ply or .amf only when it starts as a PLY or AMF model
-const SHARED_NAME_RE = /\.(ply|amf)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep)$/i;
+// Formats read from the file alone (by a three.js loader or OpenCASCADE): these get thumbnails too
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep)$/i;
+// Names other files have too: a .ply, .amf or .stp only when it starts as a PLY, AMF or STEP file
+const SHARED_NAME_RE = /\.(ply|amf|stp)$/i;
 const THUMB_SIZE = 256;
 const THUMB_CACHE_LIMIT = 64;
 
@@ -88,11 +91,17 @@ function looksLikeAmf(head) {
     return head.startsWith('PK\x03\x04') || /^\uFEFF?\s*(<\?xml[^]*?\?>\s*)?(<!--[^]*?-->\s*)*<amf[\s>]/.test(head);
 }
 
+// A STEP file (ISO 10303-21, "Part 21") starts with its "ISO-10303-21;" line
+function looksLikeStep(head) {
+    return /^\uFEFF?\s*ISO-10303-21;/.test(head);
+}
+
 function headText(bytes) {
     return new TextDecoder('latin1').decode(bytes.subarray(0, 1024));
 }
 
 function isSharedModel(name, head) {
+    if (/\.stp$/i.test(name)) return looksLikeStep(head);
     return /\.ply$/i.test(name) ? looksLikePly(head) : looksLikeAmf(head);
 }
 
@@ -154,6 +163,92 @@ async function gunzipIfNeeded(buffer) {
 
 let _rhinoLoader = null;
 
+// --- STEP, IGES, BREP (OpenCASCADE) ---
+// One worker reads them, one file at a time
+let _occtWorker = null;
+let _occtNextId = 1;
+const _occtPending = new Map();
+
+function occtRead(format, buffer) {
+    if (!_occtWorker) {
+        const worker = _occtWorker = new Worker(new URL(OCCT_WORKER_URL, document.baseURI));
+        const failAll = message => {
+            for (const p of _occtPending.values()) p.reject(new Error(message));
+            _occtPending.clear();
+            if (_occtWorker === worker) _occtWorker = null;
+            worker.terminate();
+        };
+        worker.onmessage = ({ data }) => {
+            const p = _occtPending.get(data.id);
+            _occtPending.delete(data.id);
+            if (data.error && data.fatal) failAll(data.error); // OpenCASCADE aborted: a new worker next time
+            if (!p) return;
+            if (data.error) p.reject(new Error(data.error)); else p.resolve(data.result);
+        };
+        worker.onerror = e => failAll(e.message || 'OpenCASCADE failed to load');
+    }
+    const id = _occtNextId++;
+    const bytes = buffer.slice(0);
+    return new Promise((resolve, reject) => {
+        _occtPending.set(id, { resolve, reject });
+        _occtWorker.postMessage({ id, format, bytes }, [bytes]);
+    });
+}
+
+const CAD_DEFAULT_COLOR = 0x9ad0ff;
+
+// The assembly tree OpenCASCADE read, as groups of meshes (one per body, its B-rep faces
+// a material group each when they have colours of their own). Z-up, as CAD is.
+function buildCadObject(THREE, result) {
+    const materials = new Map(); // colour -> material, shared
+    const material = rgb => {
+        const key = rgb ? rgb.join(',') : '';
+        if (!materials.has(key)) {
+            const color = rgb ? new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2], THREE.SRGBColorSpace) : new THREE.Color(CAD_DEFAULT_COLOR);
+            // DoubleSide: an IGES file's surfaces need not face outwards
+            materials.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide }));
+        }
+        return materials.get(key);
+    };
+    const stats = { bodies: result.meshes.length, faces: 0 };
+    const meshObject = m => {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(m.position, 3));
+        if (m.normal && m.normal.length === m.position.length) geometry.setAttribute('normal', new THREE.BufferAttribute(m.normal, 3));
+        else geometry.computeVertexNormals();
+        geometry.setIndex(new THREE.BufferAttribute(m.index, 1));
+        stats.faces += m.faces.length;
+        let mat;
+        if (m.faces.some(f => f.color)) {
+            const used = [];
+            for (const f of m.faces) {
+                const fm = material(f.color || m.color);
+                let at = used.indexOf(fm);
+                if (at < 0) at = used.push(fm) - 1;
+                geometry.addGroup(f.first * 3, (f.last - f.first + 1) * 3, at);
+            }
+            mat = used;
+        } else {
+            mat = material(m.color);
+        }
+        const mesh = new THREE.Mesh(geometry, mat);
+        mesh.name = m.name || '';
+        return mesh;
+    };
+    const node = n => {
+        const group = new THREE.Group();
+        group.name = n.name || '';
+        for (const i of n.meshes || []) group.add(meshObject(result.meshes[i]));
+        for (const child of n.children || []) group.add(node(child));
+        return group;
+    };
+    const object = node(result.root);
+    if (!stats.bodies) throw new Error('no surfaces or solids to draw (curves and points are not drawn)');
+    object.rotation.x = -Math.PI / 2; // CAD is Z-up
+    object.userData.cadStats = stats;
+    return object;
+}
+
 // A model read by one of three's loaders, Y-up as the viewer shows it.
 // manager: a resourceManager, for the textures (and glTF buffers) it names
 async function parseModel(libs, ext, buffer, manager) {
@@ -214,6 +309,10 @@ async function parseModel(libs, ext, buffer, manager) {
         }
         object = await new Promise((resolve, reject) => _rhinoLoader.parse(buffer, resolve, reject));
         object.rotation.x = -Math.PI / 2; // Rhino is Z-up
+    } else if (CAD_FORMATS[ext]) {
+        const format = CAD_FORMATS[ext];
+        if (format === 'step' && !looksLikeStep(headText(new Uint8Array(buffer)))) throw new Error('not a STEP file (no ISO-10303-21 header)');
+        object = buildCadObject(THREE, await occtRead(format, buffer));
     } else {
         throw new Error(`Unsupported model format: ${ext}`);
     }
@@ -441,6 +540,14 @@ class Model3dComponent {
 .model3d-console .err{color:#fca5a5}
 .model3d-console .echo{color:#93c5fd}
 .model3d-layer-info{color:#bdc1c6;font-size:12px;min-width:92px;text-align:right}
+.model3d-parts{display:flex;flex-direction:column;min-height:0;max-height:55%;flex-shrink:0;border-bottom:1px solid #3c4043}
+.model3d-parts[hidden]{display:none}
+.model3d-part-list{overflow:auto;padding:4px 6px 6px}
+.model3d-part{display:flex;align-items:center;gap:5px;padding:2px 0;white-space:nowrap;font-size:12px}
+.model3d-part input{margin:0;accent-color:#8ab4f8}
+.model3d-part-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;border:1px solid #5f6368}
+.model3d-part-name{overflow:hidden;text-overflow:ellipsis}
+.model3d-part.group .model3d-part-name{color:#8ab4f8}
 `;
         document.head.appendChild(style);
     }
@@ -454,7 +561,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -504,10 +611,13 @@ class Model3dComponent {
         this.stage.className = 'model3d-stage';
         this.side = document.createElement('div');
         this.side.className = 'model3d-side';
-        this.side.innerHTML = '<div class="model3d-params" hidden><h3>Parameters <button type="button" title="Back to the values in the file">Reset all</button></h3><div class="model3d-param-list"></div></div><h3>Model Stats</h3><div class="model3d-stats"></div>';
+        this.side.innerHTML = '<div class="model3d-params" hidden><h3>Parameters <button type="button" title="Back to the values in the file">Reset all</button></h3><div class="model3d-param-list"></div></div>'
+            + '<div class="model3d-parts" hidden><h3>Parts</h3><div class="model3d-part-list"></div></div><h3>Model Stats</h3><div class="model3d-stats"></div>';
         this.statsEl = this.side.querySelector('.model3d-stats');
         this.paramsEl = this.side.querySelector('.model3d-params');
         this.paramListEl = this.side.querySelector('.model3d-param-list');
+        this.partsEl = this.side.querySelector('.model3d-parts');
+        this.partListEl = this.side.querySelector('.model3d-part-list');
         this.paramsEl.querySelector('h3 button').onclick = () => this._resetParams();
         this.main.appendChild(this.stage);
         this.main.appendChild(this.side);
@@ -516,7 +626,7 @@ class Model3dComponent {
         this.shell.appendChild(this.consoleEl);
         this.shell.appendChild(this.main);
         this.root.appendChild(this.shell);
-        this._showMessage('Open a GLB, glTF, STL, OBJ, PLY, AMF, COLLADA, VRML, 3DS, Rhino 3DM or G-code file to view it.');
+        this._showMessage('Open a GLB, glTF, STL, OBJ, PLY, AMF, COLLADA, VRML, 3DS, Rhino 3DM, STEP, IGES, BREP or G-code file to view it.');
 
         this.stage.addEventListener('mousedown', e => this._startDrag(e));
         this.stage.addEventListener('wheel', e => this._onWheel(e), { passive: false });
@@ -598,6 +708,7 @@ class Model3dComponent {
             this.extraStats = null;
             this.layersBar.hidden = true;
             this.consoleEl.hidden = true;
+            this.partsEl.hidden = true;
             // .csg is OpenSCAD's flattened CSG tree, in OpenSCAD syntax
             const isScad = ext === 'scad' || ext === 'csg';
             this.renderBtn.hidden = !isScad;
@@ -615,8 +726,10 @@ class Model3dComponent {
                 // a local file can't pull in its textures
                 const dir = this.localFile ? '' : (this.sourcePath || '').replace(/\/[^/]*$/, '');
                 const manager = resourceManager(this.THREE, dir);
+                if (CAD_FORMATS[ext]) this.statusEl.textContent = 'Reading with OpenCASCADE...';
                 object = await parseModel(libs, ext, buffer, manager);
                 manager.settled().then(() => dropMissingTextures(object));
+                if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
             }
             this._setModel(object);
         } catch (err) {
@@ -1162,6 +1275,66 @@ class Model3dComponent {
         }
         geom.setAttribute('normal', new THREE.BufferAttribute(mesh.vertexNormals, 3));
         return geom;
+    }
+
+    // STEP / IGES / BREP: the assembly tree, each part and body with a check box to show or hide it
+    _showCadParts(object, ext, buffer) {
+        const format = CAD_FORMATS[ext];
+        const { bodies, faces } = object.userData.cadStats;
+        let parts = 0;
+        object.traverse(child => { if (child.isGroup && child !== object) parts++; });
+        // the application protocol a STEP file says it follows (AP203, AP214, AP242...)
+        const schema = format === 'step' && /FILE_SCHEMA\s*\(\s*\(\s*'([^']*)'/.exec(new TextDecoder('latin1').decode(new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 65536))));
+        this.extraStats = {
+            format: { step: 'STEP', iges: 'IGES', brep: 'OpenCASCADE BREP' }[format],
+            ...(schema ? { schema: schema[1].split(/\s/)[0] } : {}),
+            reader: 'occt-import-js 0.0.23 (OpenCASCADE)',
+            ...(format !== 'brep' ? { units: 'mm' } : {}),
+            ...(parts ? { parts } : {}),
+            bodies,
+            'B-rep faces': faces,
+        };
+        const list = this.partListEl;
+        list.innerHTML = '';
+        const row = (obj, depth, label, isGroup) => {
+            const el = document.createElement('label');
+            el.className = 'model3d-part' + (isGroup ? ' group' : '');
+            el.style.paddingLeft = (depth * 14) + 'px';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.checked = true;
+            box.onchange = () => { obj.visible = box.checked; };
+            el.appendChild(box);
+            if (!isGroup) {
+                const m = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+                const swatch = document.createElement('span');
+                swatch.className = 'model3d-part-swatch';
+                swatch.style.background = '#' + m.color.getHexString(this.THREE.SRGBColorSpace);
+                el.appendChild(swatch);
+            }
+            const name = document.createElement('span');
+            name.className = 'model3d-part-name';
+            name.textContent = label;
+            name.title = label;
+            el.appendChild(name);
+            list.appendChild(el);
+        };
+        let unnamed = 0;
+        const walk = (obj, depth) => {
+            for (const child of obj.children) {
+                const isGroup = child.isGroup;
+                row(child, depth, child.name || (isGroup ? 'part' : 'body ' + (++unnamed)), isGroup);
+                if (isGroup) walk(child, depth + 1);
+            }
+        };
+        // the root is the file itself unless it has a name
+        if (object.name) {
+            row(object, 0, object.name, true);
+            walk(object, 1);
+        } else {
+            walk(object, 0);
+        }
+        this.partsEl.hidden = list.childElementCount < 2;
     }
 
     // Build line geometry for a G-code toolpath: extrusion colored by height, travel dimmed
