@@ -41,6 +41,7 @@ require('./kra-plugin');
 require('./pdn-plugin');
 require('./psp-plugin');
 require('./clip-plugin');
+require('./mdp-plugin');
 require('./tvg-plugin');
 require('./videocut-plugin');
 require('./model3d-plugin');
@@ -2897,6 +2898,9 @@ const FILE_VIEWERS = [
     { re: /\.(psp|tub|pfr)$/i, binaryOnly: true, componentType: 'pspViewer', tag: 'layers', prefix: 'psp-' },
     // Clip Studio Paint files: the layers composited, or the preview it stored
     { re: /\.clip$/i, componentType: 'clipViewer', tag: 'layers', prefix: 'clip-' },
+    // MediBang Paint / FireAlpaca files: the layers composited; only an .mdp that starts "mdipack" (read as binary),
+    // not a Developer Studio project's or a GROMACS parameter file
+    { re: /\.mdp$/i, binaryOnly: true, componentType: 'mdpViewer', tag: 'layers', prefix: 'mdp-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },

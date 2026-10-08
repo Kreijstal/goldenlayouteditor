@@ -18,6 +18,7 @@ const { isDrwName, isDrw } = require('./drw');
 const { isGemMaybeName, isGem, isGemUrl } = require('./gem');
 const { isHfaMaybeName, isHfa, isHfaUrl } = require('./hfa');
 const { isPspMaybeName, isPsp } = require('./psp-plugin');
+const { isMdp } = require('./mdp-plugin');
 
 const log = createLogger('Browse');
 
@@ -974,12 +975,13 @@ async function initBrowseMode(root, deps) {
         // an Amiga picture by IFF's name (.iff) is binary even where its NULs look like UTF-16,
         // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text, and a .pgf
         // that is a PGF image (not PGF/TikZ's TeX), a .drw that is Micrografx's or an .img that is a GEM image
-        // (32-bit pixels can look like UTF-16), ERDAS IMAGINE's or a .psp, .tub or .pfr that is Paint Shop Pro's
-        // whatever its first bytes look like
+        // (32-bit pixels can look like UTF-16), ERDAS IMAGINE's, a .psp, .tub or .pfr that is Paint Shop Pro's
+        // or an .mdp that is MediBang Paint's / FireAlpaca's, whatever its first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && isIlbm(bytes)) || (isFzName(file.name) && isFits(bytes))
             || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))
             || (isDrwName(file.name) && isDrw(bytes)) || (isGemMaybeName(file.name) && isGem(bytes))
-            || (isHfaMaybeName(file.name) && isHfa(bytes)) || (isPspMaybeName(file.name) && isPsp(bytes))) {
+            || (isHfaMaybeName(file.name) && isHfa(bytes)) || (isPspMaybeName(file.name) && isPsp(bytes))
+            || (/\.mdp$/i.test(file.name) && isMdp(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;
