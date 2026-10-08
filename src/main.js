@@ -39,6 +39,7 @@ require('./apng-plugin');
 require('./xcf-plugin');
 require('./kra-plugin');
 require('./pdn-plugin');
+const { isOra } = require('./ora-plugin');
 require('./psp-plugin');
 require('./clip-plugin');
 require('./mdp-plugin');
@@ -3030,6 +3031,8 @@ const FILE_VIEWERS = [
     { re: /\.kr[az]$/i, componentType: 'kraViewer', tag: 'layers', prefix: 'kra-' },
     // Paint.NET images: the layers composited, as Paint.NET does
     { re: /\.pdn$/i, componentType: 'pdnViewer', tag: 'layers', prefix: 'pdn-' },
+    // OpenRaster images (a ZIP; Oracle's .ora configuration files are text): the picture as saved, the layers
+    { re: /\.ora$/i, binaryOnly: true, test: f => !(f.head || f.bytes) || isOra(f.head || f.bytes), componentType: 'oraViewer', tag: 'layers', prefix: 'ora-' },
     // Paint Shop Pro images, tubes, frames, masks...: the picture as saved, the layers composited
     { re: /\.(pspimage|psptube|pspframe|pspmask|pspbrush|pspshape|pspselection)$/i, componentType: 'pspViewer', tag: 'layers', prefix: 'psp-' },
     // ...and by the names other files have too (.psp, .tub, .pfr): only one that starts "Paint Shop Pro Image File" (read as binary)

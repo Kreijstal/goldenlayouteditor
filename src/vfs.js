@@ -64,6 +64,8 @@ const CAL_MAYBE_RE = /\.cal$/i;
 const CIN_MAYBE_RE = /\.cin$/i;
 // ...and an MNG animation by Ott's (mirrors MNG_MAYBE_RE in ws-handler.js)
 const MNG_MAYBE_RE = /\.mng$/i;
+// ...and an OpenRaster image by Oracle's (mirrors ORA_MAYBE_RE in ws-handler.js)
+const ORA_MAYBE_RE = /\.ora$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -708,14 +710,15 @@ const handlers = {
                     // (.mdp), a PaintTool SAI document by a SAIL program's (.sai, its first page
                     // deciphered), a Corel PHOTO-PAINT image by a Compact Pro archive's (.cpt), a CALS raster by a
                     // calendar's (.cal), a Cineon film scan by an input method's table's (.cin),
-                    // an MNG animation by Ott's (.mng) or a DOS EPS: binary,
+                    // an MNG animation by Ott's (.mng), an OpenRaster image by Oracle's (.ora) or a DOS EPS: binary,
                     // its viewer tells by the magic number
                     const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
                     const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name), pgf = PGF_MAYBE_RE.test(e.name);
                     const drw = DRW_MAYBE_RE.test(e.name), gem = GEM_MAYBE_RE.test(e.name), hfa = HFA_MAYBE_RE.test(e.name);
                     const psp = PSP_MAYBE_RE.test(e.name), mdp = MDP_MAYBE_RE.test(e.name), sai = SAI_MAYBE_RE.test(e.name), cpt = CPT_MAYBE_RE.test(e.name);
                     const eps = EPS_MAYBE_RE.test(e.name), cal = CAL_MAYBE_RE.test(e.name), cin = CIN_MAYBE_RE.test(e.name), mng = MNG_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp || mdp || sai || cpt || eps || cal || cin || mng ? new Uint8Array(await blob.slice(0, sai ? 4096 : 32).arrayBuffer()) : null;
+                    const ora = ORA_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp || mdp || sai || cpt || eps || cal || cin || mng || ora ? new Uint8Array(await blob.slice(0, sai ? 4096 : 32).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
                         || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
@@ -732,6 +735,7 @@ const handlers = {
                         || (cpt && /^(CPT[789]FILE|II\*\0|MM\0\*)/.test(String.fromCharCode(...head.subarray(0, 8))))
                         || (cal && /^(version: MIL-STD-1840|srcdocid:|rorient:)/.test(String.fromCharCode(...head)))
                         || (mng && [0x8A, 0x4D, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A].every((b, i) => head[i] === b))
+                        || (ora && [0x50, 0x4B, 0x03, 0x04].every((b, i) => head[i] === b))
                         || (cin && ['802a5fd7', 'd75f2a80'].includes([...head.subarray(0, 4)].map(b => b.toString(16).padStart(2, '0')).join('')))
                         || (eps && head[0] === 0xC5 && head[1] === 0xD0 && head[2] === 0xD3 && head[3] === 0xC6))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });

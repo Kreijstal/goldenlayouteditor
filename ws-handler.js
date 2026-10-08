@@ -120,6 +120,8 @@ const CAL_MAGIC_RE = /^(version: MIL-STD-1840|srcdocid:|rorient:)/;
 const CIN_MAYBE_RE = /\.cin$/i;
 // Ott's name (text) MNG animations have too: one only if it starts with MNG's signature, 8A "MNG" 0D 0A 1A 0A
 const MNG_MAYBE_RE = /\.mng$/i;
+// Oracle's configuration files' name (text) OpenRaster images have too: one only if it is a ZIP
+const ORA_MAYBE_RE = /\.ora$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -661,7 +663,8 @@ const messageHandlers = {
               // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp, a PaintTool SAI
               // document by a SAIL program's, .sai, a Corel PHOTO-PAINT image by a Compact Pro archive's, .cpt,
               // a CALS raster by a calendar's, .cal, a Cineon film scan by an input method's table's, .cin,
-              // an MNG animation by Ott's, .mng, or a DOS EPS, binary though EPS is text)
+              // an MNG animation by Ott's, .mng, an OpenRaster image by Oracle's, .ora, or a DOS EPS, binary
+              // though EPS is text)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -680,6 +683,7 @@ const messageHandlers = {
                 || (CAL_MAYBE_RE.test(entry.name) && CAL_MAGIC_RE.test(buf.toString('latin1', 0, 32)))
                 || (CIN_MAYBE_RE.test(entry.name) && buf.length >= 4 && [0x802a5fd7, 0xd75f2a80].includes(buf.readUInt32BE(0)))
                 || (MNG_MAYBE_RE.test(entry.name) && buf.toString('hex', 0, 8) === '8a4d4e470d0a1a0a')
+                || (ORA_MAYBE_RE.test(entry.name) && buf.toString('hex', 0, 4) === '504b0304')
                 || (EPS_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32LE(0) === 0xc6d3d0c5)) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;

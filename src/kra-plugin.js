@@ -703,3 +703,5 @@ registerPlugin({
         _ctx = ctx;
     },
 });
+
+module.exports = { zipEntry };
