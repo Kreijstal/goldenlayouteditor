@@ -23,6 +23,7 @@ const SERVED_EXTENSIONS = new Set([
   'pdn',
   'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', // not .psp/.tub/.pfr (PSP_MAYBE_RE)
   'clip',
+  'sai2', // not .sai: SAIL programs and BWA indexes too (SAI_MAYBE_RE)
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
@@ -74,6 +75,7 @@ const DRW_MAYBE_RE = /\.drw$/i;
 // ...and a GEM raster image's: GEM only if its header holds up and the file's size fits it (src/gem.js)
 const GEM_MAYBE_RE = /\.img$/i;
 const { isGem } = require('./src/gem');
+const { isSai } = require('./public/sai-vfs.js');
 // ...and ERDAS IMAGINE's: one only if it starts "EHFA_HEADER_TAG"
 const HFA_MAYBE_RE = /\.img$/i;
 // PlayStation Portable makefiles', TrueDoc fonts' and others' names Paint Shop Pro gives its images,
@@ -82,6 +84,9 @@ const PSP_MAYBE_RE = /\.(psp|tub|pfr)$/i;
 // Developer Studio projects', GROMACS parameter files' and MicroDesign pages' name MediBang Paint and
 // FireAlpaca give their files too: one only if it starts "mdipack"
 const MDP_MAYBE_RE = /\.mdp$/i;
+// SAIL programs' and BWA alignment indexes' name PaintTool SAI gives its documents too: one only if
+// its first page deciphers as PaintTool SAI's
+const SAI_MAYBE_RE = /\.sai$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -619,8 +624,9 @@ const messageHandlers = {
               // (or a Sun raster by Rust's, .rs, an Amiga picture by IFF's, .iff, FITS by Fritzing's, .fz,
               // JPEG XR by HD Photo's, .wdp/.hdp, VICAR by the PDS's, .img, a PGF image by PGF/TikZ's, .pgf,
               // a Micrografx drawing by the other drawings', .drw, a GEM image by a disk image's, .img,
-              // an ERDAS IMAGINE one, .img, a Paint Shop Pro image by a makefile's, .psp, .tub, .pfr, or a
-              // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp)
+              // an ERDAS IMAGINE one, .img, a Paint Shop Pro image by a makefile's, .psp, .tub, .pfr, a
+              // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp, or a PaintTool SAI
+              // document by a SAIL program's, .sai)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -633,7 +639,8 @@ const messageHandlers = {
                 || (GEM_MAYBE_RE.test(entry.name) && isGem(buf))
                 || (HFA_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 15) === 'EHFA_HEADER_TAG')
                 || (PSP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 27) === 'Paint Shop Pro Image File\n\x1a')
-                || (MDP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 8) === 'mdipack\0')) {
+                || (MDP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 8) === 'mdipack\0')
+                || (SAI_MAYBE_RE.test(entry.name) && isSai(buf))) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

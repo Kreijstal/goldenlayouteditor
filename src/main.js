@@ -42,6 +42,7 @@ require('./pdn-plugin');
 require('./psp-plugin');
 require('./clip-plugin');
 require('./mdp-plugin');
+require('./sai-plugin');
 require('./tvg-plugin');
 require('./videocut-plugin');
 require('./model3d-plugin');
@@ -68,6 +69,7 @@ require('./jbf-plugin');
 require('./hwp-plugin');
 require('./vrm-plugin');
 const { hasDicomPreamble } = require('./dicom-plugin');
+const { isSai } = require('./sai-plugin');
 const { hasElfMagic, mayBeElf } = require('./elf-plugin');
 require('./score-plugin');
 require('./chm-plugin');
@@ -2901,6 +2903,10 @@ const FILE_VIEWERS = [
     // MediBang Paint / FireAlpaca files: the layers composited; only an .mdp that starts "mdipack" (read as binary),
     // not a Developer Studio project's or a GROMACS parameter file
     { re: /\.mdp$/i, binaryOnly: true, componentType: 'mdpViewer', tag: 'layers', prefix: 'mdp-' },
+    // PaintTool SAI documents: the layers composited; only a .sai whose first page deciphers as one (read
+    // as binary), not a SAIL program or a BWA index
+    { re: /\.sai$/i, binaryOnly: true, test: f => !(f.head || f.bytes) || isSai(f.head || f.bytes), componentType: 'saiViewer', tag: 'layers', prefix: 'sai-' },
+    { re: /\.sai2$/i, componentType: 'saiViewer', tag: 'layers', prefix: 'sai-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },

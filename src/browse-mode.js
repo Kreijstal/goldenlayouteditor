@@ -19,6 +19,7 @@ const { isGemMaybeName, isGem, isGemUrl } = require('./gem');
 const { isHfaMaybeName, isHfa, isHfaUrl } = require('./hfa');
 const { isPspMaybeName, isPsp } = require('./psp-plugin');
 const { isMdp } = require('./mdp-plugin');
+const { isSai } = require('./sai-plugin');
 
 const log = createLogger('Browse');
 
@@ -37,7 +38,7 @@ const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|
 // page runs it itself, see archive-fallback.js), keep in sync.
 const ZIP_EXTENSIONS = new Set(['zip', 'jar', 'war', 'ear', 'aar', 'apk', 'xapk', 'ipa', 'whl', 'nupkg', 'cbz', 'xpi', 'vsix', 'crx', 'kmz', '3mf']);
 // Extensions with a dedicated viewer (mirrors SERVED_EXTENSIONS in ws-handler.js)
-const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
+const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
     + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_TEXT_SIZE = 5 * 1024 * 1024;
 
@@ -73,7 +74,7 @@ const ICONS = {
     archive: '📦', code: '📜', text: '📄', dir: '📁',
 };
 const ICON_BY_EXT = {};
-for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'ximg', 'timg', 'fxg', 'psd', 'xcf', 'kra', 'krz', 'pdn', 'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', 'clip', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
+for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'ximg', 'timg', 'fxg', 'psd', 'xcf', 'kra', 'krz', 'pdn', 'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', 'clip', 'sai', 'sai2', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
 for (const e of ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', '3gp', 'vcut']) ICON_BY_EXT[e] = ICONS.video;
 for (const e of ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus']) ICON_BY_EXT[e] = ICONS.audio;
 for (const e of ['zip', 'tar', 'gz', 'xz', 'bz2', '7z', 'rar', 'zst', 'iso']) ICON_BY_EXT[e] = ICONS.archive;
@@ -975,13 +976,14 @@ async function initBrowseMode(root, deps) {
         // an Amiga picture by IFF's name (.iff) is binary even where its NULs look like UTF-16,
         // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text, and a .pgf
         // that is a PGF image (not PGF/TikZ's TeX), a .drw that is Micrografx's or an .img that is a GEM image
-        // (32-bit pixels can look like UTF-16), ERDAS IMAGINE's, a .psp, .tub or .pfr that is Paint Shop Pro's
-        // or an .mdp that is MediBang Paint's / FireAlpaca's, whatever its first bytes look like
+        // (32-bit pixels can look like UTF-16), ERDAS IMAGINE's, a .psp, .tub or .pfr that is Paint Shop Pro's,
+        // an .mdp that is MediBang Paint's / FireAlpaca's or a .sai that is PaintTool SAI's, whatever its
+        // first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && isIlbm(bytes)) || (isFzName(file.name) && isFits(bytes))
             || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))
             || (isDrwName(file.name) && isDrw(bytes)) || (isGemMaybeName(file.name) && isGem(bytes))
             || (isHfaMaybeName(file.name) && isHfa(bytes)) || (isPspMaybeName(file.name) && isPsp(bytes))
-            || (/\.mdp$/i.test(file.name) && isMdp(bytes))) {
+            || (/\.mdp$/i.test(file.name) && isMdp(bytes)) || (/\.sai$/i.test(file.name) && isSai(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;
