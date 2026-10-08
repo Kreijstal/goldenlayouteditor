@@ -13,9 +13,9 @@
 // mapped if high dynamic range (src/jxr.js), a BPG's PNG, APNG if animated
 // (src/bpg.js), a FLIF's, the same (src/flif.js), an NRRD's middle
 // slice's PNG, windowed (src/nrrd.js; an .nhdr's data read from beside it),
-// a VICAR image's first band's PNG, or its three bands' (src/vicar.js), and an
+// a VICAR image's first band's PNG, or its three bands' (src/vicar.js), an
 // XISF file's first image's PNG, windowed (src/xisf.js; an .xish's blocks read
-// from beside it).
+// from beside it), and a PGF image's PNG (src/pgf.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -35,6 +35,7 @@ const { isFlifName, flifImage } = require('./flif');
 const { isNrrdName, nrrdPage } = require('./nrrd');
 const { isVicarName, isVicarMaybeName, vicarPage } = require('./vicar');
 const { isXisfName, xisfPage } = require('./xisf');
+const { isPgfName, pgfImage } = require('./pgf');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -94,7 +95,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR and XISF, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF and PGF, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM; a .rgb, .bw..., .rs
@@ -103,7 +104,8 @@ function jxlDecode(bytes) {
 // once known to be one; JPEG XR, if high dynamic range; a .wdp or .hdp only
 // once known to be one), the PNG/APNG (BPG, FLIF), the middle slice's PNG (NRRD),
 // the first band's PNG, in color for three (VICAR; an .img only once known to be one)
-// or the first page's PNG, windowed as the image asks (XISF)
+// or the first page's PNG, windowed as the image asks (XISF), or the PNG (PGF; a
+// .pgf only once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -122,6 +124,7 @@ async function displayableImageUrl(url, name) {
     if (isNrrdName(name)) return (await nrrdPage(url)).url;
     if (isVicarName(name) || isVicarMaybeName(name)) return (await vicarPage(url)).url;
     if (isXisfName(name)) return (await xisfPage(url)).url;
+    if (isPgfName(name)) return (await pgfImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

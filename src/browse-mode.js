@@ -13,12 +13,13 @@ const { ensureArchiveAccess, downloadFile, isMemoryPath } = require('./archive-f
 const { isIlbmMaybeName, isIlbm } = require('./ilbm');
 const { isFzName, isFits } = require('./fits');
 const { isVicarMaybeName, isVicar, isVicarUrl } = require('./vicar');
+const { isPgfName, isPgf } = require('./pgf');
 
 const log = createLogger('Browse');
 
 // Extensions EditorComponent can play/show directly; these default to it
 // instead of the inspector plugins project mode prefers.
-const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|iff|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
+const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|iff|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
 
 // Zip-format archives the browser opens as read-only folders. Listing and file
 // reads are answered by the service worker (public/zip-sw.js; without one, the
@@ -961,9 +962,10 @@ async function initBrowseMode(root, deps) {
         // The first bytes, for viewers chosen by magic number (DICOM's DICM at 128)
         file.head = bytes.slice(0, 512);
         // an Amiga picture by IFF's name (.iff) is binary even where its NULs look like UTF-16,
-        // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text
+        // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text, and a .pgf
+        // that is a PGF image (not PGF/TikZ's TeX) whatever its first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && isIlbm(bytes)) || (isFzName(file.name) && isFits(bytes))
-            || (isVicarMaybeName(file.name) && isVicar(bytes))) {
+            || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;

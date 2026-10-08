@@ -61,6 +61,8 @@ const FZ_MAYBE_RE = /\.fz$/i;
 const JXR_MAYBE_RE = /\.(wdp|hdp)$/i;
 // The PDS's name for its images, a disk image's too: VICAR only if it starts "LBLSIZE="
 const VICAR_MAYBE_RE = /\.img$/i;
+// PGF/TikZ's pictures (TeX) have the Progressive Graphics File's name: a PGF image only if it starts "PGF" and a version
+const PGF_MAYBE_RE = /\.pgf$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -596,14 +598,15 @@ const messageHandlers = {
               const buf = await fs.promises.readFile(fullPath);
               // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
               // (or a Sun raster by Rust's, .rs, an Amiga picture by IFF's, .iff, FITS by Fritzing's, .fz,
-              // JPEG XR by HD Photo's, .wdp/.hdp, or VICAR by the PDS's, .img)
+              // JPEG XR by HD Photo's, .wdp/.hdp, VICAR by the PDS's, .img, or a PGF image by PGF/TikZ's, .pgf)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
                   && IFF_PICTURE_TYPES.includes(buf.toString('latin1', 8, 12)))
                 || (FZ_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 9) === 'SIMPLE  =')
                 || (JXR_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0xbc && buf[3] <= 1)
-                || (VICAR_MAYBE_RE.test(entry.name) && /^LBLSIZE *=/.test(buf.toString('latin1', 0, 16)))) {
+                || (VICAR_MAYBE_RE.test(entry.name) && /^LBLSIZE *=/.test(buf.toString('latin1', 0, 16)))
+                || (PGF_MAYBE_RE.test(entry.name) && buf.length >= 8 && buf.toString('latin1', 0, 3) === 'PGF' && (buf[3] & 2) && buf[3] < 0x80)) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

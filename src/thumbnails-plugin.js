@@ -5,12 +5,13 @@
 const { registerPlugin } = require('./plugins');
 const { resolveFileUrl } = require('./archive-fallback');
 const { displayableImageUrl } = require('./jxl');
+const { isPgfName, isPgfUrl, pgfImage } = require('./pgf');
 
 let _ctx = null;
 let _pdfLib = null;
 let _pdfLibPromise = null;
 
-const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'iff', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish']);
+const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'iff', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf']);
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
 const PDF_EXTS = new Set(['pdf', 'ai']);
 
@@ -115,8 +116,11 @@ function setCached(fileId, url) {
 async function renderImageClient(file, container) {
     let url = await workspaceUrl(file);
     if (!url) return;
+    // a .pgf that is PGF/TikZ's (TeX), not a PGF image, keeps its icon
+    if (isPgfName(file.name) && !await isPgfUrl(url).catch(() => false)) return;
     try {
-        url = await displayableImageUrl(url, file.name);
+        // a PGF image from its first levels only, the smallest big enough
+        url = isPgfName(file.name) ? (await pgfImage(url, 'thumb')).url : await displayableImageUrl(url, file.name);
     } catch (_) {
         container.textContent = '\uD83D\uDDBC';
         return;

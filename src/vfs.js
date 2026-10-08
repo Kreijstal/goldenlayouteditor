@@ -37,6 +37,8 @@ const FZ_MAYBE_RE = /\.fz$/i;
 const JXR_MAYBE_RE = /\.(wdp|hdp)$/i;
 // ...and VICAR by the PDS's name, with disk images (mirrors VICAR_MAYBE_RE in ws-handler.js)
 const VICAR_MAYBE_RE = /\.img$/i;
+// ...and a PGF image by PGF/TikZ's name, with TeX (mirrors PGF_MAYBE_RE in ws-handler.js)
+const PGF_MAYBE_RE = /\.pgf$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -674,16 +676,18 @@ const handlers = {
                     const blob = await read(join(dir, e.name));
                     // an SGI image by another name (.rgb, .bw...), a Sun raster by Rust's (.rs), an
                     // Amiga picture by IFF's (.iff), FITS by Fritzing's (.fz), JPEG XR by HD Photo's
-                    // (.wdp, .hdp) or VICAR by the PDS's (.img): binary, its viewer tells by the magic number
+                    // (.wdp, .hdp), VICAR by the PDS's (.img) or a PGF image by PGF/TikZ's (.pgf): binary, its
+                    // viewer tells by the magic number
                     const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
-                    const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff || fz || jxr || vicar ? new Uint8Array(await blob.slice(0, 16).arrayBuffer()) : null;
+                    const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name), pgf = PGF_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz || jxr || vicar || pgf ? new Uint8Array(await blob.slice(0, 16).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
                         || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
                         || (fz && String.fromCharCode(...head).startsWith('SIMPLE  ='))
                         || (jxr && head[0] === 0x49 && head[1] === 0x49 && head[2] === 0xBC && head[3] <= 1)
-                        || (vicar && /^LBLSIZE *=/.test(String.fromCharCode(...head))))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
+                        || (vicar && /^LBLSIZE *=/.test(String.fromCharCode(...head)))
+                        || (pgf && String.fromCharCode(...head.subarray(0, 3)) === 'PGF' && (head[3] & 2) && head[3] < 0x80))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });
                 }
             }
