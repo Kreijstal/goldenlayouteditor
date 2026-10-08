@@ -38,7 +38,8 @@ const SERVED_EXTENSIONS = new Set([
   'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc',
   'heic', 'heif', 'hif',
   'pbm', 'pgm', 'ppm', 'pnm', 'pam',
-  'hdr', 'rgbe', 'xyze', 'pic', // .pic: shown as a picture only if Radiance's
+  'hdr', 'rgbe', 'xyze', 'pic', // .pic: shown as a picture only if Radiance's or QuickDraw PICT's
+  'pict', 'pct',
   'tga', 'tpic', 'icb', 'vda', 'vst', // .icb/.vda/.vst: only if a TGA (.vst is a Visio template too)
   'qoi',
   'pcx', 'dcx',
