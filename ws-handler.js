@@ -31,6 +31,7 @@ const SERVED_EXTENSIONS = new Set([
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
   'dae', 'wrl', 'vrml', '3ds', '3dm', // not .ply or .amf: other files' too (shown as models by their first bytes)
   'x3dz', 'x3dvz', // gzipped X3D (.x3d, .x3dv, .x3dj stay text)
+  'dwg', // AutoCAD drawings (a .dxf stays text, unless it is binary DXF)
   'fzz',
   'lottie', // dotLottie (a zip); Lottie's .json stays text
   'fst', 'ghw',

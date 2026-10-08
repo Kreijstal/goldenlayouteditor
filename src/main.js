@@ -65,6 +65,7 @@ require('./fxg-plugin');
 require('./stereo-plugin');
 const { isGerberFile } = require('./gerber-plugin');
 const { isHpglFile } = require('./hpgl-plugin');
+require('./dxf-plugin');
 const { isLottieFile } = require('./lottie-plugin');
 const { isMathmlFile } = require('./mathml-plugin');
 const { isPostScriptFile } = require('./ps-plugin');
@@ -2989,6 +2990,8 @@ const FILE_VIEWERS = [
     { re: /\.(ger|gtl|gbl|gto|gbo|gts|gbs|gtp|gbp|gko|gml|gta|gba|gm\d+|gp[1-9tb]|gbr|art|pho|cmp|sol|plc|pls|stc|sts|crc|crs|drl|xln|drd|exc|g[1-9]\d?)$/i, test: isGerberFile, componentType: 'gerberViewer', tag: 'gerber', prefix: 'gerber-' },
     // HP-GL plotter files; a .plt (also gnuplot's, AutoCAD's...) only when the text is HP-GL
     { re: /\.(hpgl|hpg|hgl|pen|plt)$/i, test: isHpglFile, componentType: 'hpglViewer', tag: 'hpgl', prefix: 'hpgl-' },
+    // AutoCAD drawings: DXF (ASCII, followed as it is edited, or binary) and DWG
+    { re: /\.(dxf|dwg)$/i, componentType: 'dxfViewer', tag: 'dxf', prefix: 'dxf-' },
     // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
     { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
     { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
