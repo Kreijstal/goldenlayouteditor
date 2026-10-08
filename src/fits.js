@@ -1068,6 +1068,6 @@ function addFitsControls(root, img, url) {
 }
 
 module.exports = {
-    isFitsName, isFzName, isFits, isFitsUrl, fitsHdus, fitsPages, planeValues, fitsLimits, fitsLevels, fitsRgba,
-    fitsPage, addFitsControls, riceDecode, hdecompress, plioDecode,
+    isFitsName, isFzName, isFits, isFitsUrl, fitsHdus, fitsPages, planeValues, INTERVALS, STRETCHES, fitsLimits, fitsLevels,
+    fitsRgba, rgbaToPng, fitsPage, addFitsControls, riceDecode, hdecompress, plioDecode,
 };

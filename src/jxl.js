@@ -11,7 +11,8 @@
 // (src/sunras.js), an Amiga IFF picture's PNG (src/ilbm.js), a FITS
 // file's first image's PNG, zscaled (src/fits.js), a JPEG XR's PNG, tone
 // mapped if high dynamic range (src/jxr.js), a BPG's PNG, APNG if animated
-// (src/bpg.js) and a FLIF's, the same (src/flif.js).
+// (src/bpg.js), a FLIF's, the same (src/flif.js), and an NRRD's middle
+// slice's PNG, windowed (src/nrrd.js; an .nhdr's data read from beside it).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -28,6 +29,7 @@ const { isFitsName, isFzName, fitsPage } = require('./fits');
 const { isJxrName, jxrImage } = require('./jxr');
 const { isBpgName, bpgImage } = require('./bpg');
 const { isFlifName, flifImage } = require('./flif');
+const { isNrrdName, nrrdPage } = require('./nrrd');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
 const log = createLogger('JXL');
@@ -87,14 +89,14 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, FITS, JPEG XR, BPG and FLIF, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, FITS, JPEG XR, BPG, FLIF and NRRD, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM; a .rgb, .bw..., .rs
 // or .iff only once known to be one), the
 // primary image's PNG (HEIF) or the tone mapped PNG (Radiance; a .pic only
 // once known to be one; JPEG XR, if high dynamic range; a .wdp or .hdp only
-// once known to be one) or the PNG/APNG (BPG, FLIF)
+// once known to be one), the PNG/APNG (BPG, FLIF) or the middle slice's PNG (NRRD)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -110,6 +112,7 @@ async function displayableImageUrl(url, name) {
     if (isJxrName(name)) return (await jxrImage(url)).url;
     if (isBpgName(name)) return (await bpgImage(url)).url;
     if (isFlifName(name)) return (await flifImage(url)).url;
+    if (isNrrdName(name)) return (await nrrdPage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

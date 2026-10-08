@@ -40,6 +40,7 @@ const SERVED_EXTENSIONS = new Set([
   'fits', 'fit', 'fts', // not .fz: Fritzing's sketches too (FZ_MAYBE_RE)
   'jxr', // not .wdp/.hdp: WinDev and Dylan projects too (JXR_MAYBE_RE)
   'bpg', 'flif',
+  'nrrd', 'nhdr', // an .nhdr is text, but the picture is what one wants of it
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
