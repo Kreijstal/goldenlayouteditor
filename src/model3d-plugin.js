@@ -39,6 +39,10 @@ const NEEDLE_PRC_URL = 'https://cdn.jsdelivr.net/npm/@needle-tools/prc@0.1.0/dis
 // SketchUp (.skp, 2013-2020's MFC archive and 2021+'s VFF container) read by openskp (plain JavaScript, from
 // esm.sh) and written out as binary glTF, its instancing kept
 const OPENSKP_URL = 'https://esm.sh/openskp@1.3.0';
+// 3DXML (Dassault Systèmes' zipped XML) read by xeokit-sdk's XML3DLoaderPlugin (from jsDelivr) into a hidden
+// xeokit Viewer, its meshes then copied into three.js
+const XEOKIT_PATH = 'https://cdn.jsdelivr.net/npm/@xeokit/xeokit-sdk@2.6.114/';
+const XEOKIT_READ_TIMEOUT_MS = 60000;
 // OpenSCAD renders in a worker (public/openscad-worker.js), which loads the WebAssembly build
 const OPENSCAD_WORKER_URL = 'openscad-worker.js';
 const { parseParameters, toScad } = require('./scad-params');
@@ -51,9 +55,9 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp)$/i;
-// Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert or openskp): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml)$/i;
+// Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert, openskp or xeokit): these get thumbnails too
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml)$/i;
 // Names other files have too: a .ply, .amf, .stp, .prc or .xgl only when it starts as a PLY, AMF, STEP, PRC or
 // XGL file (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs; .xgl: other programs' XML)
 const SHARED_NAME_RE = /\.(ply|amf|stp|prc|xgl)$/i;
@@ -299,6 +303,115 @@ async function skpToGlb(buffer) {
     return glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength);
 }
 
+// --- xeokit (3DXML) ---
+let _xeokit = null;
+
+// One hidden xeokit Viewer, kept: its XML3DLoaderPlugin unzips the 3DXML with zip.js, whose workers start from
+// workerScriptsPath + "z-worker.js". A worker can't be started from jsDelivr's origin, so the path is a data: URL
+// that runs z-worker.js and inflate.js from there
+function ensureXeokit() {
+    if (!_xeokit) {
+        _xeokit = import(XEOKIT_PATH + 'dist/xeokit-sdk.min.es.js').then(({ Viewer, XML3DLoaderPlugin }) => {
+            const zipjs = XEOKIT_PATH + 'src/plugins/XML3DLoaderPlugin/zipjs/';
+            const worker = `const base = ${JSON.stringify(zipjs)}, load = self.importScripts.bind(self);`
+                + 'self.importScripts = (...urls) => load(...urls.map(url => new URL(url, base).href));'
+                + 'importScripts("z-worker.js"); //';
+            // xeokit puts its spinner beside the canvas: both in the page, out of sight
+            const holder = document.createElement('div');
+            holder.style.cssText = 'position:fixed;left:-10px;top:-10px;width:1px;height:1px;overflow:hidden;visibility:hidden;pointer-events:none';
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 1;
+            holder.appendChild(canvas);
+            document.body.appendChild(holder);
+            const viewer = new Viewer({ canvasElement: canvas, transparent: true });
+            const plugin = new XML3DLoaderPlugin(viewer, { workerScriptsPath: 'data:text/javascript,' + encodeURIComponent(worker) });
+            return { viewer, plugin, queue: Promise.resolve() };
+        });
+        _xeokit.catch(() => { _xeokit = null; });
+    }
+    return _xeokit;
+}
+
+// Read the 3DXML into the hidden Viewer, one file at a time, and copy its meshes out: three.js meshes with
+// xeokit's world matrices, geometry shared where the file instances it, colours from the file's materials
+async function read3dxml(THREE, buffer) {
+    // the plugin waits forever for a ZIP without the Manifest.xml naming the root file: such a file is no 3DXML
+    if (!new TextDecoder('latin1').decode(buffer).includes('Manifest.xml')) throw new Error('not a 3DXML file (no Manifest.xml in the ZIP)');
+    const xeokit = await ensureXeokit();
+    const run = xeokit.queue.then(() => new Promise((resolve, reject) => {
+        const src = URL.createObjectURL(new Blob([buffer]));
+        const model = xeokit.plugin.load({ src });
+        let timer = null;
+        const done = (err, object) => {
+            clearTimeout(timer);
+            URL.revokeObjectURL(src);
+            if (object === undefined) model.destroy();
+            if (err) reject(err); else resolve(object);
+        };
+        // a ZIP entry it can't find or XML it can't follow ends with no event at all
+        timer = setTimeout(() => done(new Error('xeokit could not read this file (no model after a minute)')), XEOKIT_READ_TIMEOUT_MS);
+        model.on('error', msg => done(new Error(`xeokit could not read this file (${msg})`)));
+        model.on('loaded', () => {
+            try {
+                const object = xeokitToThree(THREE, model);
+                model.destroy();
+                done(null, object);
+            } catch (err) {
+                done(err);
+            }
+        });
+    }));
+    xeokit.queue = run.catch(() => {});
+    return run;
+}
+
+function xeokitToThree(THREE, model) {
+    const geometries = new Map(), materials = new Map();
+    const group = new THREE.Group();
+    const stats = { parts: 0 };
+    const visit = node => {
+        for (const child of node.children || []) {
+            const g = child.geometry;
+            if (g && g.positions && g.positions.length) {
+                if (!geometries.has(g.id)) {
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(g.positions, 3));
+                    if (g.indices) geometry.setIndex(Array.from(g.indices));
+                    if (g.primitive === 'triangles') {
+                        if (g.normals && g.normals.length === g.positions.length) geometry.setAttribute('normal', new THREE.Float32BufferAttribute(g.normals, 3));
+                        else geometry.computeVertexNormals();
+                    }
+                    geometries.set(g.id, geometry);
+                }
+                // the file's colour is the mesh's colorize, over the material's diffuse (white unless the file says)
+                const m = child.material || {}, c = child.colorize || [1, 1, 1, 1], d = m.diffuse || [1, 1, 1];
+                const rgb = [0, 1, 2].map(i => d[i] * c[i]), opacity = (m.alpha === undefined ? 1 : m.alpha) * (c.length > 3 ? c[3] : 1);
+                const lines = g.primitive !== 'triangles';
+                const key = rgb.join(',') + ',' + opacity + (lines ? ',lines' : '');
+                if (!materials.has(key)) {
+                    const color = new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2], THREE.SRGBColorSpace);
+                    const transparent = opacity < 1;
+                    materials.set(key, lines ? new THREE.LineBasicMaterial({ color, transparent, opacity })
+                        : new THREE.MeshStandardMaterial({ color, transparent, opacity, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide }));
+                }
+                const mesh = lines ? new THREE.LineSegments(geometries.get(g.id), materials.get(key)) : new THREE.Mesh(geometries.get(g.id), materials.get(key));
+                mesh.matrixAutoUpdate = false;
+                mesh.matrix.fromArray(child.worldMatrix);
+                group.add(mesh);
+                stats.parts++;
+            }
+            visit(child);
+        }
+    };
+    visit(model);
+    if (!stats.parts) throw new Error('no geometry in this 3DXML');
+    // CATIA and the rest of 3DEXPERIENCE are Z-up
+    const object = new THREE.Group();
+    object.add(group);
+    object.rotation.x = -Math.PI / 2;
+    return object;
+}
+
 const CAD_DEFAULT_COLOR = 0x9ad0ff;
 
 // The assembly tree OpenCASCADE read, as groups of meshes (one per body, its B-rep faces
@@ -426,6 +539,8 @@ async function parseModel(libs, ext, buffer, manager) {
         object = await parseGltf(new libs.GLTFLoader(manager), await prcToGlb(buffer), '', true);
     } else if (ext === 'skp') {
         object = await parseGltf(new libs.GLTFLoader(manager), await skpToGlb(buffer), '', true);
+    } else if (ext === '3dxml') {
+        object = await read3dxml(THREE, buffer);
     } else {
         throw new Error(`Unsupported model format: ${ext}`);
     }
@@ -674,7 +789,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -843,12 +958,14 @@ class Model3dComponent {
                 if (ASSIMP_FORMATS[ext]) this.statusEl.textContent = 'Reading with Assimp...';
                 if (ext === 'prc') this.statusEl.textContent = 'Reading with prc-convert...';
                 if (ext === 'skp') this.statusEl.textContent = 'Reading with openskp...';
+                if (ext === '3dxml') this.statusEl.textContent = 'Reading with xeokit...';
                 object = await parseModel(libs, ext, buffer, manager);
                 manager.settled().then(() => dropMissingTextures(object));
                 if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
                 if (ASSIMP_FORMATS[ext]) this.extraStats = { format: ASSIMP_FORMATS[ext], reader: 'assimpjs 0.0.10 (Assimp)' };
                 if (ext === 'prc') this.extraStats = { format: 'PRC', reader: '@needle-tools/prc 0.1.0 (prc-convert)' };
                 if (ext === 'skp') this.extraStats = { format: 'SketchUp', reader: 'openskp 1.3.0' };
+                if (ext === '3dxml') this.extraStats = { format: '3DXML', reader: 'xeokit-sdk 2.6.114 (XML3DLoaderPlugin)' };
             }
             this._setModel(object);
         } catch (err) {

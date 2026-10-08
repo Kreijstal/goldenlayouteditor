@@ -39,7 +39,7 @@ const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|hvif|tiff?|jp2|j2
 // page runs it itself, see archive-fallback.js), keep in sync.
 const ZIP_EXTENSIONS = new Set(['zip', 'jar', 'war', 'ear', 'aar', 'apk', 'xapk', 'ipa', 'whl', 'nupkg', 'cbz', 'xpi', 'vsix', 'crx', 'kmz', '3mf']);
 // Extensions with a dedicated viewer (mirrors SERVED_EXTENSIONS in ws-handler.js)
-const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods odg otg fodg xps oxps sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
+const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods odg otg fodg xps oxps sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp 3dxml zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
     + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_TEXT_SIZE = 5 * 1024 * 1024;
 

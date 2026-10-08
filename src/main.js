@@ -2979,8 +2979,9 @@ const FILE_VIEWERS = [
     { re: /\.(pcap|pcapng|cap|ntar|erf|snoop)$/i, componentType: 'pcapViewer', tag: 'pcap', prefix: 'pcap-' },
     // Stereo pictures (MPO, side-by-side JPS / PNS): the two eyes' pictures; the plain picture, the second choice
     { re: /\.(mpo|jps|pns)$/i, componentType: 'stereoViewer', tag: 'stereo', prefix: 'stereo-' },
-    // STEP, IGES, OpenCASCADE BREP and OpenGEX (text: the editor is the second choice); SketchUp; zlib-compressed XGL
-    { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
+    // STEP, IGES, OpenCASCADE BREP and OpenGEX (text: the editor is the second choice); SketchUp; zlib-compressed XGL;
+    // 3DXML
+    { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl|3dxml)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
     // PLY, AMF, STEP, PRC and XGL models; a .ply / .amf / .stp / .prc / .xgl only when it starts as one (PLY's
     // "ply" line, AMF's <amf> or its zip, STEP's "ISO-10303-21;", PRC's "PRC", XGL's <WORLD>; XGL is text: the
     // editor is the second choice)
