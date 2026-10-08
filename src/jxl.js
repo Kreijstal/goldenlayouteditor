@@ -25,7 +25,8 @@
 // QuickDraw PICT's PNG, by ImageMagick (src/pict.js), a Windows metafile's
 // SVG (WMF, EMF, EMF+; gzipped too), by emf-converter (src/wmf.js), a
 // Windows cursor's largest image's PNG, an animated cursor's first frame's (src/cur.js),
-// and an Apple icon image's largest image's (src/icns.js).
+// an Apple icon image's largest image's (src/icns.js), and an Amiga IFF animation's
+// first frame's, by FFmpeg (src/iffanim.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -37,7 +38,8 @@ const { isQoiName, qoiImage } = require('./qoi');
 const { isPcxName, pcxPage } = require('./pcx');
 const { isSgiName, sgiImage } = require('./sgi');
 const { isSunName, sunImage } = require('./sunras');
-const { isIlbmName, ilbmImage } = require('./ilbm');
+const { isIlbmName, isIlbmMaybeName, ilbmImage } = require('./ilbm');
+const { isAnimName, isAnimUrl, animImage } = require('./iffanim');
 const { isFitsName, isFzName, fitsPage } = require('./fits');
 const { isJxrName, jxrImage } = require('./jxr');
 const { isBpgName, bpgImage } = require('./bpg');
@@ -136,7 +138,8 @@ function jxlDecode(bytes) {
 // overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG"), the SVG
 // (Haiku vector icon), the PNG (QuickDraw PICT; a .pic only once known to be one) or the
 // SVG (Windows metafile: .wmf, .emf, gzipped .wmz, .emz) or the largest image's PNG
-// (Windows cursor: .cur, an animated .ani's first frame; Apple icon image: .icns)
+// (Windows cursor: .cur, an animated .ani's first frame; Apple icon image: .icns) or the
+// first frame's PNG (Amiga IFF animation: .anim, .anm; an .iff only once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -149,6 +152,8 @@ async function displayableImageUrl(url, name) {
     if (isPcxName(name)) return (await pcxPage(url, 0)).url;
     if (isSgiName(name)) return (await sgiImage(url)).url;
     if (isSunName(name)) return (await sunImage(url)).url;
+    // an .iff: an animation if its FORM is ANIM, else a picture
+    if (isAnimName(name) || (isIlbmMaybeName(name) && await isAnimUrl(url).catch(() => false))) return (await animImage(url)).url;
     if (isIlbmName(name)) return (await ilbmImage(url)).url;
     if (isFitsName(name) || isFzName(name)) return (await fitsPage(url, 0)).url;
     if (isJxrName(name)) return (await jxrImage(url)).url;

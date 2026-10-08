@@ -26,14 +26,14 @@ const SERVER = 'server';
 const { normalize, split, join, dirname, basename } = LocalFS;
 // Extensions with a dedicated viewer, never read as text (mirrors SERVED_EXTENSIONS in ws-handler.js)
 const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods odg otg fodg xps oxps sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp 3dxml zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
-    + 'png apng jxl jpg jpeg gif bmp ico cur ani icns webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
+    + 'png apng jxl jpg jpeg gif bmp ico cur ani icns webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep anim anm fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 // Names an SGI image shares with other files (mirrors SGI_MAYBE_RE in ws-handler.js)
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 // ...and a Sun raster (mirrors SUN_MAYBE_RE in ws-handler.js)
 const SUN_MAYBE_RE = /\.rs$/i;
 // ...and an Amiga picture (mirrors IFF_MAYBE_RE in ws-handler.js)
 const IFF_MAYBE_RE = /\.iff$/i;
-const IFF_PICTURE_RE = /^FORM[\s\S]{4}(ILBM|PBM |ACBM|DEEP|TVPP)/;
+const IFF_PICTURE_RE = /^FORM[\s\S]{4}(ILBM|PBM |ACBM|DEEP|TVPP|ANIM)/;
 // ...and fpack's FITS, with Fritzing's sketch (mirrors FZ_MAYBE_RE in ws-handler.js)
 const FZ_MAYBE_RE = /\.fz$/i;
 // ...and JPEG XR by HD Photo's names, with WinDev and Dylan projects (mirrors JXR_MAYBE_RE in ws-handler.js)
