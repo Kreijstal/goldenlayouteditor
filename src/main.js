@@ -288,6 +288,7 @@ const { isVicarName, isVicarMaybeName, isVicarUrl, addVicarControls } = require(
 const { isXisfName, addXisfControls } = require('./xisf');
 const { isPgfName, isPgfUrl, addPgfControls } = require('./pgf');
 const { isDrwName, isDrwUrl, drwImage } = require('./drw');
+const { isCdrName, isCdrUrl, cdrImage, cdrPage } = require('./cdr');
 const { isGemName, isGemMaybeName, isGemUrl, gemImage } = require('./gem');
 const { isHfaMaybeName, isHfaUrl, addHfaControls } = require('./hfa');
 const { addEcwControls } = require('./ecw');
@@ -924,7 +925,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'ximg', 'timg', 'hfa']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'ximg', 'timg', 'hfa']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -949,6 +950,8 @@ class EditorComponent {
         if (ext === 'binary' && isPgfName(fileData.name) && await isPgfUrl(url).catch(() => false)) ext = 'pgf';
         // a binary .drw is a Micrografx drawing if it starts 01 FF 02 04 03 (else Pro/ENGINEER's, Caddie's...)
         if (ext === 'binary' && isDrwName(fileData.name) && await isDrwUrl(url).catch(() => false)) ext = 'drw';
+        // a binary .cdr, .cdt or .cmx is CorelDRAW's if it starts "RIFF" and "CDR"/"CMX" or is a zip (else a disk image, a tape, a manifest...)
+        if (ext === 'binary' && isCdrName(fileData.name) && await isCdrUrl(url, fileData.name).catch(() => false)) ext = 'cdr';
         // a binary .img is ERDAS IMAGINE's if it starts "EHFA_HEADER_TAG" (else a disk image...)
         if (ext === 'binary' && isHfaMaybeName(fileData.name) && await isHfaUrl(url).catch(() => false)) ext = 'hfa';
         // a binary .img that isn't VICAR is a GEM image if its header holds up (else a disk image...)
@@ -956,8 +959,11 @@ class EditorComponent {
 
         if (IMAGE_EXTS.has(ext)) {
             const img = document.createElement('img');
+            // a CorelDRAW drawing waits for LibreOffice, some 50 MB the first time
+            if (ext === 'cdr') this.rootElement.textContent = `Opening ${fileData.name} with LibreOffice…`;
             try {
                 img.src = await displayableImageUrl(url, fileData.name); // JPEG XL: decoded where the browser can't
+                if (ext === 'cdr') this.rootElement.textContent = '';
             } catch (err) {
                 this.rootElement.textContent = `Could not show ${fileData.name}: ${err.message}`;
                 return;
@@ -1058,6 +1064,14 @@ class EditorComponent {
             }
             // a Micrografx drawing: what it holds
             if (ext === 'drw') drwImage(url).then(d => { img.title = d.label; }).catch(() => {});
+            // a CorelDRAW drawing: what it is; a drawing of several pages, buttons to turn them
+            if (ext === 'cdr') {
+                cdrImage(url, fileData.name).then(d => {
+                    img.title = d.label;
+                    this.rootElement.style.position = 'relative';
+                    addTiffPager(this.rootElement, img, url, d.pages, cdrPage);
+                }).catch(() => {});
+            }
             // a GEM image: what it holds; its pixels as wide as they were (the ST's medium resolution's are tall)
             if (isGemName(fileData.name) || ext === 'ximg') {
                 gemImage(url).then(d => {
@@ -1346,7 +1360,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'ximg', 'timg', 'hfa']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'ximg', 'timg', 'hfa']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1366,6 +1380,8 @@ class PreviewComponent {
             if (ext === 'binary' && isPgfName(previewFile.name) && await isPgfUrl(url).catch(() => false)) ext = 'pgf';
             // a binary .drw: a Micrografx drawing if it starts 01 FF 02 04 03
             if (ext === 'binary' && isDrwName(previewFile.name) && await isDrwUrl(url).catch(() => false)) ext = 'drw';
+            // a binary .cdr, .cdt or .cmx: CorelDRAW's if it starts "RIFF" and "CDR"/"CMX" or is a zip
+            if (ext === 'binary' && isCdrName(previewFile.name) && await isCdrUrl(url, previewFile.name).catch(() => false)) ext = 'cdr';
             // a binary .img: ERDAS IMAGINE's if it starts "EHFA_HEADER_TAG"
             if (ext === 'binary' && isHfaMaybeName(previewFile.name) && await isHfaUrl(url).catch(() => false)) ext = 'hfa';
             // a binary .img: a GEM image if its header holds up
@@ -1784,7 +1800,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'ximg', 'timg'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'cdr', 'ximg', 'timg'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
