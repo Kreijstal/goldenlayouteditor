@@ -21,6 +21,7 @@ const SERVED_EXTENSIONS = new Set([
   'psd',
   'kra', 'krz',
   'pdn',
+  'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', // not .psp/.tub/.pfr (PSP_MAYBE_RE)
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
@@ -74,6 +75,9 @@ const GEM_MAYBE_RE = /\.img$/i;
 const { isGem } = require('./src/gem');
 // ...and ERDAS IMAGINE's: one only if it starts "EHFA_HEADER_TAG"
 const HFA_MAYBE_RE = /\.img$/i;
+// PlayStation Portable makefiles', TrueDoc fonts' and others' names Paint Shop Pro gives its images,
+// tubes and frames too: one only if it starts "Paint Shop Pro Image File"
+const PSP_MAYBE_RE = /\.(psp|tub|pfr)$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -610,8 +614,8 @@ const messageHandlers = {
               // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
               // (or a Sun raster by Rust's, .rs, an Amiga picture by IFF's, .iff, FITS by Fritzing's, .fz,
               // JPEG XR by HD Photo's, .wdp/.hdp, VICAR by the PDS's, .img, a PGF image by PGF/TikZ's, .pgf,
-              // a Micrografx drawing by the other drawings', .drw, a GEM image by a disk image's, .img, or
-              // an ERDAS IMAGINE one, .img)
+              // a Micrografx drawing by the other drawings', .drw, a GEM image by a disk image's, .img,
+              // an ERDAS IMAGINE one, .img, or a Paint Shop Pro image by a makefile's, .psp, .tub, .pfr)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -622,7 +626,8 @@ const messageHandlers = {
                 || (PGF_MAYBE_RE.test(entry.name) && buf.length >= 8 && buf.toString('latin1', 0, 3) === 'PGF' && (buf[3] & 2) && buf[3] < 0x80)
                 || (DRW_MAYBE_RE.test(entry.name) && buf.length >= 5 && buf.toString('hex', 0, 5) === '01ff020403')
                 || (GEM_MAYBE_RE.test(entry.name) && isGem(buf))
-                || (HFA_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 15) === 'EHFA_HEADER_TAG')) {
+                || (HFA_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 15) === 'EHFA_HEADER_TAG')
+                || (PSP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 27) === 'Paint Shop Pro Image File\n\x1a')) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

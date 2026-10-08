@@ -24,7 +24,7 @@ const log = createLogger('VFS');
 const SERVER = 'server';
 const { normalize, split, join, dirname, basename } = LocalFS;
 // Extensions with a dedicated viewer, never read as text (mirrors SERVED_EXTENSIONS in ws-handler.js)
-const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
+const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
     + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 // Names an SGI image shares with other files (mirrors SGI_MAYBE_RE in ws-handler.js)
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
@@ -47,6 +47,8 @@ const DRW_MAYBE_RE = /\.drw$/i;
 const GEM_MAYBE_RE = /\.img$/i;
 // ...and an ERDAS IMAGINE one (mirrors HFA_MAYBE_RE in ws-handler.js)
 const HFA_MAYBE_RE = /\.img$/i;
+// ...and a Paint Shop Pro image by a makefile's, a font's... (mirrors PSP_MAYBE_RE in ws-handler.js)
+const PSP_MAYBE_RE = /\.(psp|tub|pfr)$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -686,11 +688,13 @@ const handlers = {
                     // Amiga picture by IFF's (.iff), FITS by Fritzing's (.fz), JPEG XR by HD Photo's
                     // (.wdp, .hdp), VICAR by the PDS's (.img), a PGF image by PGF/TikZ's (.pgf), a Micrografx
                     // drawing by the other drawings' (.drw), a GEM image by a disk image's (.img, its
-                    // header and size) or an ERDAS IMAGINE one (.img): binary, its viewer tells by the magic number
+                    // header and size), an ERDAS IMAGINE one (.img) or a Paint Shop Pro image by a makefile's
+                    // (.psp, .tub, .pfr): binary, its viewer tells by the magic number
                     const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
                     const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name), pgf = PGF_MAYBE_RE.test(e.name);
                     const drw = DRW_MAYBE_RE.test(e.name), gem = GEM_MAYBE_RE.test(e.name), hfa = HFA_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa ? new Uint8Array(await blob.slice(0, 32).arrayBuffer()) : null;
+                    const psp = PSP_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp ? new Uint8Array(await blob.slice(0, 32).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
                         || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
@@ -700,7 +704,8 @@ const handlers = {
                         || (pgf && String.fromCharCode(...head.subarray(0, 3)) === 'PGF' && (head[3] & 2) && head[3] < 0x80)
                         || (drw && [0x01, 0xFF, 0x02, 0x04, 0x03].every((b, i) => head[i] === b))
                         || (gem && isGem(head, e.size))
-                        || (hfa && isHfa(head)))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
+                        || (hfa && isHfa(head))
+                        || (psp && String.fromCharCode(...head.subarray(0, 27)) === 'Paint Shop Pro Image File\n\x1a'))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });
                 }
             }
