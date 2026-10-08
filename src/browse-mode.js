@@ -88,6 +88,7 @@ ICON_BY_EXT.vrm = '🧍';
 for (const e of ['hpgl', 'hpg', 'hgl', 'pen']) ICON_BY_EXT[e] = '🖊️';
 ICON_BY_EXT.lottie = '🎞️';
 ICON_BY_EXT.mml = ICON_BY_EXT.mathml = '∑';
+for (const e of ['ps', 'eps', 'epsf', 'epsi']) ICON_BY_EXT[e] = '📃';
 ICON_BY_EXT.mht = ICON_BY_EXT.mhtml = '🌐';
 ICON_BY_EXT.kdbx = ICON_BY_EXT.kdb = '🔐';
 for (const e of ['mscz', 'mscx', 'musicxml', 'mxl', 'gp', 'gp3', 'gp4', 'gp5', 'gtp', 'mid', 'midi']) ICON_BY_EXT[e] = '🎼';

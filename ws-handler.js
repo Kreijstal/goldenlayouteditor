@@ -94,6 +94,8 @@ const SAI_MAYBE_RE = /\.sai$/i;
 // "CPT7FILE", "CPT8FILE" or "CPT9FILE", or is a TIFF (PHOTO-PAINT 6's)
 const CPT_MAYBE_RE = /\.cpt$/i;
 const CPT_MAGIC_RE = /^(CPT[789]FILE|II\*\0|MM\0\*)/;
+// EPS is text, but a DOS EPS (C5 D0 D3 C6, its PostScript after a TIFF or WMF preview) is binary
+const EPS_MAYBE_RE = /\.(eps|epsf|epsi|ps)$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -633,7 +635,8 @@ const messageHandlers = {
               // a Micrografx drawing by the other drawings', .drw, a GEM image by a disk image's, .img,
               // an ERDAS IMAGINE one, .img, a Paint Shop Pro image by a makefile's, .psp, .tub, .pfr, a
               // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp, a PaintTool SAI
-              // document by a SAIL program's, .sai, or a Corel PHOTO-PAINT image by a Compact Pro archive's, .cpt)
+              // document by a SAIL program's, .sai, a Corel PHOTO-PAINT image by a Compact Pro archive's, .cpt,
+              // or a DOS EPS, binary though EPS is text)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -648,7 +651,8 @@ const messageHandlers = {
                 || (PSP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 27) === 'Paint Shop Pro Image File\n\x1a')
                 || (MDP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 8) === 'mdipack\0')
                 || (SAI_MAYBE_RE.test(entry.name) && isSai(buf))
-                || (CPT_MAYBE_RE.test(entry.name) && CPT_MAGIC_RE.test(buf.toString('latin1', 0, 8)))) {
+                || (CPT_MAYBE_RE.test(entry.name) && CPT_MAGIC_RE.test(buf.toString('latin1', 0, 8)))
+                || (EPS_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32LE(0) === 0xc6d3d0c5)) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

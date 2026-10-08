@@ -65,6 +65,7 @@ const { isGerberFile } = require('./gerber-plugin');
 const { isHpglFile } = require('./hpgl-plugin');
 const { isLottieFile } = require('./lottie-plugin');
 const { isMathmlFile } = require('./mathml-plugin');
+const { isPostScriptFile } = require('./ps-plugin');
 require('./flp-plugin');
 require('./emulator-plugin');
 require('./gpg-plugin');
@@ -2981,6 +2982,8 @@ const FILE_VIEWERS = [
     { re: /\.(lottie|json)$/i, test: isLottieFile, componentType: 'lottieViewer', tag: 'lottie', prefix: 'lottie-' },
     // MathML documents, typeset by MathJax; a .xml only when its root is <math>
     { re: /\.(mml|mathml|xml)$/i, test: isMathmlFile, componentType: 'mathmlViewer', tag: 'mathml', prefix: 'mathml-' },
+    // PostScript and EPS, drawn by Ghostscript (a DOS EPS too, binary); a .ps only when its text has %!
+    { re: /\.(ps|eps|epsf|epsi)$/i, test: isPostScriptFile, componentType: 'psViewer', tag: 'postscript', prefix: 'ps-' },
     { re: /\.(vcd|fst|ghw)$/i, componentType: 'waveformViewer', tag: 'wave', prefix: 'wave-' },
     { re: /\.wasm$/i, componentType: 'wasmInspector', tag: 'wasm', prefix: 'wasm-' },
     { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
