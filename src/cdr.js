@@ -132,24 +132,31 @@ async function convertPages(bytes, format) {
     return Promise.all(names.map(n => zip.file(n).async('uint8array')));
 }
 
-// The CorelDRAW drawing at url: { url (a blob: URL of the first page's SVG),
-// label, pages ([{ label }], for the pager), bytes, urls (each page's blob: URL, once drawn) }
-function cdrImage(url, name) {
+// A drawing LibreOffice opens, at url: { url (a blob: URL of the first page's
+// SVG), label, pages ([{ label }], for the pager), bytes, urls (each page's blob:
+// URL, once drawn) }; label(bytes) says what the file is, or throws if it is none;
+// vector(bytes), whether its first page can be SVG (else all are PNGs)
+function drawingImage(url, label, vector = () => true) {
     let p = converted.get(url);
     if (!p) {
         p = (async () => {
             const resp = await fetch(url);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const bytes = new Uint8Array(await resp.arrayBuffer());
-            if (!isCdr(bytes, name)) throw new Error('not a CorelDRAW drawing');
+            const what = label(bytes);
+            if (!vector(bytes)) {
+                const pngs = await convertPages(bytes, 'png');
+                const urls = pngs.map(png => URL.createObjectURL(new Blob([png], { type: 'image/png' })));
+                const pages = pngs.map((_, i) => ({ label: `${what}, page ${i + 1} (PNG)` }));
+                return { url: urls[0], label: what, pages, bytes, urls, pngs: Promise.resolve() };
+            }
             const svgs = await convertPages(bytes, 'svg'); // as many as there are pages, each the first's
-            const label = describe(bytes);
             const urls = [URL.createObjectURL(new Blob([svgs[0]], { type: 'image/svg+xml' }))];
-            const pages = svgs.map((_, i) => ({ label: `${label}, page ${i + 1}${i ? ' (PNG)' : ''}` }));
-            return { url: urls[0], label, pages, bytes, urls };
+            const pages = svgs.map((_, i) => ({ label: `${what}, page ${i + 1}${i ? ' (PNG)' : ''}` }));
+            return { url: urls[0], label: what, pages, bytes, urls };
         })();
         converted.set(url, p);
-        p.catch(err => { converted.delete(url); log.warn('CorelDRAW conversion failed:', err); });
+        p.catch(err => { converted.delete(url); log.warn('LibreOffice conversion failed:', err); });
         if (converted.size > 64) {
             const [oldUrl, old] = converted.entries().next().value;
             converted.delete(oldUrl);
@@ -161,8 +168,9 @@ function cdrImage(url, name) {
 
 // One page of the drawing at url (for addTiffPager): { url }; the first the
 // SVG, the others PNGs, all drawn the first time one is asked for
-async function cdrPage(url, n) {
-    const d = await cdrImage(url);
+async function drawingPage(url, n) {
+    const d = await converted.get(url);
+    if (!d) throw new Error('not opened');
     if (n === 0) return { url: d.urls[0] };
     if (!d.pngs) {
         d.pngs = convertPages(d.bytes, 'png').then(pngs => {
@@ -175,4 +183,14 @@ async function cdrPage(url, n) {
     return { url: d.urls[n] };
 }
 
-module.exports = { isCdrName, isCdr, isCdrUrl, cdrImage, cdrPage };
+// The CorelDRAW drawing at url (see drawingImage)
+function cdrImage(url, name) {
+    return drawingImage(url, bytes => {
+        if (!isCdr(bytes, name)) throw new Error('not a CorelDRAW drawing');
+        return describe(bytes);
+    });
+}
+
+const cdrPage = drawingPage;
+
+module.exports = { isCdrName, isCdr, isCdrUrl, cdrImage, cdrPage, drawingImage, drawingPage };
