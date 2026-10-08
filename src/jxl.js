@@ -27,8 +27,9 @@
 // Windows cursor's largest image's PNG, an animated cursor's first frame's (src/cur.js),
 // an Apple icon image's largest image's (src/icns.js), and an Amiga IFF animation's
 // first frame's, by FFmpeg (src/iffanim.js), a CALS raster's PNG, by GDAL (src/cals.js), a DPX
-// or Cineon film scan's PNG, log to linear, by ImageMagick (src/dpx.js), and a
-// DirectDraw Surface's first level's PNG (src/dds.js).
+// or Cineon film scan's PNG, log to linear, by ImageMagick (src/dpx.js), a
+// DirectDraw Surface's first level's PNG (src/dds.js), and an OpenEXR file's
+// first layer's PNG, tone mapped (src/exr.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -66,6 +67,7 @@ const { isWmfName, wmfImage } = require('./wmf');
 const { isCursorName, cursorImage } = require('./cur');
 const { isIcnsName, icnsImage } = require('./icns');
 const { isDdsName, ddsImage } = require('./dds');
+const { isExrName, exrImage } = require('./exr');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -147,7 +149,8 @@ function jxlDecode(bytes) {
 // first frame's PNG (Amiga IFF animation: .anim, .anm; an .iff only once known to be one) or
 // the PNG (CALS raster: .cals, .ct1; a .cal or .ras only once known to be one) or the PNG,
 // a logarithmic one turned linear (DPX: .dpx; Cineon: a .cin only once known to be one) or
-// the first level's PNG (DirectDraw Surface: .dds)
+// the first level's PNG (DirectDraw Surface: .dds) or the first layer's PNG, tone
+// mapped (OpenEXR: .exr)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -187,6 +190,7 @@ async function displayableImageUrl(url, name) {
     if (isCursorName(name)) return (await cursorImage(url)).url;
     if (isIcnsName(name)) return (await icnsImage(url)).url;
     if (isDdsName(name)) return (await ddsImage(url)).url;
+    if (isExrName(name)) return (await exrImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
