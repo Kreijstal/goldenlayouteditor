@@ -41,6 +41,7 @@ const SERVED_EXTENSIONS = new Set([
   'jxr', // not .wdp/.hdp: WinDev and Dylan projects too (JXR_MAYBE_RE)
   'bpg', 'flif',
   'nrrd', 'nhdr', // an .nhdr is text, but the picture is what one wants of it
+  'vic', 'vicar', // not .img: disk images and other pictures too (VICAR_MAYBE_RE)
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
@@ -57,6 +58,8 @@ const IFF_PICTURE_TYPES = ['ILBM', 'PBM ', 'ACBM'];
 const FZ_MAYBE_RE = /\.fz$/i;
 // HD Photo's names, which WinDev and Dylan projects have too: JPEG XR only if it starts "II", 0xBC
 const JXR_MAYBE_RE = /\.(wdp|hdp)$/i;
+// The PDS's name for its images, a disk image's too: VICAR only if it starts "LBLSIZE="
+const VICAR_MAYBE_RE = /\.img$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -592,13 +595,14 @@ const messageHandlers = {
               const buf = await fs.promises.readFile(fullPath);
               // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
               // (or a Sun raster by Rust's, .rs, an Amiga picture by IFF's, .iff, FITS by Fritzing's, .fz,
-              // or JPEG XR by HD Photo's, .wdp/.hdp)
+              // JPEG XR by HD Photo's, .wdp/.hdp, or VICAR by the PDS's, .img)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
                   && IFF_PICTURE_TYPES.includes(buf.toString('latin1', 8, 12)))
                 || (FZ_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 9) === 'SIMPLE  =')
-                || (JXR_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0xbc && buf[3] <= 1)) {
+                || (JXR_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0xbc && buf[3] <= 1)
+                || (VICAR_MAYBE_RE.test(entry.name) && /^LBLSIZE *=/.test(buf.toString('latin1', 0, 16)))) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;
