@@ -277,6 +277,7 @@ const { isXisfName, addXisfControls } = require('./xisf');
 const { isPgfName, isPgfUrl, addPgfControls } = require('./pgf');
 const { isDrwName, isDrwUrl, drwImage } = require('./drw');
 const { isGemName, isGemMaybeName, isGemUrl, gemImage } = require('./gem');
+const { isHfaMaybeName, isHfaUrl, addHfaControls } = require('./hfa');
 const { addEcwControls } = require('./ecw');
 const { attachSubtitles } = require('./subtitles');
 
@@ -911,7 +912,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'ximg', 'timg']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'ximg', 'timg', 'hfa']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -936,6 +937,8 @@ class EditorComponent {
         if (ext === 'binary' && isPgfName(fileData.name) && await isPgfUrl(url).catch(() => false)) ext = 'pgf';
         // a binary .drw is a Micrografx drawing if it starts 01 FF 02 04 03 (else Pro/ENGINEER's, Caddie's...)
         if (ext === 'binary' && isDrwName(fileData.name) && await isDrwUrl(url).catch(() => false)) ext = 'drw';
+        // a binary .img is ERDAS IMAGINE's if it starts "EHFA_HEADER_TAG" (else a disk image...)
+        if (ext === 'binary' && isHfaMaybeName(fileData.name) && await isHfaUrl(url).catch(() => false)) ext = 'hfa';
         // a binary .img that isn't VICAR is a GEM image if its header holds up (else a disk image...)
         if (ext === 'binary' && isGemMaybeName(fileData.name) && await isGemUrl(url).catch(() => false)) ext = 'ximg';
 
@@ -1035,6 +1038,11 @@ class EditorComponent {
             if (ext === 'ecw') {
                 this.rootElement.style.position = 'relative';
                 addEcwControls(this.rootElement, img, url);
+            }
+            // an ERDAS IMAGINE image: its bands (three in color), overviews, color tables, the window and stretch, the header
+            if (ext === 'hfa') {
+                this.rootElement.style.position = 'relative';
+                addHfaControls(this.rootElement, img, url);
             }
             // a Micrografx drawing: what it holds
             if (ext === 'drw') drwImage(url).then(d => { img.title = d.label; }).catch(() => {});
@@ -1326,7 +1334,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'ximg', 'timg']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'ximg', 'timg', 'hfa']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1346,6 +1354,8 @@ class PreviewComponent {
             if (ext === 'binary' && isPgfName(previewFile.name) && await isPgfUrl(url).catch(() => false)) ext = 'pgf';
             // a binary .drw: a Micrografx drawing if it starts 01 FF 02 04 03
             if (ext === 'binary' && isDrwName(previewFile.name) && await isDrwUrl(url).catch(() => false)) ext = 'drw';
+            // a binary .img: ERDAS IMAGINE's if it starts "EHFA_HEADER_TAG"
+            if (ext === 'binary' && isHfaMaybeName(previewFile.name) && await isHfaUrl(url).catch(() => false)) ext = 'hfa';
             // a binary .img: a GEM image if its header holds up
             if (ext === 'binary' && isGemMaybeName(previewFile.name) && await isGemUrl(url).catch(() => false)) ext = 'ximg';
             let previewHtml;

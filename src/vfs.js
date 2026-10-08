@@ -18,6 +18,7 @@
 const LocalFS = require('../public/local-fs.js');
 const { createLogger } = require('./debug');
 const { isGem } = require('./gem');
+const { isHfa } = require('./hfa');
 const log = createLogger('VFS');
 
 const SERVER = 'server';
@@ -44,6 +45,8 @@ const PGF_MAYBE_RE = /\.pgf$/i;
 const DRW_MAYBE_RE = /\.drw$/i;
 // ...and a GEM image by a disk image's name (mirrors GEM_MAYBE_RE in ws-handler.js)
 const GEM_MAYBE_RE = /\.img$/i;
+// ...and an ERDAS IMAGINE one (mirrors HFA_MAYBE_RE in ws-handler.js)
+const HFA_MAYBE_RE = /\.img$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -682,12 +685,12 @@ const handlers = {
                     // an SGI image by another name (.rgb, .bw...), a Sun raster by Rust's (.rs), an
                     // Amiga picture by IFF's (.iff), FITS by Fritzing's (.fz), JPEG XR by HD Photo's
                     // (.wdp, .hdp), VICAR by the PDS's (.img), a PGF image by PGF/TikZ's (.pgf), a Micrografx
-                    // drawing by the other drawings' (.drw) or a GEM image by a disk image's (.img, its
-                    // header and size): binary, its viewer tells by the magic number
+                    // drawing by the other drawings' (.drw), a GEM image by a disk image's (.img, its
+                    // header and size) or an ERDAS IMAGINE one (.img): binary, its viewer tells by the magic number
                     const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
                     const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name), pgf = PGF_MAYBE_RE.test(e.name);
-                    const drw = DRW_MAYBE_RE.test(e.name), gem = GEM_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem ? new Uint8Array(await blob.slice(0, 32).arrayBuffer()) : null;
+                    const drw = DRW_MAYBE_RE.test(e.name), gem = GEM_MAYBE_RE.test(e.name), hfa = HFA_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa ? new Uint8Array(await blob.slice(0, 32).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
                         || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
@@ -696,7 +699,8 @@ const handlers = {
                         || (vicar && /^LBLSIZE *=/.test(String.fromCharCode(...head)))
                         || (pgf && String.fromCharCode(...head.subarray(0, 3)) === 'PGF' && (head[3] & 2) && head[3] < 0x80)
                         || (drw && [0x01, 0xFF, 0x02, 0x04, 0x03].every((b, i) => head[i] === b))
-                        || (gem && isGem(head, e.size)))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
+                        || (gem && isGem(head, e.size))
+                        || (hfa && isHfa(head)))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });
                 }
             }

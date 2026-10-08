@@ -16,12 +16,14 @@ const { isVicarMaybeName, isVicar, isVicarUrl } = require('./vicar');
 const { isPgfName, isPgf } = require('./pgf');
 const { isDrwName, isDrw } = require('./drw');
 const { isGemMaybeName, isGem, isGemUrl } = require('./gem');
+const { isHfaMaybeName, isHfa, isHfaUrl } = require('./hfa');
 
 const log = createLogger('Browse');
 
-// Whether the .img at url is a picture, VICAR's or GEM's, rather than a disk image
+// Whether the .img at url is a picture, VICAR's, ERDAS IMAGINE's or GEM's, rather than a disk image
 async function isImgPicture(url) {
-    return await isVicarUrl(url).catch(() => false) || await isGemUrl(url).catch(() => false);
+    return await isVicarUrl(url).catch(() => false) || await isHfaUrl(url).catch(() => false)
+        || await isGemUrl(url).catch(() => false);
 }
 
 // Extensions EditorComponent can play/show directly; these default to it
@@ -807,8 +809,8 @@ async function initBrowseMode(root, deps) {
             row.append(ico, txt);
             row.onclick = async () => {
                 if (selectMode) toggleSelected(f.name);
-                // an .img that is a VICAR image (the PDS's) or a GEM one, not a disk image: the picture
-                else if (isDir && (isVicarMaybeName(f.name) || isGemMaybeName(f.name))
+                // an .img that is a VICAR image (the PDS's), an ERDAS IMAGINE or a GEM one, not a disk image: the picture
+                else if (isDir && (isVicarMaybeName(f.name) || isHfaMaybeName(f.name) || isGemMaybeName(f.name))
                     && await isImgPicture('/workspace-file?path=' + encodeURIComponent(absPath(f.name)))) openFile(f);
                 else if (isDir) navigate(absPath(f.name));
                 else openFile(f);
@@ -971,10 +973,11 @@ async function initBrowseMode(root, deps) {
         // an Amiga picture by IFF's name (.iff) is binary even where its NULs look like UTF-16,
         // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text, and a .pgf
         // that is a PGF image (not PGF/TikZ's TeX), a .drw that is Micrografx's or an .img that is a GEM image
-        // (32-bit pixels can look like UTF-16) whatever its first bytes look like
+        // (32-bit pixels can look like UTF-16) or ERDAS IMAGINE's whatever its first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && isIlbm(bytes)) || (isFzName(file.name) && isFits(bytes))
             || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))
-            || (isDrwName(file.name) && isDrw(bytes)) || (isGemMaybeName(file.name) && isGem(bytes))) {
+            || (isDrwName(file.name) && isDrw(bytes)) || (isGemMaybeName(file.name) && isGem(bytes))
+            || (isHfaMaybeName(file.name) && isHfa(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;

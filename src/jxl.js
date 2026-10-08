@@ -17,7 +17,9 @@
 // XISF file's first image's PNG, windowed (src/xisf.js; an .xish's blocks read
 // from beside it), a PGF image's PNG (src/pgf.js), an ECW image's PNG, no
 // more than 4096 pixels on its long side (src/ecw.js), a Micrografx Draw
-// drawing's SVG (src/drw.js), and a GEM raster image's PNG (src/gem.js).
+// drawing's SVG (src/drw.js), a GEM raster image's PNG (src/gem.js), and an
+// ERDAS IMAGINE image's first band's PNG, or its three bands', at an overview
+// that fits (src/hfa.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -40,6 +42,7 @@ const { isXisfName, xisfPage } = require('./xisf');
 const { isPgfName, pgfImage } = require('./pgf');
 const { isDrwName, drwImage } = require('./drw');
 const { isGemName, isGemMaybeName, isGemUrl, gemImage } = require('./gem');
+const { isHfaMaybeName, isHfaUrl, hfaPage } = require('./hfa');
 const { isEcwName, ecwImage } = require('./ecw');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
@@ -100,7 +103,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw and GEM, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, GEM and ERDAS IMAGINE, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -111,8 +114,9 @@ function jxlDecode(bytes) {
 // the first band's PNG, in color for three (VICAR; an .img only once known to be one)
 // or the first page's PNG, windowed as the image asks (XISF), the PNG (PGF; a
 // .pgf only once known to be one), the PNG at a scale that fits (ECW), the SVG
-// (Micrografx Draw; a .drw only once known to be one), or the PNG (GEM; an .img
-// that is one, else VICAR's)
+// (Micrografx Draw; a .drw only once known to be one), the PNG (GEM; an .img
+// that is one, else VICAR's) or the first band's PNG, in color for three, at an
+// overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG")
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -129,6 +133,7 @@ async function displayableImageUrl(url, name) {
     if (isBpgName(name)) return (await bpgImage(url)).url;
     if (isFlifName(name)) return (await flifImage(url)).url;
     if (isNrrdName(name)) return (await nrrdPage(url)).url;
+    if (isHfaMaybeName(name) && await isHfaUrl(url).catch(() => false)) return (await hfaPage(url)).url;
     if (isGemName(name) || (isGemMaybeName(name) && await isGemUrl(url).catch(() => false))) return (await gemImage(url)).url;
     if (isVicarName(name) || isVicarMaybeName(name)) return (await vicarPage(url)).url;
     if (isXisfName(name)) return (await xisfPage(url)).url;
