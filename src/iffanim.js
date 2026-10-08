@@ -173,11 +173,13 @@ function animImage(url) {
 }
 
 // The viewer's <img> (the first frame) for an animation: played on a canvas in its
-// place with the file's own timing (pause, step), its pixels as wide as they were
-function addAnimControls(root, img, url) {
+// place with the file's own timing (pause, step), its pixels as wide as they were.
+// Another decoder's animations play here too (an MNG's, src/mng.js): `source` gives
+// its whole animation and its first frame, as animFile and animImage do
+function addAnimControls(root, img, url, source = { file: animFile, first: animImage }) {
     root.style.position = 'relative';
-    animImage(url).then(d => applyPixelAspect(img, d.aspect)).catch(() => {});
-    animFile(url).then(d => {
+    source.first(url).then(d => applyPixelAspect(img, d.aspect)).catch(() => {});
+    source.file(url).then(d => {
         if (!img.isConnected) return;
         const canvas = document.createElement('canvas');
         canvas.width = d.width;

@@ -50,6 +50,7 @@ const SERVED_EXTENSIONS = new Set([
   'pict', 'pct',
   'cals', 'ct1', // not .cal: calendars and others too (CAL_MAYBE_RE)
   'dpx', // not .cin: input methods' tables too (CIN_MAYBE_RE)
+  'jng', // not .mng: Ott's text too (MNG_MAYBE_RE)
   'wmf', 'emf', 'wmz', 'emz',
   'mpo', 'jps', 'pns', // stereo pictures (an MPO's first JPEG, a side-by-side JPEG or PNG as it is)
   'tga', 'tpic', 'icb', 'vda', 'vst', // .icb/.vda/.vst: only if a TGA (.vst is a Visio template too)
@@ -116,6 +117,8 @@ const CAL_MAYBE_RE = /\.cal$/i;
 const CAL_MAGIC_RE = /^(version: MIL-STD-1840|srcdocid:|rorient:)/;
 // Input methods' tables' name Cineon film scans have too: one only if it starts 802A5FD7 (D75F2A80 little-endian)
 const CIN_MAYBE_RE = /\.cin$/i;
+// Ott's name (text) MNG animations have too: one only if it starts with MNG's signature, 8A "MNG" 0D 0A 1A 0A
+const MNG_MAYBE_RE = /\.mng$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -657,7 +660,7 @@ const messageHandlers = {
               // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp, a PaintTool SAI
               // document by a SAIL program's, .sai, a Corel PHOTO-PAINT image by a Compact Pro archive's, .cpt,
               // a CALS raster by a calendar's, .cal, a Cineon film scan by an input method's table's, .cin,
-              // or a DOS EPS, binary though EPS is text)
+              // an MNG animation by Ott's, .mng, or a DOS EPS, binary though EPS is text)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -675,6 +678,7 @@ const messageHandlers = {
                 || (CPT_MAYBE_RE.test(entry.name) && CPT_MAGIC_RE.test(buf.toString('latin1', 0, 8)))
                 || (CAL_MAYBE_RE.test(entry.name) && CAL_MAGIC_RE.test(buf.toString('latin1', 0, 32)))
                 || (CIN_MAYBE_RE.test(entry.name) && buf.length >= 4 && [0x802a5fd7, 0xd75f2a80].includes(buf.readUInt32BE(0)))
+                || (MNG_MAYBE_RE.test(entry.name) && buf.toString('hex', 0, 8) === '8a4d4e470d0a1a0a')
                 || (EPS_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32LE(0) === 0xc6d3d0c5)) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;

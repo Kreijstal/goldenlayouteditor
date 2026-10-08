@@ -29,8 +29,9 @@
 // first frame's, by FFmpeg (src/iffanim.js), a CALS raster's PNG, by GDAL (src/cals.js), a DPX
 // or Cineon film scan's PNG, log to linear, by ImageMagick (src/dpx.js), a
 // DirectDraw Surface's first level's PNG (src/dds.js), and an OpenEXR file's
-// first layer's PNG, tone mapped (src/exr.js), and a JBIG2 file's first page's PNG, by
-// MuPDF (src/jbig2.js).
+// first layer's PNG, tone mapped (src/exr.js), a JBIG2 file's first page's PNG, by
+// MuPDF (src/jbig2.js), and an MNG animation's first frame's PNG or a JNG's PNG, by
+// ImageMagick (src/mng.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -65,6 +66,7 @@ const { isHvifName, hvifImage } = require('./hvif');
 const { isPictName, isPictUrl, pictImage } = require('./pict');
 const { isCalsName, isCalsMaybeName, isCalsUrl, calsImage } = require('./cals');
 const { isDpxName, isCinName, isCineonUrl, dpxImage } = require('./dpx');
+const { isMngName, isJngName, isMngUrl, mngImage, jngImage } = require('./mng');
 const { isWmfName, wmfImage } = require('./wmf');
 const { isCursorName, cursorImage } = require('./cur');
 const { isIcnsName, icnsImage } = require('./icns');
@@ -128,7 +130,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE, Haiku vector icons, QuickDraw PICT, Windows metafiles, CALS rasters, JBIG2, DPX and Cineon, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE, Haiku vector icons, QuickDraw PICT, Windows metafiles, CALS rasters, JBIG2, DPX, Cineon, MNG and JNG, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -153,7 +155,8 @@ function jxlDecode(bytes) {
 // the PNG (CALS raster: .cals, .ct1; a .cal or .ras only once known to be one) or the PNG,
 // a logarithmic one turned linear (DPX: .dpx; Cineon: a .cin only once known to be one) or
 // the first level's PNG (DirectDraw Surface: .dds) or the first layer's PNG, tone
-// mapped (OpenEXR: .exr) or the first page's PNG (JBIG2: .jb2, .jbig2)
+// mapped (OpenEXR: .exr) or the first page's PNG (JBIG2: .jb2, .jbig2) or the first
+// frame's PNG (MNG: a .mng only once known to be one) or the PNG (JNG: .jng)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -195,6 +198,9 @@ async function displayableImageUrl(url, name) {
     if (isIcnsName(name)) return (await icnsImage(url)).url;
     if (isDdsName(name)) return (await ddsImage(url)).url;
     if (isExrName(name)) return (await exrImage(url)).url;
+    // a .mng: MNG if it starts as one (else Ott's text)
+    if (isMngName(name) && await isMngUrl(url).catch(() => false)) return (await mngImage(url)).url;
+    if (isJngName(name)) return (await jngImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

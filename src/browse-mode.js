@@ -18,6 +18,7 @@ const { isPgfName, isPgf } = require('./pgf');
 const { isDrwName, isDrw } = require('./drw');
 const { isCals } = require('./cals');
 const { isCineon } = require('./dpx');
+const { isMng } = require('./mng');
 const { isGemMaybeName, isGem, isGemUrl } = require('./gem');
 const { isHfaMaybeName, isHfa, isHfaUrl } = require('./hfa');
 const { isPspMaybeName, isPsp } = require('./psp-plugin');
@@ -35,7 +36,7 @@ async function isImgPicture(url) {
 
 // Extensions EditorComponent can play/show directly; these default to it
 // instead of the inspector plugins project mode prefers.
-const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|cur|ani|icns|dds|exr|webp|avif|svg|hvif|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|deep|iff|anim|anm|fl[icx]|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|ecw|drw|cdr|cdt|cmx|f?odg|otg|o?xps|jb2|jbig2|pict|pct|cals|ct1|cal|dpx|cin|[we]m[fz]|mpo|jps|pns|ximg|timg|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
+const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|cur|ani|icns|dds|exr|webp|avif|svg|hvif|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|deep|iff|anim|anm|fl[icx]|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|ecw|drw|cdr|cdt|cmx|f?odg|otg|o?xps|jb2|jbig2|pict|pct|cals|ct1|cal|dpx|cin|[mj]ng|[we]m[fz]|mpo|jps|pns|ximg|timg|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
 
 // Zip-format archives the browser opens as read-only folders. Listing and file
 // reads are answered by the service worker (public/zip-sw.js; without one, the
@@ -43,7 +44,7 @@ const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|cur|ani|icns|dds|exr|webp|avif|
 const ZIP_EXTENSIONS = new Set(['zip', 'jar', 'war', 'ear', 'aar', 'apk', 'xapk', 'ipa', 'whl', 'nupkg', 'cbz', 'xpi', 'vsix', 'crx', 'kmz', '3mf']);
 // Extensions with a dedicated viewer (mirrors SERVED_EXTENSIONS in ws-handler.js)
 const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods odg otg fodg xps oxps jb2 jbig2 sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp 3dxml zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
-    + 'png apng jxl jpg jpeg gif bmp ico cur ani icns dds exr webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep anim anm fli flc flx fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct cals ct1 dpx wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
+    + 'png apng jxl jpg jpeg gif bmp ico cur ani icns dds exr webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep anim anm fli flc flx fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct cals ct1 dpx jng wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_TEXT_SIZE = 5 * 1024 * 1024;
 
 // Tar archives the service worker can open (mirrors TAR_RE in public/zip-sw.js)
@@ -78,7 +79,7 @@ const ICONS = {
     archive: '📦', code: '📜', text: '📄', dir: '📁',
 };
 const ICON_BY_EXT = {};
-for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'cdr', 'cdt', 'cmx', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg', 'fxg', 'psd', 'xcf', 'kra', 'krz', 'pdn', 'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', 'clip', 'sai', 'sai2', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
+for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'cdr', 'cdt', 'cmx', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'jng', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg', 'fxg', 'psd', 'xcf', 'kra', 'krz', 'pdn', 'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', 'clip', 'sai', 'sai2', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
 for (const e of ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', '3gp', 'vcut']) ICON_BY_EXT[e] = ICONS.video;
 for (const e of ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus']) ICON_BY_EXT[e] = ICONS.audio;
 for (const e of ['zip', 'tar', 'gz', 'xz', 'bz2', '7z', 'rar', 'zst', 'iso']) ICON_BY_EXT[e] = ICONS.archive;
@@ -989,15 +990,15 @@ async function initBrowseMode(root, deps) {
         // that is a PGF image (not PGF/TikZ's TeX), a .drw that is Micrografx's or an .img that is a GEM image
         // (32-bit pixels can look like UTF-16), ERDAS IMAGINE's, a .psp, .tub or .pfr that is Paint Shop Pro's,
         // an .mdp that is MediBang Paint's / FireAlpaca's, a .sai that is PaintTool SAI's, a .cpt that is
-        // Corel PHOTO-PAINT's, a .cal that is a CALS raster or a .cin that is a Cineon film scan, whatever
-        // its first bytes look like
+        // Corel PHOTO-PAINT's, a .cal that is a CALS raster, a .cin that is a Cineon film scan or a .mng that
+        // is an MNG animation (not Ott's text), whatever its first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && (isIlbm(bytes) || isAnim(bytes))) || (isFzName(file.name) && isFits(bytes))
             || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))
             || (isDrwName(file.name) && isDrw(bytes)) || (isGemMaybeName(file.name) && isGem(bytes))
             || (isHfaMaybeName(file.name) && isHfa(bytes)) || (isPspMaybeName(file.name) && isPsp(bytes))
             || (/\.mdp$/i.test(file.name) && isMdp(bytes)) || (/\.sai$/i.test(file.name) && isSai(bytes))
             || (/\.cpt$/i.test(file.name) && isCpt(bytes)) || (/\.cal$/i.test(file.name) && isCals(bytes))
-            || (/\.cin$/i.test(file.name) && isCineon(bytes))) {
+            || (/\.cin$/i.test(file.name) && isCineon(bytes)) || (/\.mng$/i.test(file.name) && isMng(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;

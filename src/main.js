@@ -301,6 +301,7 @@ const { hvifImage } = require('./hvif');
 const { isPictUrl, pictImage } = require('./pict');
 const { isCalsUrl, calsImage } = require('./cals');
 const { isCineonUrl, addDpxControls } = require('./dpx');
+const { isMngUrl, mngFile, mngImage, jngImage } = require('./mng');
 const { wmfImage } = require('./wmf');
 const { isCursorName, addCursorControls } = require('./cur');
 const { isAnimExt, isAnimUrl, addAnimControls } = require('./iffanim');
@@ -947,7 +948,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'ximg', 'timg', 'hfa', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'cin', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'ximg', 'timg', 'hfa', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'cin', 'mng', 'jng', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -984,6 +985,8 @@ class EditorComponent {
         if (ext === 'binary' && /\.cal$/i.test(fileData.name) && await isCalsUrl(url).catch(() => false)) ext = 'cals';
         // a binary .cin is a Cineon film scan if it starts as one (else an input method's table...)
         if (ext === 'binary' && /\.cin$/i.test(fileData.name) && await isCineonUrl(url).catch(() => false)) ext = 'cin';
+        // a binary .mng is an MNG animation if it starts as one (else Ott's, text, stays in the editor)
+        if (ext === 'binary' && /\.mng$/i.test(fileData.name) && await isMngUrl(url).catch(() => false)) ext = 'mng';
 
         if (IMAGE_EXTS.has(ext)) {
             const img = document.createElement('img');
@@ -1112,6 +1115,9 @@ class EditorComponent {
             if (isCursorName(fileData.name) || ext === 'ico') addCursorControls(this.rootElement, img, url);
             // an Amiga or FLIC animation: played with its own timing (pause, step), its pixels as wide as they were
             if (isAnimExt(ext)) addAnimControls(this.rootElement, img, url);
+            // an MNG animation: its frames, by ImageMagick, played the same way; a JNG: what it is
+            if (ext === 'mng') addAnimControls(this.rootElement, img, url, { file: mngFile, first: mngImage });
+            if (ext === 'jng') jngImage(url).then(d => { img.title = d.label; }).catch(() => {});
             // an Apple icon image: what it holds, buttons to turn its sizes
             if (isIcnsName(fileData.name)) {
                 Promise.all([icnsImage(url), icnsPage(url, 0)]).then(([d, first]) => {
@@ -1444,7 +1450,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'ximg', 'timg', 'hfa', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'cin', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'ximg', 'timg', 'hfa', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'cin', 'mng', 'jng', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1474,6 +1480,8 @@ class PreviewComponent {
             if (ext === 'binary' && isGemMaybeName(previewFile.name) && await isGemUrl(url).catch(() => false)) ext = 'ximg';
             // a binary .cin: a Cineon film scan if it starts as one
             if (ext === 'binary' && /\.cin$/i.test(previewFile.name) && await isCineonUrl(url).catch(() => false)) ext = 'cin';
+            // a binary .mng: an MNG animation if it starts as one
+            if (ext === 'binary' && /\.mng$/i.test(previewFile.name) && await isMngUrl(url).catch(() => false)) ext = 'mng';
             let previewHtml;
 
             if (IMAGE_EXTS.has(ext)) {
@@ -1888,7 +1896,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'hvif', 'fxg', 'webp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'hvif', 'fxg', 'webp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'jng', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
