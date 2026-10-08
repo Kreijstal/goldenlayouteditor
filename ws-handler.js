@@ -43,6 +43,7 @@ const SERVED_EXTENSIONS = new Set([
   'nrrd', 'nhdr', // an .nhdr is text, but the picture is what one wants of it
   'vic', 'vicar', // not .img: disk images and other pictures too (VICAR_MAYBE_RE)
   'xisf', 'xish', // an .xish is text, but the picture is what one wants of it
+  'ecw',
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
