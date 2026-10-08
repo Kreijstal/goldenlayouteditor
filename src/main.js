@@ -61,6 +61,7 @@ require('./bpmn-plugin');
 require('./drawio-import-plugin');
 require('./gpx-plugin');
 require('./fxg-plugin');
+const { isGerberFile } = require('./gerber-plugin');
 require('./flp-plugin');
 require('./emulator-plugin');
 require('./gpg-plugin');
@@ -2925,6 +2926,9 @@ const FILE_VIEWERS = [
     // .tm is also a Tcl module: only files that are TeXmacs documents
     { re: /\.tmu$|\.tm$/i, sniff: /^\s*<(TeXmacs|TMU)\|/, componentType: 'texmacsEditor', tag: 'texmacs', prefix: 'texmacs-' },
     { re: /\.(kicad_sch|kicad_pcb)$/i, componentType: 'kicadViewer', tag: 'kicad', prefix: 'kicad-' },
+    // Gerber layers and Excellon drill files (PCB artwork), and the board the folder's make; the names others
+    // use too (.gbr GIMP brushes, .art, Eagle's .cmp/.sol..., .g1) only when the text is Gerber or Excellon
+    { re: /\.(ger|gtl|gbl|gto|gbo|gts|gbs|gtp|gbp|gko|gml|gta|gba|gm\d+|gp[1-9tb]|gbr|art|pho|cmp|sol|plc|pls|stc|sts|crc|crs|drl|xln|drd|exc|g[1-9]\d?)$/i, test: isGerberFile, componentType: 'gerberViewer', tag: 'gerber', prefix: 'gerber-' },
     // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
     { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
     { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
