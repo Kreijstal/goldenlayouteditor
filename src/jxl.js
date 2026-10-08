@@ -22,8 +22,9 @@
 // LibreOffice (src/odg.js), an XPS document's first page's PNG (src/xps.js), a GEM raster image's PNG (src/gem.js), and an
 // ERDAS IMAGINE image's first band's PNG, or its three bands', at an overview
 // that fits (src/hfa.js), a Haiku vector icon's SVG (src/hvif.js), a
-// QuickDraw PICT's PNG, by ImageMagick (src/pict.js), and a Windows metafile's
-// SVG (WMF, EMF, EMF+; gzipped too), by emf-converter (src/wmf.js).
+// QuickDraw PICT's PNG, by ImageMagick (src/pict.js), a Windows metafile's
+// SVG (WMF, EMF, EMF+; gzipped too), by emf-converter (src/wmf.js), and a
+// Windows cursor's largest image's PNG, an animated cursor's first frame's (src/cur.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -55,6 +56,7 @@ const { isJp2Name, jp2Decode } = require('./jp2');
 const { isHvifName, hvifImage } = require('./hvif');
 const { isPictName, isPictUrl, pictImage } = require('./pict');
 const { isWmfName, wmfImage } = require('./wmf');
+const { isCursorName, cursorImage } = require('./cur');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -131,7 +133,8 @@ function jxlDecode(bytes) {
 // that is one, else VICAR's) or the first band's PNG, in color for three, at an
 // overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG"), the SVG
 // (Haiku vector icon), the PNG (QuickDraw PICT; a .pic only once known to be one) or the
-// SVG (Windows metafile: .wmf, .emf, gzipped .wmz, .emz)
+// SVG (Windows metafile: .wmf, .emf, gzipped .wmz, .emz) or the largest image's PNG
+// (Windows cursor: .cur, an animated .ani's first frame)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -162,6 +165,7 @@ async function displayableImageUrl(url, name) {
     if (isXpsName(name)) return (await xpsImage(url, name)).url;
     if (isHvifName(name)) return (await hvifImage(url)).url;
     if (isWmfName(name)) return (await wmfImage(url)).url;
+    if (isCursorName(name)) return (await cursorImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
