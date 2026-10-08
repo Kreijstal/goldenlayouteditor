@@ -20,6 +20,7 @@ const { isHfaMaybeName, isHfa, isHfaUrl } = require('./hfa');
 const { isPspMaybeName, isPsp } = require('./psp-plugin');
 const { isMdp } = require('./mdp-plugin');
 const { isSai } = require('./sai-plugin');
+const { isCpt } = require('./cpt-plugin');
 
 const log = createLogger('Browse');
 
@@ -977,13 +978,14 @@ async function initBrowseMode(root, deps) {
         // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text, and a .pgf
         // that is a PGF image (not PGF/TikZ's TeX), a .drw that is Micrografx's or an .img that is a GEM image
         // (32-bit pixels can look like UTF-16), ERDAS IMAGINE's, a .psp, .tub or .pfr that is Paint Shop Pro's,
-        // an .mdp that is MediBang Paint's / FireAlpaca's or a .sai that is PaintTool SAI's, whatever its
-        // first bytes look like
+        // an .mdp that is MediBang Paint's / FireAlpaca's, a .sai that is PaintTool SAI's or a .cpt that is
+        // Corel PHOTO-PAINT's, whatever its first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && isIlbm(bytes)) || (isFzName(file.name) && isFits(bytes))
             || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))
             || (isDrwName(file.name) && isDrw(bytes)) || (isGemMaybeName(file.name) && isGem(bytes))
             || (isHfaMaybeName(file.name) && isHfa(bytes)) || (isPspMaybeName(file.name) && isPsp(bytes))
-            || (/\.mdp$/i.test(file.name) && isMdp(bytes)) || (/\.sai$/i.test(file.name) && isSai(bytes))) {
+            || (/\.mdp$/i.test(file.name) && isMdp(bytes)) || (/\.sai$/i.test(file.name) && isSai(bytes))
+            || (/\.cpt$/i.test(file.name) && isCpt(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;

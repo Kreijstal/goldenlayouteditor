@@ -54,6 +54,8 @@ const PSP_MAYBE_RE = /\.(psp|tub|pfr)$/i;
 const MDP_MAYBE_RE = /\.mdp$/i;
 // ...and a PaintTool SAI document by a SAIL program's (mirrors SAI_MAYBE_RE in ws-handler.js)
 const SAI_MAYBE_RE = /\.sai$/i;
+// ...and a Corel PHOTO-PAINT image by a Compact Pro archive's (mirrors CPT_MAYBE_RE in ws-handler.js)
+const CPT_MAYBE_RE = /\.cpt$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -695,13 +697,14 @@ const handlers = {
                     // drawing by the other drawings' (.drw), a GEM image by a disk image's (.img, its
                     // header and size), an ERDAS IMAGINE one (.img), a Paint Shop Pro image by a makefile's
                     // (.psp, .tub, .pfr), a MediBang Paint / FireAlpaca file by a Developer Studio project's
-                    // (.mdp) or a PaintTool SAI document by a SAIL program's (.sai, its first page
-                    // deciphered): binary, its viewer tells by the magic number
+                    // (.mdp), a PaintTool SAI document by a SAIL program's (.sai, its first page
+                    // deciphered) or a Corel PHOTO-PAINT image by a Compact Pro archive's (.cpt): binary,
+                    // its viewer tells by the magic number
                     const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
                     const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name), pgf = PGF_MAYBE_RE.test(e.name);
                     const drw = DRW_MAYBE_RE.test(e.name), gem = GEM_MAYBE_RE.test(e.name), hfa = HFA_MAYBE_RE.test(e.name);
-                    const psp = PSP_MAYBE_RE.test(e.name), mdp = MDP_MAYBE_RE.test(e.name), sai = SAI_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp || mdp || sai ? new Uint8Array(await blob.slice(0, sai ? 4096 : 32).arrayBuffer()) : null;
+                    const psp = PSP_MAYBE_RE.test(e.name), mdp = MDP_MAYBE_RE.test(e.name), sai = SAI_MAYBE_RE.test(e.name), cpt = CPT_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp || mdp || sai || cpt ? new Uint8Array(await blob.slice(0, sai ? 4096 : 32).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
                         || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
@@ -714,7 +717,8 @@ const handlers = {
                         || (hfa && isHfa(head))
                         || (psp && String.fromCharCode(...head.subarray(0, 27)) === 'Paint Shop Pro Image File\n\x1a')
                         || (mdp && String.fromCharCode(...head.subarray(0, 8)) === 'mdipack\0')
-                        || (sai && isSai(head)))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
+                        || (sai && isSai(head))
+                        || (cpt && /^(CPT[789]FILE|II\*\0|MM\0\*)/.test(String.fromCharCode(...head.subarray(0, 8)))))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });
                 }
             }

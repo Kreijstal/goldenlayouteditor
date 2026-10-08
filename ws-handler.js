@@ -87,6 +87,10 @@ const MDP_MAYBE_RE = /\.mdp$/i;
 // SAIL programs' and BWA alignment indexes' name PaintTool SAI gives its documents too: one only if
 // its first page deciphers as PaintTool SAI's
 const SAI_MAYBE_RE = /\.sai$/i;
+// Compact Pro archives' and others' name Corel PHOTO-PAINT gives its images too: one only if it starts
+// "CPT7FILE", "CPT8FILE" or "CPT9FILE", or is a TIFF (PHOTO-PAINT 6's)
+const CPT_MAYBE_RE = /\.cpt$/i;
+const CPT_MAGIC_RE = /^(CPT[789]FILE|II\*\0|MM\0\*)/;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -625,8 +629,8 @@ const messageHandlers = {
               // JPEG XR by HD Photo's, .wdp/.hdp, VICAR by the PDS's, .img, a PGF image by PGF/TikZ's, .pgf,
               // a Micrografx drawing by the other drawings', .drw, a GEM image by a disk image's, .img,
               // an ERDAS IMAGINE one, .img, a Paint Shop Pro image by a makefile's, .psp, .tub, .pfr, a
-              // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp, or a PaintTool SAI
-              // document by a SAIL program's, .sai)
+              // MediBang Paint / FireAlpaca file by a Developer Studio project's, .mdp, a PaintTool SAI
+              // document by a SAIL program's, .sai, or a Corel PHOTO-PAINT image by a Compact Pro archive's, .cpt)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -640,7 +644,8 @@ const messageHandlers = {
                 || (HFA_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 15) === 'EHFA_HEADER_TAG')
                 || (PSP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 27) === 'Paint Shop Pro Image File\n\x1a')
                 || (MDP_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 8) === 'mdipack\0')
-                || (SAI_MAYBE_RE.test(entry.name) && isSai(buf))) {
+                || (SAI_MAYBE_RE.test(entry.name) && isSai(buf))
+                || (CPT_MAYBE_RE.test(entry.name) && CPT_MAGIC_RE.test(buf.toString('latin1', 0, 8)))) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

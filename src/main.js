@@ -43,6 +43,7 @@ require('./psp-plugin');
 require('./clip-plugin');
 require('./mdp-plugin');
 require('./sai-plugin');
+require('./cpt-plugin');
 require('./tvg-plugin');
 require('./videocut-plugin');
 require('./model3d-plugin');
@@ -70,6 +71,7 @@ require('./hwp-plugin');
 require('./vrm-plugin');
 const { hasDicomPreamble } = require('./dicom-plugin');
 const { isSai } = require('./sai-plugin');
+const { isCpt } = require('./cpt-plugin');
 const { hasElfMagic, mayBeElf } = require('./elf-plugin');
 require('./score-plugin');
 require('./chm-plugin');
@@ -2907,6 +2909,9 @@ const FILE_VIEWERS = [
     // as binary), not a SAIL program or a BWA index
     { re: /\.sai$/i, binaryOnly: true, test: f => !(f.head || f.bytes) || isSai(f.head || f.bytes), componentType: 'saiViewer', tag: 'layers', prefix: 'sai-' },
     { re: /\.sai2$/i, componentType: 'saiViewer', tag: 'layers', prefix: 'sai-' },
+    // Corel PHOTO-PAINT images: the objects composited; only a .cpt that starts "CPT7FILE", "CPT8FILE",
+    // "CPT9FILE" or is a TIFF (PHOTO-PAINT 6's; read as binary), not a Compact Pro archive
+    { re: /\.cpt$/i, binaryOnly: true, test: f => !(f.head || f.bytes) || isCpt(f.head || f.bytes), componentType: 'cptViewer', tag: 'layers', prefix: 'cpt-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },
