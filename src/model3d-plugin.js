@@ -33,6 +33,9 @@ const CAD_FORMATS = { step: 'step', stp: 'step', p21: 'step', iges: 'iges', igs:
 // On the page itself: Assimp's OpenGEX parser recurses deeper than a worker's stack allows
 const ASSIMPJS_PATH = 'https://cdn.jsdelivr.net/npm/assimpjs@0.0.10/dist/';
 const ASSIMP_FORMATS = { ogex: 'OpenGEX' };
+// PRC (3D PDF's B-rep / tessellation format) converted to GLB by @needle-tools/prc's prc-convert (WebAssembly,
+// from jsDelivr), on the page like Assimp
+const NEEDLE_PRC_URL = 'https://cdn.jsdelivr.net/npm/@needle-tools/prc@0.1.0/dist/index.js';
 // OpenSCAD renders in a worker (public/openscad-worker.js), which loads the WebAssembly build
 const OPENSCAD_WORKER_URL = 'openscad-worker.js';
 const { parseParameters, toScad } = require('./scad-params');
@@ -45,11 +48,12 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex)$/i;
-// Formats read from the file alone (by a three.js loader, OpenCASCADE or Assimp): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex)$/i;
-// Names other files have too: a .ply, .amf or .stp only when it starts as a PLY, AMF or STEP file
-const SHARED_NAME_RE = /\.(ply|amf|stp)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc)$/i;
+// Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp or prc-convert): these get thumbnails too
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc)$/i;
+// Names other files have too: a .ply, .amf, .stp or .prc only when it starts as a PLY, AMF, STEP or PRC file
+// (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs)
+const SHARED_NAME_RE = /\.(ply|amf|stp|prc)$/i;
 const THUMB_SIZE = 256;
 const THUMB_CACHE_LIMIT = 64;
 
@@ -100,12 +104,18 @@ function looksLikeStep(head) {
     return /^\uFEFF?\s*ISO-10303-21;/.test(head);
 }
 
+// A PRC file (ISO 14739) starts with "PRC" and its file structure's version
+function looksLikePrc(head) {
+    return head.startsWith('PRC');
+}
+
 function headText(bytes) {
     return new TextDecoder('latin1').decode(bytes.subarray(0, 1024));
 }
 
 function isSharedModel(name, head) {
     if (/\.stp$/i.test(name)) return looksLikeStep(head);
+    if (/\.prc$/i.test(name)) return looksLikePrc(head);
     return /\.ply$/i.test(name) ? looksLikePly(head) : looksLikeAmf(head);
 }
 
@@ -238,6 +248,29 @@ function ogexUpAxis(buffer) {
     return m ? m[1] : 'z';
 }
 
+// --- prc-convert (PRC) ---
+let _prcConverter = null;
+
+function ensurePrcConverter() {
+    if (!_prcConverter) {
+        _prcConverter = import(NEEDLE_PRC_URL).then(mod => mod.createPrcConverter({ print: msg => log.log(msg), printErr: msg => log.log(msg) }));
+        _prcConverter.catch(() => { _prcConverter = null; });
+    }
+    return _prcConverter;
+}
+
+// The PRC file as binary glTF
+async function prcToGlb(buffer) {
+    const converter = await ensurePrcConverter();
+    try {
+        const { output } = converter.convert({ input: new Uint8Array(buffer), inputFileName: 'model.prc', outputFileName: 'model.glb' });
+        return output.slice().buffer;
+    } catch (err) {
+        _prcConverter = null; // a C++ exception or trap may leave the module unusable: a new one next time
+        throw new Error(`prc-convert could not read this file (${err && err.message || err})`);
+    }
+}
+
 const CAD_DEFAULT_COLOR = 0x9ad0ff;
 
 // The assembly tree OpenCASCADE read, as groups of meshes (one per body, its B-rep faces
@@ -360,6 +393,9 @@ async function parseModel(libs, ext, buffer, manager) {
         // Assimp keeps the file's axes: a Z-up scene is turned Y-up here
         object = await parseGltf(new libs.GLTFLoader(manager), await assimpToGlb('model.' + ext, buffer), '', true);
         if (ext === 'ogex' && ogexUpAxis(buffer) === 'z') object.rotation.x = -Math.PI / 2;
+    } else if (ext === 'prc') {
+        if (!looksLikePrc(headText(new Uint8Array(buffer)))) throw new Error('not a PRC file (no PRC header)');
+        object = await parseGltf(new libs.GLTFLoader(manager), await prcToGlb(buffer), '', true);
     } else {
         throw new Error(`Unsupported model format: ${ext}`);
     }
@@ -608,7 +644,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.prc';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -775,10 +811,12 @@ class Model3dComponent {
                 const manager = resourceManager(this.THREE, dir);
                 if (CAD_FORMATS[ext]) this.statusEl.textContent = 'Reading with OpenCASCADE...';
                 if (ASSIMP_FORMATS[ext]) this.statusEl.textContent = 'Reading with Assimp...';
+                if (ext === 'prc') this.statusEl.textContent = 'Reading with prc-convert...';
                 object = await parseModel(libs, ext, buffer, manager);
                 manager.settled().then(() => dropMissingTextures(object));
                 if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
                 if (ASSIMP_FORMATS[ext]) this.extraStats = { format: ASSIMP_FORMATS[ext], reader: 'assimpjs 0.0.10 (Assimp)' };
+                if (ext === 'prc') this.extraStats = { format: 'PRC', reader: '@needle-tools/prc 0.1.0 (prc-convert)' };
             }
             this._setModel(object);
         } catch (err) {

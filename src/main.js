@@ -2981,9 +2981,9 @@ const FILE_VIEWERS = [
     { re: /\.(mpo|jps|pns)$/i, componentType: 'stereoViewer', tag: 'stereo', prefix: 'stereo-' },
     // STEP, IGES, OpenCASCADE BREP and OpenGEX (text: the editor is the second choice)
     { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
-    // PLY, AMF and STEP models; a .ply / .amf / .stp only when it starts as one (PLY's "ply" line, AMF's <amf>
-    // or its zip, STEP's "ISO-10303-21;")
-    { re: /\.(ply|amf|stp)$/i, test: isModel3dFile, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
+    // PLY, AMF, STEP and PRC models; a .ply / .amf / .stp / .prc only when it starts as one (PLY's "ply" line,
+    // AMF's <amf> or its zip, STEP's "ISO-10303-21;", PRC's "PRC")
+    { re: /\.(ply|amf|stp|prc)$/i, test: isModel3dFile, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
     // X3D scenes (XML, classic VRML and JSON encodings, gzipped too): played by X_ITE
     { re: /\.(x3d|x3dv|x3dj|x3dz|x3dvz)$/i, componentType: 'x3dViewer', tag: 'x3d', prefix: 'x3d-' },
     // .fz is also fpack's FITS (binary): not a sketch
