@@ -13,10 +13,23 @@ const OBJ_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loade
 // .blend parser (Blender 5+ files only), loaded when a .blend is opened
 const JSBLENDER_URL = 'https://esm.sh/jsblender@0.0.4';
 const SVG_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/SVGLoader.js`;
+// three's loaders for the other formats, each imported when a file of its kind is opened
+const LOADERS_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/`;
+const EXTRA_LOADERS = {
+    amf: ['AMFLoader', 'AMFLoader'],
+    dae: ['ColladaLoader', 'ColladaLoader'],
+    wrl: ['VRMLLoader', 'VRMLLoader'],
+    vrml: ['VRMLLoader', 'VRMLLoader'],
+    ply: ['PLYLoader', 'PLYLoader'],
+    '3ds': ['TDSLoader', 'TDSLoader'],
+    '3dm': ['3DMLoader', 'Rhino3dmLoader'],
+};
+// Rhino's openNURBS (WebAssembly) for .3dm, the version three's 3DMLoader comes with
+const RHINO3DM_PATH = 'https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/';
 // OpenSCAD renders in a worker (public/openscad-worker.js), which loads the WebAssembly build
 const OPENSCAD_WORKER_URL = 'openscad-worker.js';
 const { parseParameters, toScad } = require('./scad-params');
-const { pageReadsArchives } = require('./archive-fallback');
+const { pageReadsArchives, resolveFileUrl } = require('./archive-fallback');
 const PARAM_RENDER_DELAY_MS = 350;
 // Parameters with a play button: sliders, and numbers named like a time or frame
 const ANIMATED_PARAM_RE = /(^|_)(t|time|anim|animation|frame|phase)(_|$)/i;
@@ -25,7 +38,13 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm)$/i;
+// Formats a three.js loader reads from the file alone: these get thumbnails too
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm)$/i;
+// Names other files have too: a .ply or .amf only when it starts as a PLY or AMF model
+const SHARED_NAME_RE = /\.(ply|amf)$/i;
+const THUMB_SIZE = 256;
+const THUMB_CACHE_LIMIT = 64;
 
 let _threePromise = null;
 
@@ -47,6 +66,158 @@ async function ensureThreeLoaded() {
         })();
     }
     return _threePromise;
+}
+
+const _loaderModules = {};
+
+function importLoader(ext) {
+    const [file, name] = EXTRA_LOADERS[ext];
+    if (!_loaderModules[file]) {
+        _loaderModules[file] = import(LOADERS_URL + file + '.js').then(mod => mod[name]);
+        _loaderModules[file].catch(() => { delete _loaderModules[file]; });
+    }
+    return _loaderModules[file];
+}
+
+// PLY starts with a "ply" line, then its format; AMF is XML whose root is <amf>, or that zipped
+function looksLikePly(head) {
+    return /^ply\r?\n/.test(head) && /\nformat (ascii|binary_little_endian|binary_big_endian) /.test(head);
+}
+
+function looksLikeAmf(head) {
+    return head.startsWith('PK\x03\x04') || /^\uFEFF?\s*(<\?xml[^]*?\?>\s*)?(<!--[^]*?-->\s*)*<amf[\s>]/.test(head);
+}
+
+function headText(bytes) {
+    return new TextDecoder('latin1').decode(bytes.subarray(0, 1024));
+}
+
+function isSharedModel(name, head) {
+    return /\.ply$/i.test(name) ? looksLikePly(head) : looksLikeAmf(head);
+}
+
+// A .ply / .amf file (once read) that is a PLY or AMF model; one not read yet, or read as binary
+// without its first bytes, is offered and the viewer tells
+function isModel3dFile(f) {
+    if (!SHARED_NAME_RE.test(f.name)) return MODEL_RE.test(f.name);
+    if (typeof f.content === 'string' && f.content) return isSharedModel(f.name, f.content.slice(0, 1024));
+    const bytes = f.head || f.bytes;
+    return !bytes || isSharedModel(f.name, headText(bytes));
+}
+
+// Textures and other files a model names, looked up next to it in the workspace.
+// settled(): a promise for when the ones asked for so far have loaded (or failed)
+function resourceManager(THREE, dir) {
+    const manager = new THREE.LoadingManager();
+    let loading = false, waiting = [];
+    manager.onStart = () => { loading = true; };
+    manager.onLoad = () => {
+        loading = false;
+        waiting.forEach(resolve => resolve());
+        waiting = [];
+    };
+    manager.settled = () => loading ? new Promise(resolve => waiting.push(resolve)) : Promise.resolve();
+    if (dir) {
+        manager.setURLModifier(url => {
+            if (/^(data|blob|https?):/i.test(url)) return url;
+            const parts = (dir + '/' + url.replace(/\\/g, '/').replace(/^file:\/+/i, '')).split('/');
+            const out = [];
+            for (const p of parts) {
+                if (p === '..') out.pop();
+                else if (p !== '.' && p !== '') out.push(p);
+            }
+            return '/workspace-file?path=' + encodeURIComponent('/' + out.join('/'));
+        });
+    }
+    return manager;
+}
+
+// Textures that could not be read (not next to the model) are left off, not drawn black
+function dropMissingTextures(object) {
+    object.traverse(child => {
+        for (const material of child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : []) {
+            for (const [key, value] of Object.entries(material)) {
+                if (value && value.isTexture && !value.image) {
+                    material[key] = null;
+                    material.needsUpdate = true;
+                }
+            }
+        }
+    });
+}
+
+async function gunzipIfNeeded(buffer) {
+    const b = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
+    if (b[0] !== 0x1f || b[1] !== 0x8b) return buffer;
+    return new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+
+let _rhinoLoader = null;
+
+// A model read by one of three's loaders, Y-up as the viewer shows it.
+// manager: a resourceManager, for the textures (and glTF buffers) it names
+async function parseModel(libs, ext, buffer, manager) {
+    const THREE = libs.THREE;
+    let object;
+    if (ext === 'glb' || ext === 'gltf') {
+        object = await parseGltf(new libs.GLTFLoader(manager), buffer, '', ext === 'glb');
+    } else if (ext === 'stl') {
+        const geometry = new libs.STLLoader().parse(buffer);
+        const material = new THREE.MeshStandardMaterial({ color: 0x9ad0ff, roughness: 0.55, metalness: 0.05 });
+        object = new THREE.Mesh(geometry, material);
+        object.rotation.x = -Math.PI / 2; // STL is Z-up (slicer/CAD convention)
+    } else if (ext === 'obj') {
+        object = new libs.OBJLoader().parse(new TextDecoder().decode(buffer));
+    } else if (ext === 'ply') {
+        if (!looksLikePly(headText(new Uint8Array(buffer)))) throw new Error('not a PLY model');
+        const PLYLoader = await importLoader(ext);
+        const geometry = new PLYLoader(manager).parse(buffer);
+        const vertexColors = !!geometry.getAttribute('color');
+        if (geometry.index) {
+            if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+            object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: vertexColors ? 0xffffff : 0x9ad0ff, vertexColors, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide }));
+        } else {
+            // vertices only: a point cloud
+            object = new THREE.Points(geometry, new THREE.PointsMaterial({ color: vertexColors ? 0xffffff : 0x9ad0ff, vertexColors, size: 2, sizeAttenuation: false }));
+        }
+    } else if (ext === 'amf') {
+        if (!looksLikeAmf(headText(new Uint8Array(buffer)))) throw new Error('not an AMF model');
+        const AMFLoader = await importLoader(ext);
+        object = new AMFLoader(manager).parse(buffer);
+        object.rotation.x = -Math.PI / 2; // AMF is Z-up (3D printing)
+    } else if (ext === 'dae') {
+        const ColladaLoader = await importLoader(ext);
+        const collada = new ColladaLoader(manager).parse(new TextDecoder().decode(buffer), '');
+        if (!collada) throw new Error('not a COLLADA document');
+        object = collada.scene; // turned Y-up by the loader, as its <up_axis> says
+    } else if (ext === 'wrl' || ext === 'vrml') {
+        const text = new TextDecoder().decode(await gunzipIfNeeded(buffer));
+        if (!/^#VRML V2\.0/.test(text)) throw new Error(/^#VRML V1\.0/.test(text) ? 'VRML 1.0 is not supported, only VRML 97 (2.0)' : 'not a VRML 97 file');
+        const VRMLLoader = await importLoader(ext);
+        object = new VRMLLoader(manager).parse(text, '');
+        // A Background is a sky sphere 10000 across, drawn first: left out, so the model itself is framed
+        const backgrounds = [];
+        object.traverse(child => { if (child.renderOrder === -Infinity) backgrounds.push(child); });
+        for (const child of backgrounds) {
+            child.removeFromParent();
+            disposeObject(THREE, child);
+        }
+    } else if (ext === '3ds') {
+        const TDSLoader = await importLoader(ext);
+        object = new TDSLoader(manager).parse(buffer, '');
+        object.rotation.x = -Math.PI / 2; // 3ds Max is Z-up
+    } else if (ext === '3dm') {
+        if (!_rhinoLoader) {
+            const Rhino3dmLoader = await importLoader(ext);
+            _rhinoLoader = new Rhino3dmLoader();
+            _rhinoLoader.setLibraryPath(RHINO3DM_PATH);
+        }
+        object = await new Promise((resolve, reject) => _rhinoLoader.parse(buffer, resolve, reject));
+        object.rotation.x = -Math.PI / 2; // Rhino is Z-up
+    } else {
+        throw new Error(`Unsupported model format: ${ext}`);
+    }
+    return object;
 }
 
 // OFF as written by OpenSCAD: "OFF nv nf 0", vertices, then "n i0 .. i(n-1) [r g b [a]]"
@@ -283,7 +454,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -291,6 +462,11 @@ class Model3dComponent {
         this.toolbar.appendChild(this.fileInput);
         this.toolbar.appendChild(makeButton('Open', 'Open local 3D model', () => this.fileInput.click()));
         this.toolbar.appendChild(makeButton('Reset', 'Reset camera', () => this._frameModel()));
+        this.wireframeBtn = makeButton('Wireframe', 'Show the edges of the triangles', () => {
+            this.wireframe = !this.wireframe;
+            this._applyWireframe();
+        });
+        this.toolbar.appendChild(this.wireframeBtn);
         this.renderBtn = makeButton('Render', 'Render the OpenSCAD file again (after editing it)', () => this._rerender());
         this.renderBtn.hidden = true;
         this.toolbar.appendChild(this.renderBtn);
@@ -340,7 +516,7 @@ class Model3dComponent {
         this.shell.appendChild(this.consoleEl);
         this.shell.appendChild(this.main);
         this.root.appendChild(this.shell);
-        this._showMessage('Open a GLB, glTF, STL, OBJ or G-code file to view it.');
+        this._showMessage('Open a GLB, glTF, STL, OBJ, PLY, AMF, COLLADA, VRML, 3DS, Rhino 3DM or G-code file to view it.');
 
         this.stage.addEventListener('mousedown', e => this._startDrag(e));
         this.stage.addEventListener('wheel', e => this._onWheel(e), { passive: false });
@@ -435,17 +611,12 @@ class Model3dComponent {
                 object = await this._buildBlend(buffer);
             } else if (ext === 'gcode' || ext === 'gco') {
                 object = this._buildGcode(new TextDecoder().decode(buffer));
-            } else if (ext === 'glb' || ext === 'gltf') {
-                object = await parseGltf(new libs.GLTFLoader(), buffer, basePath, ext === 'glb');
-            } else if (ext === 'stl') {
-                const geometry = new libs.STLLoader().parse(buffer);
-                const material = new this.THREE.MeshStandardMaterial({ color: 0x9ad0ff, roughness: 0.55, metalness: 0.05 });
-                object = new this.THREE.Mesh(geometry, material);
-                object.rotation.x = -Math.PI / 2; // STL is Z-up (slicer/CAD convention)
-            } else if (ext === 'obj') {
-                object = new libs.OBJLoader().parse(new TextDecoder().decode(buffer));
             } else {
-                throw new Error(`Unsupported model format: ${ext}`);
+                // a local file can't pull in its textures
+                const dir = this.localFile ? '' : (this.sourcePath || '').replace(/\/[^/]*$/, '');
+                const manager = resourceManager(this.THREE, dir);
+                object = await parseModel(libs, ext, buffer, manager);
+                manager.settled().then(() => dropMissingTextures(object));
             }
             this._setModel(object);
         } catch (err) {
@@ -1078,6 +1249,7 @@ class Model3dComponent {
         }
         this.model = object;
         this.scene.add(object);
+        this._applyWireframe();
         if (!keepView) this._frameModel();
         else {
             const size = new this.THREE.Box3().setFromObject(object).getSize(new this.THREE.Vector3());
@@ -1096,6 +1268,17 @@ class Model3dComponent {
         } else {
             this._renderStats({ ...(this.extraStats || {}), ...collectStats(object) });
         }
+    }
+
+    _applyWireframe() {
+        this.wireframeBtn.style.background = this.wireframe ? '#1a73e8' : '';
+        if (!this.model) return;
+        this.model.traverse(child => {
+            if (!child.isMesh) return;
+            for (const m of Array.isArray(child.material) ? child.material : [child.material]) {
+                if (m && 'wireframe' in m) m.wireframe = !!this.wireframe;
+            }
+        });
     }
 
     _frameModel() {
@@ -1216,6 +1399,85 @@ class Model3dComponent {
     }
 }
 
+// --- Thumbnails ---
+// One offscreen renderer draws them all (a page gets only a few WebGL contexts), one at a time
+let _thumbRenderer = null;
+let _thumbQueue = Promise.resolve();
+const _thumbCache = new Map(); // absolute path -> data URL
+const THUMB_TEXTURE_WAIT_MS = 5000;
+
+async function drawThumbnail(path, name) {
+    const libs = await ensureThreeLoaded();
+    const THREE = libs.THREE;
+    const resp = await fetch(await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(path)));
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const manager = resourceManager(THREE, path.replace(/\/[^/]*$/, ''));
+    const object = await parseModel(libs, (name.split('.').pop() || '').toLowerCase(), await resp.arrayBuffer(), manager);
+    try {
+        await Promise.race([manager.settled(), new Promise(resolve => setTimeout(resolve, THUMB_TEXTURE_WAIT_MS))]);
+        dropMissingTextures(object);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111317);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x293241, 2.1));
+        const light = new THREE.DirectionalLight(0xffffff, 1.7);
+        light.position.set(5, 7, 4);
+        scene.add(light);
+        scene.add(object);
+        object.updateMatrixWorld(true);
+        // framed as the viewer frames it
+        const box = new THREE.Box3().setFromObject(object);
+        if (box.isEmpty()) throw new Error('nothing to draw');
+        object.position.sub(box.getCenter(new THREE.Vector3()));
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100000);
+        const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1e-3);
+        const distance = radius * 1.05 / Math.sin(camera.fov * Math.PI / 360);
+        const yaw = 0.65, pitch = 0.35;
+        camera.position.set(Math.sin(yaw) * Math.cos(pitch) * distance, Math.sin(pitch) * distance, Math.cos(yaw) * Math.cos(pitch) * distance);
+        camera.lookAt(0, 0, 0);
+        if (!_thumbRenderer) {
+            _thumbRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            _thumbRenderer.setSize(THUMB_SIZE, THUMB_SIZE, false);
+        }
+        _thumbRenderer.render(scene, camera);
+        return _thumbRenderer.domElement.toDataURL('image/png');
+    } finally {
+        disposeObject(THREE, object);
+    }
+}
+
+const modelThumbnails = {
+    canHandle(file) {
+        if (file.type !== 'file' || !LOADER_MODEL_RE.test(file.name)) return false;
+        // (browse mode hasn't read any yet: its content is '')
+        return !SHARED_NAME_RE.test(file.name) || typeof file.content !== 'string' || !file.content
+            || isSharedModel(file.name, file.content.slice(0, 1024));
+    },
+    async render(file, container) {
+        const ctx = Model3dComponent._ctx;
+        if (!ctx || !ctx.currentWorkspacePath) return;
+        const rel = ctx.getRelativePath(file.id);
+        if (!rel) return;
+        const path = ctx.currentWorkspacePath + '/' + rel;
+        try {
+            let url = _thumbCache.get(path);
+            if (!url) {
+                const job = _thumbQueue.then(() => drawThumbnail(path, file.name));
+                _thumbQueue = job.catch(() => {});
+                url = await job;
+                _thumbCache.set(path, url);
+                if (_thumbCache.size > THUMB_CACHE_LIMIT) _thumbCache.delete(_thumbCache.keys().next().value);
+            }
+            container.textContent = '';
+            container.style.fontSize = '';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = '';
+            img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;display:block;';
+            container.appendChild(img);
+        } catch (_) { /* keeps its icon */ }
+    },
+};
+
 registerPlugin({
     id: 'model3d',
     name: '3D Model',
@@ -1226,6 +1488,7 @@ registerPlugin({
     toolbarButtons: [
         { label: '3D', title: 'Open 3D Model Viewer' },
     ],
+    thumbnailRenderers: [modelThumbnails],
     contextMenuItems: [{
         label: 'Open 3D Model Viewer',
         canHandle: (fileName) => MODEL_RE.test(fileName || ''),
@@ -1241,3 +1504,5 @@ registerPlugin({
         Model3dComponent._ctx = ctx;
     },
 });
+
+module.exports = { isModel3dFile };
