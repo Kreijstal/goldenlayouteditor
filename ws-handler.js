@@ -22,6 +22,7 @@ const SERVED_EXTENSIONS = new Set([
   'kra', 'krz',
   'pdn',
   'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', // not .psp/.tub/.pfr (PSP_MAYBE_RE)
+  'clip',
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
