@@ -53,4 +53,10 @@ async function photometrySummary(text) {
     return (await loadEulumdat()).photometrySummary(text);
 }
 
-module.exports = { PHOTOMETRY_DIAGRAMS, loadEulumdat, decodePhotometryText, photometryDiagramUrl, photometrySummary };
+// The file's header as eulumdat reads it, its lamp sets and what eulumdat's validation finds:
+// { format: 'LDT' | 'IES', rows: [[label, value]], lampSets, warnings }
+async function photometryHeader(text) {
+    return (await loadEulumdat()).photometryHeader(text);
+}
+
+module.exports = { PHOTOMETRY_DIAGRAMS, loadEulumdat, decodePhotometryText, photometryDiagramUrl, photometrySummary, photometryHeader };

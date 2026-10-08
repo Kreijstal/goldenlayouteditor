@@ -70,6 +70,7 @@ require('./mht-plugin');
 require('./jbf-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
+require('./photometry-plugin');
 require('./vrm-plugin');
 const { hasDicomPreamble } = require('./dicom-plugin');
 const { isSai } = require('./sai-plugin');
@@ -2975,6 +2976,8 @@ const FILE_VIEWERS = [
     { re: /\.inf$/i, sniff: /^(?:HSP|$)/, componentType: 'hlpViewer', tag: 'os/2 help', prefix: 'hlp-' },
     // GLDF luminaire data: the product, its variants and pictures, the photometry drawn by eulumdat-rs
     { re: /\.gldf$/i, componentType: 'gldfViewer', tag: 'gldf', prefix: 'gldf-' },
+    // Photometry (EULUMDAT, IES LM-63): eulumdat-rs's diagrams of the text, which the editor next to it changes
+    { re: /\.(ldt|ies)$/i, componentType: 'photometryViewer', tag: 'photometry', prefix: 'phot-' },
     // Game ROMs, run with EmulatorJS; disc images and raw dumps could be for several systems: a choice after the editor
     { re: /\.(nes|unf|unif|sfc|smc|fig|swc|n64|z64|v64|gbc?|gba|agb|nds|vb|vboy|sms|sg|gen|smd|gg|32x|pbp|pce|ngp|ngc|wsc?|lnx|j64|jag|a26|a78|col)$/i, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-' },
     // .md is usually Markdown: a Mega Drive ROM only when the file turned out binary
