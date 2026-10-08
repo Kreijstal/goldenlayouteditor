@@ -1,10 +1,12 @@
-// --- DXF / DWG viewer ---
-// AutoCAD drawings: DXF (.dxf, ASCII or binary) and DWG (.dwg), drawn by
+// --- DXF / DWG / DGN viewer ---
+// AutoCAD drawings: DXF (.dxf, ASCII or binary) and DWG (.dwg), and MicroStation
+// drawings (.dgn, V7 and V8), drawn by
 // dxf-viewer (three.js, WebGL; loaded from esm.sh on first use). An ASCII DXF
 // is handed to it as it is and the drawing follows the file's text as it is
 // edited. A DWG is written out as ASCII DXF for it by LibreDWG (libredwg-web's
 // WebAssembly, from jsDelivr), or, when LibreDWG can't read it, by acad-ts (a
-// TypeScript port of ACadSharp, from esm.sh); a binary DXF by acad-ts. The model
+// TypeScript port of ACadSharp, from esm.sh); a binary DXF by acad-ts; a DGN by
+// cadkit (cadkit-wasm's WebAssembly, from jsDelivr), its levels as layers. The model
 // space is drawn (dxf-viewer draws no paper space layouts); dragging pans, the
 // wheel or a pinch zooms, 0 fits. The drawing's layers are listed beside it,
 // each with a check box to show or hide it. Also draws thumbnails in the file
@@ -18,13 +20,18 @@ const DXF_VIEWER_URL = 'https://esm.sh/dxf-viewer@1.0.49?deps=three@0.186.0,earc
 const ACAD_URL = 'https://esm.sh/@node-projects/acad-ts@3.2.0?bundle&keep-names';
 const LIBREDWG_URL = 'https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web@0.7.15/wasm/libredwg-web.js';
 const LIBREDWG_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web@0.7.15/wasm/libredwg-web.wasm';
+const CADKIT_URL = 'https://cdn.jsdelivr.net/npm/cadkit-wasm@0.2.1/web/cadkit_wasm.js';
 // Text is drawn in these (dxf-viewer ignores the drawing's own text styles)
 const FONTS = ['https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf'];
 
-const DXF_NAME_RE = /\.(dxf|dwg)$/i;
+const DXF_NAME_RE = /\.(dxf|dwg|dgn)$/i;
 const BINARY_DXF_SENTINEL = 'AutoCAD Binary DXF\r\n\x1a\0';
 // A DWG starts with its version: AC1.2 ... AC2.10 (before R10), then AC1001 ... AC1032
 const DWG_MAGIC_RE = /^AC(?:1\.\d|2\.\d|10\d\d)/;
+// A DGN V7 starts with its 2D or 3D design file header element (type 9, level 8); a V8 is an
+// OLE compound file
+const DGN_V7_MAGIC = [[0x08, 0x09, 0xfe, 0x02], [0xc8, 0x09, 0xfe, 0x02]];
+const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
 const RELEASES = {
     AC1009: 'R11/R12', AC1012: 'R13', AC1014: 'R14', AC1015: '2000', AC1018: '2004',
     AC1021: '2007', AC1024: '2010', AC1027: '2013', AC1032: '2018',
@@ -37,6 +44,7 @@ let _ctx = null;
 let _libs = null;
 let _acad = null;
 let _libredwg = null;
+let _cadkit = null;
 let _libredwgQueue = Promise.resolve();
 
 function ensureLibs() {
@@ -54,6 +62,35 @@ function ensureAcad() {
         _acad.catch(() => { _acad = null; });
     }
     return _acad;
+}
+
+// cadkit-wasm's module, its WebAssembly (next to it) instantiated once
+function ensureCadkit() {
+    if (!_cadkit) {
+        _cadkit = import(CADKIT_URL).then(async mod => { await mod.default(); return mod; });
+        _cadkit.catch(() => { _cadkit = null; });
+    }
+    return _cadkit;
+}
+
+// A DGN (V7 or V8) as ASCII DXF text, by cadkit, with the version and cadkit's warnings
+async function cadkitToDxf(bytes) {
+    const cadkit = await ensureCadkit();
+    const format = cadkit.detect(bytes);
+    if (format !== 'dgn_v7' && format !== 'dgn_v8') throw new Error('not a MicroStation DGN drawing');
+    const doc = cadkit.read(bytes);
+    try {
+        const info = doc.info();
+        const warnings = doc.warnings();
+        const app = info.application ? `, saved by ${info.application}` : '';
+        return {
+            text: doc.toDxf(), version: info.version + (info.units && info.units !== 'unitless' ? ` (${info.units})` : '') + app,
+            by: 'cadkit', unread: 0,
+            note: warnings.length ? `cadkit: ${[...new Set(warnings.map(w => w.message))].join('; ')}` : '',
+        };
+    } finally {
+        doc.free();
+    }
 }
 
 // libredwg-web's module and its WebAssembly, compiled once
@@ -91,10 +128,20 @@ function latin1(bytes, start, end) {
     return s;
 }
 
-// 'dxfb' (binary DXF), 'dwg' or 'dxf' (text)
+function startsWith(bytes, magic) {
+    return magic.every((b, i) => bytes[i] === b);
+}
+
+// A DGN V7 or V8 by its first bytes (a V8 being an OLE compound file, which only a .dgn is taken for)
+function isDgn(bytes) {
+    return DGN_V7_MAGIC.some(m => startsWith(bytes, m)) || startsWith(bytes, OLE_MAGIC);
+}
+
+// 'dxfb' (binary DXF), 'dwg', 'dgn' or 'dxf' (text)
 function kindOf(bytes) {
     if (latin1(bytes, 0, BINARY_DXF_SENTINEL.length) === BINARY_DXF_SENTINEL) return 'dxfb';
     if (DWG_MAGIC_RE.test(latin1(bytes, 0, 6))) return 'dwg';
+    if (isDgn(bytes)) return 'dgn';
     return 'dxf';
 }
 
@@ -115,29 +162,31 @@ function workspaceUrl(rel) {
     return resolveFileUrl('/workspace-file?path=' + encodeURIComponent(_ctx.currentWorkspacePath + '/' + rel));
 }
 
-// A project file as { kind, text } (an ASCII DXF) or { kind, bytes } (a binary DXF or a DWG)
+// A project file as { kind, text } (an ASCII DXF) or { kind, bytes } (a binary DXF, a DWG or a DGN)
 async function readDrawing(file) {
     // (a file the browser lists but hasn't read yet holds '' until then)
     if (typeof file.content === 'string' && !file.lazy && !file.viewType) return { kind: 'dxf', text: file.content };
     if (!_ctx || !_ctx.currentWorkspacePath) throw new Error('opening a project file needs the server workspace');
     const resp = await fetch(await workspaceUrl(_ctx.getRelativePath(file.id)));
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return fromBytes(new Uint8Array(await resp.arrayBuffer()));
+    return fromBytes(new Uint8Array(await resp.arrayBuffer()), file.name);
 }
 
-function fromBytes(bytes) {
+function fromBytes(bytes, name) {
     const kind = kindOf(bytes);
+    if (/\.dgn$/i.test(name) && kind !== 'dgn') throw new Error('not a MicroStation DGN drawing');
     return kind === 'dxf' ? { kind, text: decodeDxf(bytes) } : { kind, bytes };
 }
 
 // What dxf-viewer reads: the ASCII DXF itself, or LibreDWG's or acad-ts' reading of a DWG or a
-// binary DXF written out as one. Also the version, which library read it, and how many objects
+// binary DXF, or cadkit's of a DGN, written out as one. Also the version, which library read it, and how many objects
 // acad-ts could not read.
 async function asciiDxf(drawing) {
     if (drawing.kind === 'dxf') {
         const ver = /\$ACADVER\s*\r?\n\s*1\s*\r?\n\s*(AC\d{4})/.exec(drawing.text.slice(0, 4096));
         return { text: drawing.text, version: ver && ver[1], unread: 0 };
     }
+    if (drawing.kind === 'dgn') return cadkitToDxf(drawing.bytes);
     if (drawing.kind === 'dwg') {
         const version = latin1(drawing.bytes, 0, 6);
         try {
@@ -164,6 +213,7 @@ async function acadToDxf(drawing) {
 }
 
 function describeVersion(kind, version) {
+    if (kind === 'dgn') return `MicroStation DGN ${version}`;
     const what = kind === 'dwg' ? 'DWG' : kind === 'dxfb' ? 'binary DXF' : 'DXF';
     if (!version) return what;
     return `${what} ${version}` + (RELEASES[version] ? ` (AutoCAD ${RELEASES[version]})` : '');
@@ -254,7 +304,7 @@ class DxfComponent {
         const bar = this._el('div', 'dxf-toolbar');
         this.fileInput = this._el('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.dxf,.dwg';
+        this.fileInput.accept = '.dxf,.dwg,.dgn';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', async e => {
             const f = e.target.files && e.target.files[0];
@@ -263,7 +313,14 @@ class DxfComponent {
             this.fileName = f.name;
             clearInterval(this.watch);
             this.hidden.clear();
-            this._show(fromBytes(new Uint8Array(await f.arrayBuffer())), true);
+            let drawing;
+            try {
+                drawing = fromBytes(new Uint8Array(await f.arrayBuffer()), f.name);
+            } catch (err) {
+                this._error(`Could not read ${f.name}: ${err.message}`);
+                return;
+            }
+            this._show(drawing, true);
         });
         this.titleEl = this._el('span', 'dxf-title', this.fileName);
         this.layersButton = this._button('Layers', 'Show or hide the list of layers', () => {
@@ -279,7 +336,7 @@ class DxfComponent {
         });
         bar.append(
             this.fileInput,
-            this._button('Open', 'Open a DXF or DWG file from this computer', () => this.fileInput.click()),
+            this._button('Open', 'Open a DXF, DWG or DGN file from this computer', () => this.fileInput.click()),
             this.titleEl,
             this._button('Fit', 'Show the whole drawing (0)', () => this._fit()),
             this._button('−', 'Zoom out (−)', () => this._zoomBy(0.5)),
@@ -290,7 +347,7 @@ class DxfComponent {
         const body = this._el('div', 'dxf-body');
         this.stage = this._el('div', 'dxf-stage');
         this.stage.tabIndex = 0;
-        this.messageEl = this._el('div', 'dxf-message', 'Open an AutoCAD DXF or DWG drawing.');
+        this.messageEl = this._el('div', 'dxf-message', 'Open an AutoCAD DXF or DWG, or a MicroStation DGN drawing.');
         this.stage.appendChild(this.messageEl);
         this.layersEl = this._el('div', 'dxf-layers');
         body.append(this.stage, this.layersEl);
@@ -508,12 +565,12 @@ function drawThumbnail(text) {
 
 registerPlugin({
     id: 'dxf',
-    name: 'AutoCAD DXF and DWG drawings',
+    name: 'AutoCAD DXF and DWG, MicroStation DGN drawings',
     components: {
         dxfViewer: DxfComponent,
     },
     toolbarButtons: [
-        { label: 'DXF', title: 'Open the DXF / DWG viewer', menuLabel: 'AutoCAD DXF and DWG drawings' },
+        { label: 'DXF', title: 'Open the DXF / DWG / DGN viewer', menuLabel: 'AutoCAD DXF and DWG, MicroStation DGN drawings' },
     ],
     thumbnailRenderers: [{
         canHandle: file => DXF_NAME_RE.test(file.name) && !(file.size > MAX_THUMB_BYTES),
@@ -529,3 +586,5 @@ registerPlugin({
         _ctx = ctx;
     },
 });
+
+module.exports = { isDgn };
