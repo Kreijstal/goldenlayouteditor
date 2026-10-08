@@ -51,6 +51,7 @@ const SERVED_EXTENSIONS = new Set([
   'cals', 'ct1', // not .cal: calendars and others too (CAL_MAYBE_RE)
   'dpx', // not .cin: input methods' tables too (CIN_MAYBE_RE)
   'jng', // not .mng: Ott's text too (MNG_MAYBE_RE)
+  'miff', 'wbmp', 'xwd', // not .xbm/.xpm: C source (text), drawn by src/xpm-plugin.js
   'wmf', 'emf', 'wmz', 'emz',
   'mpo', 'jps', 'pns', // stereo pictures (an MPO's first JPEG, a side-by-side JPEG or PNG as it is)
   'tga', 'tpic', 'icb', 'vda', 'vst', // .icb/.vda/.vst: only if a TGA (.vst is a Visio template too)

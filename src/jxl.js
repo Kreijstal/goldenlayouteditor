@@ -31,7 +31,9 @@
 // DirectDraw Surface's first level's PNG (src/dds.js), and an OpenEXR file's
 // first layer's PNG, tone mapped (src/exr.js), a JBIG2 file's first page's PNG, by
 // MuPDF (src/jbig2.js), an MNG animation's first frame's PNG or a JNG's PNG, by
-// ImageMagick (src/mng.js), and a JPEG-LS image's PNG, by CharLS (src/jls.js).
+// ImageMagick (src/mng.js), a JPEG-LS image's PNG, by CharLS (src/jls.js), a MIFF
+// file's first image's PNG (src/miff.js) and a WBMP's PNG (src/wbmp.js), by
+// ImageMagick, and an X Window dump's PNG, by FFmpeg (src/xwd.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -73,6 +75,9 @@ const { isIcnsName, icnsImage } = require('./icns');
 const { isDdsName, ddsImage } = require('./dds');
 const { isExrName, exrImage } = require('./exr');
 const { isJlsName, jlsImage } = require('./jls');
+const { isMiffName, miffPage } = require('./miff');
+const { isWbmpName, wbmpImage } = require('./wbmp');
+const { isXwdName, xwdImage } = require('./xwd');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -131,7 +136,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE, Haiku vector icons, QuickDraw PICT, Windows metafiles, CALS rasters, JBIG2, DPX, Cineon, MNG and JNG, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE, Haiku vector icons, QuickDraw PICT, Windows metafiles, CALS rasters, JBIG2, DPX, Cineon, MNG, JNG, JPEG-LS, MIFF, WBMP and X Window dumps, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -158,7 +163,8 @@ function jxlDecode(bytes) {
 // the first level's PNG (DirectDraw Surface: .dds) or the first layer's PNG, tone
 // mapped (OpenEXR: .exr) or the first page's PNG (JBIG2: .jb2, .jbig2) or the first
 // frame's PNG (MNG: a .mng only once known to be one) or the PNG (JNG: .jng) or the
-// PNG, more than 8 bits windowed to their range (JPEG-LS: .jls)
+// PNG, more than 8 bits windowed to their range (JPEG-LS: .jls) or the first image's PNG
+// (MIFF: .miff) or the PNG (WBMP: .wbmp; X Window dump: .xwd)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -204,6 +210,9 @@ async function displayableImageUrl(url, name) {
     if (isMngName(name) && await isMngUrl(url).catch(() => false)) return (await mngImage(url)).url;
     if (isJngName(name)) return (await jngImage(url)).url;
     if (isJlsName(name)) return (await jlsImage(url)).url;
+    if (isMiffName(name)) return (await miffPage(url, 0)).url;
+    if (isWbmpName(name)) return (await wbmpImage(url)).url;
+    if (isXwdName(name)) return (await xwdImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

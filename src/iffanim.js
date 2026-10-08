@@ -76,7 +76,8 @@ function getWorker() {
     return worker;
 }
 
-// FFmpeg's first `frames` frames of the file: { width, height, aspect, frames: [{ rgba, ms }] }
+// FFmpeg's first `frames` frames of the file: { width, height, aspect, frames: [{ rgba, ms }],
+// stream (FFmpeg's line for the stream it decoded: "Video: xwd, bgra, 320x200, ...") }
 async function ffmpegFrames(bytes, frames) {
     const id = nextId++;
     const r = await new Promise((resolve, reject) => {
@@ -100,7 +101,8 @@ async function ffmpegFrames(bytes, frames) {
         const gap = i + 1 < rows.length ? rows[i + 1][2] - rows[i][2] : (out.length ? out[out.length - 1].ticks : rows[i][3]);
         out.push({ rgba: rgba.subarray(i * size, (i + 1) * size), ticks: Math.max(1, gap), ms: Math.max(1, gap) * tick });
     }
-    return { width, height, aspect: sarNum && sarDen ? sarNum / sarDen : 1, frames: out };
+    const stream = ((r.log || []).find(l => /Stream #0:0.*Video:/.test(l)) || '').replace(/^.*Video:\s*/, '').trim();
+    return { width, height, aspect: sarNum && sarDen ? sarNum / sarDen : 1, frames: out, stream };
 }
 
 async function fetchBytes(url) {
@@ -236,4 +238,4 @@ function addAnimControls(root, img, url, source = { file: animFile, first: animI
     }).catch(err => { img.title = `Could not play the animation: ${err.message}`; });
 }
 
-module.exports = { isAnimName, isAnimExt, isAnim, isAnimUrl, animImage, animFile, addAnimControls };
+module.exports = { isAnimName, isAnimExt, isAnim, isAnimUrl, animImage, animFile, addAnimControls, ffmpegFrames, framePng };
