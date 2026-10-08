@@ -28,6 +28,7 @@ const SERVED_EXTENSIONS = new Set([
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
   'fzz',
+  'lottie', // dotLottie (a zip); Lottie's .json stays text
   'fst', 'ghw',
   'wasm',
   'fla', 'xfl',

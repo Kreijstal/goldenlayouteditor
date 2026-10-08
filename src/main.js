@@ -63,6 +63,7 @@ require('./gpx-plugin');
 require('./fxg-plugin');
 const { isGerberFile } = require('./gerber-plugin');
 const { isHpglFile } = require('./hpgl-plugin');
+const { isLottieFile } = require('./lottie-plugin');
 require('./flp-plugin');
 require('./emulator-plugin');
 require('./gpg-plugin');
@@ -2956,6 +2957,8 @@ const FILE_VIEWERS = [
     // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
     { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
     { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
+    // Lottie animations: dotLottie bundles, and a .json only when its text is Lottie (other JSON stays in the editor)
+    { re: /\.(lottie|json)$/i, test: isLottieFile, componentType: 'lottieViewer', tag: 'lottie', prefix: 'lottie-' },
     { re: /\.(vcd|fst|ghw)$/i, componentType: 'waveformViewer', tag: 'wave', prefix: 'wave-' },
     { re: /\.wasm$/i, componentType: 'wasmInspector', tag: 'wasm', prefix: 'wasm-' },
     { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
