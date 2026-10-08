@@ -1,9 +1,13 @@
 // --- PSD Plugin ---
-// Lazy-loads our ag-psd fork from esm.sh when a PSD is opened.
+// Lazy-loads our ag-psd fork from esm.sh when a PSD is opened. It reads Photoshop's
+// Large Document Format (.psb, version 2: sizes past 30000 pixels, 64-bit lengths)
+// as well; thumbnails of both from the file's own thumbnail (else its composite).
 const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
+const { resolveFileUrl } = require('./archive-fallback');
 
 const log = createLogger('PSD');
+const PSD_RE = /\.ps[db]$/i; // Photoshop documents and Large Documents
 const AG_PSD_URL = 'https://esm.sh/gh/Kreijstal/ag-psd@psdjs-compat-cmyk/src/index.ts';
 
 let _agPsdPromise = null;
@@ -106,13 +110,13 @@ class PsdViewerComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.psd,image/vnd.adobe.photoshop';
+        this.fileInput.accept = '.psd,.psb,image/vnd.adobe.photoshop';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
         });
         this.toolbar.appendChild(this.fileInput);
-        this.toolbar.appendChild(makeButton('Open', 'Open local PSD file', () => this.fileInput.click()));
+        this.toolbar.appendChild(makeButton('Open', 'Open local PSD or PSB file', () => this.fileInput.click()));
         this.toolbar.appendChild(makeButton('+', 'Zoom in', () => this._setZoom(this.zoom * 1.2)));
         this.toolbar.appendChild(makeButton('-', 'Zoom out', () => this._setZoom(this.zoom / 1.2)));
         this.toolbar.appendChild(makeButton('Fit', 'Reset view', () => this._resetView()));
@@ -195,6 +199,8 @@ class PsdViewerComponent {
                 logMissingFeatures: true,
                 skipLinkedFilesData: true,
             });
+            // the header's version: 1 a PSD, 2 a Large Document (PSB)
+            this.large = new DataView(buffer).getUint16(4) === 2;
             this._renderPsd();
         } catch (err) {
             this._showError(`Failed to open PSD: ${err.message}`);
@@ -214,7 +220,7 @@ class PsdViewerComponent {
 
         this._renderLayers();
         this._resetView();
-        this.statusEl.textContent = `${psd.width}x${psd.height} | ${this._countLayers()} layer(s) | mode ${psd.colorMode} | ${psd.bitsPerChannel} bpc`;
+        this.statusEl.textContent = `${this.large ? 'PSB | ' : ''}${psd.width}x${psd.height} | ${this._countLayers()} layer(s) | mode ${psd.colorMode} | ${psd.bitsPerChannel} bpc`;
     }
 
     _renderLayers() {
@@ -318,6 +324,34 @@ class PsdViewerComponent {
     }
 }
 
+// File browser thumbnails: the file's own thumbnail (Photoshop's JPEG), else its composite
+let _ctx = null;
+const psdThumbnails = {
+    canHandle(file) {
+        return file.type === 'file' && PSD_RE.test(file.name);
+    },
+    async render(file, container) {
+        if (!_ctx || !_ctx.currentWorkspacePath) return;
+        const rel = _ctx.getRelativePath(file.id);
+        if (!rel) return;
+        try {
+            const resp = await fetch(await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(_ctx.currentWorkspacePath + '/' + rel)));
+            if (!resp.ok) return;
+            const buffer = await resp.arrayBuffer();
+            const agPsd = await ensureAgPsdLoaded();
+            const opts = { skipLayerImageData: true, skipLinkedFilesData: true };
+            const psd = agPsd.readPsd(buffer, { ...opts, skipCompositeImageData: true });
+            let canvas = psd.imageResources && psd.imageResources.thumbnail;
+            if (!canvas || !canvas.width) canvas = agPsd.readPsd(buffer, { ...opts, skipThumbnail: true }).canvas;
+            if (!canvas) return;
+            container.textContent = '';
+            container.style.fontSize = '';
+            canvas.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;display:block;';
+            container.appendChild(canvas);
+        } catch (_) { /* keeps its icon */ }
+    },
+};
+
 registerPlugin({
     id: 'psd',
     name: 'PSD',
@@ -329,7 +363,7 @@ registerPlugin({
     ],
     contextMenuItems: [{
         label: 'Open PSD Viewer',
-        canHandle: (fileName) => /\.psd$/i.test(fileName || ''),
+        canHandle: (fileName) => PSD_RE.test(fileName || ''),
         action: (fileId) => {
             const ctx = PsdViewerComponent._ctx;
             if (!ctx) return;
@@ -343,7 +377,9 @@ registerPlugin({
             );
         },
     }],
+    thumbnailRenderers: [psdThumbnails],
     init(ctx) {
         PsdViewerComponent._ctx = ctx;
+        _ctx = ctx;
     },
 });

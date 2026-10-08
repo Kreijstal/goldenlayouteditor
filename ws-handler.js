@@ -18,7 +18,7 @@ const SERVED_EXTENSIONS = new Set([
   'vsd', 'vsdx',
   'swf',
   'epub',
-  'psd',
+  'psd', 'psb', // Photoshop documents, Large Documents
   'kra', 'krz',
   'pdn',
   'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', // not .psp/.tub/.pfr (PSP_MAYBE_RE)

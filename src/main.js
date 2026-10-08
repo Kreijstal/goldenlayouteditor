@@ -3006,7 +3006,8 @@ const FILE_VIEWERS = [
     { re: /\.swf$/i, componentType: 'ruffleSwf', tag: 'swf', prefix: 'swf-' },
     { re: /\.epub$/i, componentType: 'epubReader', tag: 'epub', prefix: 'epub-' },
     { re: /\.(djvu|djv)$/i, componentType: 'djvuViewer', tag: 'djvu', prefix: 'djvu-' },
-    { re: /\.psd$/i, componentType: 'psdViewer', tag: 'psd', prefix: 'psd-' },
+    // Photoshop documents and Large Documents (PSB, version 2)
+    { re: /\.ps[db]$/i, componentType: 'psdViewer', tag: 'psd', prefix: 'psd-' },
     { re: /\.ipynb$/i, componentType: 'jupyterLite', tag: 'jupyter', prefix: 'jupyter-' },
     // Mathematica notebooks (a .nb file is a Notebook[...] expression, usually after a comment)
     { re: /\.nb$/i, sniff: /^\s*(\(\*|Notebook\[)/, componentType: 'mathematicaViewer', tag: 'notebook', prefix: 'mathematica-' },
