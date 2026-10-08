@@ -27,6 +27,7 @@ const SERVED_EXTENSIONS = new Set([
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'odg', 'otg', 'fodg', // OpenDocument drawings (a .fodg is XML, but shown drawn)
   'xps', 'oxps',
+  'jb2', 'jbig2', // standalone JBIG2 files
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
   'dae', 'wrl', 'vrml', '3ds', '3dm', 'skp', // not .ply or .amf: other files' too (shown as models by their first bytes)
