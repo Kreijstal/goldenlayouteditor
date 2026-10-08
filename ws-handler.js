@@ -40,6 +40,7 @@ const SERVED_EXTENSIONS = new Set([
   'pbm', 'pgm', 'ppm', 'pnm', 'pam',
   'hdr', 'rgbe', 'xyze', 'pic', // .pic: shown as a picture only if Radiance's or QuickDraw PICT's
   'pict', 'pct',
+  'wmf', 'emf', 'wmz', 'emz',
   'tga', 'tpic', 'icb', 'vda', 'vst', // .icb/.vda/.vst: only if a TGA (.vst is a Visio template too)
   'qoi',
   'pcx', 'dcx',
