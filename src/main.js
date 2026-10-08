@@ -69,6 +69,7 @@ require('./kdbx-plugin');
 require('./mht-plugin');
 require('./jbf-plugin');
 require('./hwp-plugin');
+require('./gldf-plugin');
 require('./vrm-plugin');
 const { hasDicomPreamble } = require('./dicom-plugin');
 const { isSai } = require('./sai-plugin');
@@ -2972,6 +2973,8 @@ const FILE_VIEWERS = [
     // Windows Help and OS/2 help; text-mode programs' plain-text .hlp files (and Windows .inf setup files) stay in the editor
     { re: /\.hlp$/i, sniff: /^(?:\?_\x03\x00|HSP|$)|\x00/, componentType: 'hlpViewer', tag: 'winhelp', prefix: 'hlp-' },
     { re: /\.inf$/i, sniff: /^(?:HSP|$)/, componentType: 'hlpViewer', tag: 'os/2 help', prefix: 'hlp-' },
+    // GLDF luminaire data: the product, its variants and pictures, the photometry drawn by eulumdat-rs
+    { re: /\.gldf$/i, componentType: 'gldfViewer', tag: 'gldf', prefix: 'gldf-' },
     // Game ROMs, run with EmulatorJS; disc images and raw dumps could be for several systems: a choice after the editor
     { re: /\.(nes|unf|unif|sfc|smc|fig|swc|n64|z64|v64|gbc?|gba|agb|nds|vb|vboy|sms|sg|gen|smd|gg|32x|pbp|pce|ngp|ngc|wsc?|lnx|j64|jag|a26|a78|col)$/i, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-' },
     // .md is usually Markdown: a Mega Drive ROM only when the file turned out binary

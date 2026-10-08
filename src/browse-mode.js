@@ -83,6 +83,7 @@ for (const e of ['js', 'ts', 'py', 'c', 'h', 'cpp', 'rs', 'go', 'java', 'sh', 'h
 ICON_BY_EXT.pdf = ICON_BY_EXT.ai = ICONS.pdf;
 ICON_BY_EXT.chm = '📘';
 ICON_BY_EXT.hwp = ICON_BY_EXT.hwpx = '📝';
+ICON_BY_EXT.gldf = '💡';
 ICON_BY_EXT.vrm = '🧍';
 ICON_BY_EXT.mht = ICON_BY_EXT.mhtml = '🌐';
 ICON_BY_EXT.kdbx = ICON_BY_EXT.kdb = '🔐';
