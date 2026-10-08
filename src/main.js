@@ -270,6 +270,7 @@ const { isIlbmName, isIlbmMaybeName, isIlbmUrl, ilbmImage, applyPixelAspect } = 
 const { isFitsName, isFzName, isFitsUrl, addFitsControls } = require('./fits');
 const { isJxrMaybeName, isJxrUrl, jxrImage } = require('./jxr');
 const { bpgImage } = require('./bpg');
+const { flifImage } = require('./flif');
 const { attachSubtitles } = require('./subtitles');
 
 // Current workspace path (null = in-memory only)
@@ -903,7 +904,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -990,6 +991,8 @@ class EditorComponent {
             }
             // a BPG picture: what it holds (bit depth, color, alpha or CMYK, frames)
             if (ext === 'bpg') bpgImage(url).then(d => { img.title = `${d.label}, ${d.width}×${d.height}`; }).catch(() => {});
+            // a FLIF picture: what it holds (bit depth, channels, interlacing, frames, metadata)
+            if (ext === 'flif') flifImage(url).then(d => { img.title = `${d.label}, ${d.width}×${d.height}`; }).catch(() => {});
         } else if (VIDEO_EXTS.has(ext)) {
             const video = document.createElement('video');
             video.src = url;
@@ -1271,7 +1274,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1699,7 +1702,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'wdp', 'hdp'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
@@ -2808,14 +2811,14 @@ const FILE_VIEWERS = [
     { re: /\.(sqlite|sqlite3|db)$/i, componentType: 'sqliteInspector', tag: 'sqlite', prefix: 'sqlite-' },
     { re: /\.(pst|ost)$/i, componentType: 'pstViewer', tag: 'outlook', prefix: 'pst-' },
     // Animated PNG: the frame viewer for .apng; for .png (animated or not, unknown until read) a choice after the editor,
-    // and for JPEG XL and BPG (decoded to PNG/APNG)
+    // and for JPEG XL, BPG and FLIF (decoded to PNG/APNG)
     { re: /\.xcf$/i, componentType: 'xcfViewer', tag: 'layers', prefix: 'xcf-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },
     { re: /\.vcut$/i, componentType: 'videoCut', tag: 'video editor', prefix: 'vcut-' },
     { re: /\.apng$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-' },
-    { re: /\.(png|jxl|bpg)$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-', afterEditor: true },
+    { re: /\.(png|jxl|bpg|flif)$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-', afterEditor: true },
     { re: /\.(pcap|pcapng|cap|ntar|erf|snoop)$/i, componentType: 'pcapViewer', tag: 'pcap', prefix: 'pcap-' },
     { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
     // .fz is also fpack's FITS (binary): not a sketch

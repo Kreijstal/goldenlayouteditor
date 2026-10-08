@@ -23,7 +23,7 @@ const SERVER = 'server';
 const { normalize, split, join, dirname, basename } = LocalFS;
 // Extensions with a dedicated viewer, never read as text (mirrors SERVED_EXTENSIONS in ws-handler.js)
 const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
-    + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 fits fit fts jxr bpg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
+    + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 fits fit fts jxr bpg flif mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 // Names an SGI image shares with other files (mirrors SGI_MAYBE_RE in ws-handler.js)
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 // ...and a Sun raster (mirrors SUN_MAYBE_RE in ws-handler.js)

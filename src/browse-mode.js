@@ -17,7 +17,7 @@ const log = createLogger('Browse');
 
 // Extensions EditorComponent can play/show directly; these default to it
 // instead of the inspector plugins project mode prefers.
-const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|iff|fits?|fts|jxr|wdp|hdp|bpg|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
+const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|iff|fits?|fts|jxr|wdp|hdp|bpg|flif|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
 
 // Zip-format archives the browser opens as read-only folders. Listing and file
 // reads are answered by the service worker (public/zip-sw.js; without one, the
@@ -25,7 +25,7 @@ const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|
 const ZIP_EXTENSIONS = new Set(['zip', 'jar', 'war', 'ear', 'aar', 'apk', 'xapk', 'ipa', 'whl', 'nupkg', 'cbz', 'xpi', 'vsix', 'crx', 'kmz', '3mf']);
 // Extensions with a dedicated viewer (mirrors SERVED_EXTENSIONS in ws-handler.js)
 const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd xlsx xlsm xlsb xls ods sqlite sqlite3 db glb gltf stl obj gcode gco blend fzz fst ghw wasm fla xfl '
-    + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 fits fit fts jxr bpg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
+    + 'png apng jxl jpg jpeg gif bmp ico webp avif svg tvg tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 fits fit fts jxr bpg flif mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_TEXT_SIZE = 5 * 1024 * 1024;
 
 // Tar archives the service worker can open (mirrors TAR_RE in public/zip-sw.js)
@@ -60,7 +60,7 @@ const ICONS = {
     archive: '📦', code: '📜', text: '📄', dir: '📁',
 };
 const ICON_BY_EXT = {};
-for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'wdp', 'hdp', 'fxg', 'psd', 'xcf', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
+for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'fxg', 'psd', 'xcf', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
 for (const e of ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', '3gp', 'vcut']) ICON_BY_EXT[e] = ICONS.video;
 for (const e of ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus']) ICON_BY_EXT[e] = ICONS.audio;
 for (const e of ['zip', 'tar', 'gz', 'xz', 'bz2', '7z', 'rar', 'zst', 'iso']) ICON_BY_EXT[e] = ICONS.archive;

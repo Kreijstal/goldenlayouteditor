@@ -5,12 +5,13 @@
 // the file's chunks, and a frame saved as a PNG of its own. Also opens plain
 // PNGs (as a single image with its chunks), since animated PNGs are often
 // named .png. JPEG XL files open too, decoded to PNG/APNG (src/jxl.js), and
-// BPG files, an animated one's frames (src/bpg.js).
+// BPG and FLIF files, an animated one's frames (src/bpg.js, src/flif.js).
 const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
 const { resolveFileUrl } = require('./archive-fallback');
 const { isJxl, jxlDecode } = require('./jxl');
 const { isBpg, bpgDecode } = require('./bpg');
+const { isFlif, flifDecode } = require('./flif');
 
 const log = createLogger('APNG');
 const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
@@ -242,7 +243,7 @@ class ApngComponent {
         const bar = this._el('div', 'apng-toolbar');
         this.fileInput = this._el('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.png,.apng,.jxl,.bpg,image/png,image/apng,image/jxl';
+        this.fileInput.accept = '.png,.apng,.jxl,.bpg,.flif,image/png,image/apng,image/jxl';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', async e => {
             const f = e.target.files && e.target.files[0];
@@ -318,9 +319,10 @@ class ApngComponent {
         this.titleEl.textContent = name;
         this.statusEl.textContent = 'Reading…';
         try {
-            // JPEG XL and BPG: decoded to PNG (APNG for animations) first
+            // JPEG XL, BPG and FLIF: decoded to PNG (APNG for animations) first
             this.jxl = null;
             this.bpg = null;
+            this.flif = null;
             if (isJxl(bytes)) {
                 this.statusEl.textContent = 'Decoding JPEG XL…';
                 this.jxl = { size: bytes.length };
@@ -331,6 +333,12 @@ class ApngComponent {
                 const r = await bpgDecode(bytes);
                 if (gen !== this.generation) return;
                 this.bpg = { size: bytes.length, label: r.label };
+                bytes = r.png;
+            } else if (isFlif(bytes)) {
+                this.statusEl.textContent = 'Decoding FLIF…';
+                const r = await flifDecode(bytes);
+                if (gen !== this.generation) return;
+                this.flif = { size: bytes.length, label: r.label };
                 bytes = r.png;
             }
             const chunks = readChunks(bytes);
@@ -379,6 +387,7 @@ class ApngComponent {
             ['Colour', `${COLOR_TYPES[info.colorType] || 'type ' + info.colorType}, ${info.bitDepth}-bit${info.interlace ? ', interlaced' : ''}`],
             ['File', this.jxl ? `JPEG XL, ${this.jxl.size.toLocaleString()} bytes (decoded by jxl-oxide; the chunks below are of the decoded PNG)`
                 : this.bpg ? `${this.bpg.label}, ${this.bpg.size.toLocaleString()} bytes (decoded by libbpg; the chunks below are of the decoded PNG)`
+                : this.flif ? `${this.flif.label}, ${this.flif.size.toLocaleString()} bytes (decoded by libflif; the chunks below are of the decoded PNG)`
                 : `${this.fileSize.toLocaleString()} bytes`],
             ...(info.animated ? [
                 ['Frames', info.declaredFrames === info.frames.length ? info.frames.length : `${info.frames.length} (acTL says ${info.declaredFrames})`],

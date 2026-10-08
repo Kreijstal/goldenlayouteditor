@@ -39,7 +39,7 @@ const SERVED_EXTENSIONS = new Set([
   'ilbm', 'lbm', 'ham', 'ham8', // not .iff: sound, animations... too (IFF_MAYBE_RE)
   'fits', 'fit', 'fts', // not .fz: Fritzing's sketches too (FZ_MAYBE_RE)
   'jxr', // not .wdp/.hdp: WinDev and Dylan projects too (JXR_MAYBE_RE)
-  'bpg',
+  'bpg', 'flif',
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
