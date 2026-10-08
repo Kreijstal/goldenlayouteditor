@@ -37,6 +37,7 @@ require('./pst-plugin');
 require('./pcap-plugin');
 require('./apng-plugin');
 require('./xcf-plugin');
+require('./kra-plugin');
 require('./tvg-plugin');
 require('./videocut-plugin');
 require('./model3d-plugin');
@@ -2883,6 +2884,8 @@ const FILE_VIEWERS = [
     // Animated PNG: the frame viewer for .apng; for .png (animated or not, unknown until read) a choice after the editor,
     // and for JPEG XL, BPG and FLIF (decoded to PNG/APNG)
     { re: /\.xcf$/i, componentType: 'xcfViewer', tag: 'layers', prefix: 'xcf-' },
+    // Krita documents: the merged picture, the layers
+    { re: /\.kr[az]$/i, componentType: 'kraViewer', tag: 'layers', prefix: 'kra-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },
