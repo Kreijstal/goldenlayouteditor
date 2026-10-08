@@ -1,4 +1,4 @@
-// --- Amiga IFF animations (.anim, .anm; an .iff that is one) ---
+// --- Amiga IFF animations (.anim, .anm; an .iff that is one) and FLICs (.fli, .flc, .flx) ---
 // No browser plays them. A FORM ANIM holds FORM ILBMs: the first a whole
 // picture, each after it an ANHD (the operation, the time to show it in
 // jiffies) and a DLTA, the changes from the frame two before (Amiga programs
@@ -7,7 +7,10 @@
 // J (Sculpt-Animate's), l... The pictures are ILBM's: planes, HAM, EHB.
 // Read by FFmpeg's iff demuxer and decoder (ffmpeg.wasm's core in a worker,
 // public/iffanim-worker.js, loaded from jsDelivr when one is first opened),
-// which take Deluxe Paint's PC animations (.anm, LPF) too. The image viewer
+// which take Deluxe Paint's PC animations (.anm, LPF) too, and Autodesk
+// Animator's FLICs: a header (the speed, 1/70 s a jiffy in an FLI, ms in an
+// FLC), then frames of chunks (palettes, whole pictures, line and byte runs of
+// changes from the frame before). The image viewer
 // plays one with its own timing (pause, step); the preview and thumbnails show
 // the first frame.
 const { createLogger } = require('./debug');
@@ -15,7 +18,8 @@ const { applyPixelAspect } = require('./ilbm');
 
 const log = createLogger('ANIM');
 const WORKER_URL = '/iffanim-worker.js';
-const ANIM_RE = /\.(anim|anm)$/i;
+const ANIM_RE = /\.(anim|anm|fl[icx])$/i;
+const ANIM_EXTS = new Set(['anim', 'anm', 'fli', 'flc', 'flx']);
 // the frames' RGBA kept at most (a frame count FFmpeg is asked for), and frames
 const MAX_BYTES = 512 * 1024 * 1024;
 const MAX_FRAMES = 5000;
@@ -28,6 +32,11 @@ const firsts = new Map(); // source URL -> Promise<{ url, aspect, label }>
 
 function isAnimName(name) {
     return ANIM_RE.test(name || '');
+}
+
+// The file types (by extension or as sniffed) the animation player takes
+function isAnimExt(ext) {
+    return ANIM_EXTS.has(ext);
 }
 
 const fourcc = (bytes, p) => String.fromCharCode(bytes[p], bytes[p + 1], bytes[p + 2], bytes[p + 3]);
@@ -100,8 +109,12 @@ async function fetchBytes(url) {
     return new Uint8Array(await resp.arrayBuffer());
 }
 
+// FLIC's magic numbers (at 4, little-endian): FLI, FLC, Animator Pro's FLX
+const FLIC_KINDS = { 0xaf11: 'FLI animation', 0xaf12: 'FLC animation', 0xaf44: 'FLX animation' };
+
 function describe(bytes, d, all) {
-    const kind = isAnim(bytes) ? 'Amiga IFF animation' : 'Animation';
+    const kind = isAnim(bytes) ? 'Amiga IFF animation'
+        : (bytes.length >= 6 && FLIC_KINDS[bytes[4] | bytes[5] << 8]) || 'Animation';
     if (!all) return `${kind}: ${d.width}×${d.height}`;
     const loop = d.frames.reduce((t, f) => t + f.ms, 0);
     return [
@@ -221,4 +234,4 @@ function addAnimControls(root, img, url) {
     }).catch(err => { img.title = `Could not play the animation: ${err.message}`; });
 }
 
-module.exports = { isAnimName, isAnim, isAnimUrl, animImage, animFile, addAnimControls };
+module.exports = { isAnimName, isAnimExt, isAnim, isAnimUrl, animImage, animFile, addAnimControls };

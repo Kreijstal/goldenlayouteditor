@@ -146,7 +146,8 @@ function jxlDecode(bytes) {
 // (Haiku vector icon), the PNG (QuickDraw PICT; a .pic only once known to be one) or the
 // SVG (Windows metafile: .wmf, .emf, gzipped .wmz, .emz) or the largest image's PNG
 // (Windows cursor: .cur, an animated .ani's first frame; Apple icon image: .icns) or the
-// first frame's PNG (Amiga IFF animation: .anim, .anm; an .iff only once known to be one) or
+// first frame's PNG (Amiga IFF animation: .anim, .anm; an .iff only once known to be one;
+// Autodesk FLIC animation: .fli, .flc, .flx) or
 // the PNG (CALS raster: .cals, .ct1; a .cal or .ras only once known to be one) or the PNG,
 // a logarithmic one turned linear (DPX: .dpx; Cineon: a .cin only once known to be one) or
 // the first level's PNG (DirectDraw Surface: .dds) or the first layer's PNG, tone

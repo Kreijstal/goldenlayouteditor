@@ -57,6 +57,7 @@ const SERVED_EXTENSIONS = new Set([
   'sgi', // not .rgb/.rgba/.bw/.int/.inta: raw dumps and other things too (SGI_MAYBE_RE)
   'ras', 'sun', 'im1', 'im8', 'im24', 'im32', // not .rs: Rust far more often (SUN_MAYBE_RE)
   'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', // not .iff: sound, animations... too (IFF_MAYBE_RE)
+  'fli', 'flc', 'flx', // Autodesk Animator's FLIC animations
   'fits', 'fit', 'fts', // not .fz: Fritzing's sketches too (FZ_MAYBE_RE)
   'jxr', // not .wdp/.hdp: WinDev and Dylan projects too (JXR_MAYBE_RE)
   'bpg', 'flif',
