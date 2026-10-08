@@ -20,7 +20,7 @@
 // drawing's SVG (src/drw.js), a CorelDRAW drawing's first page's SVG, by
 // LibreOffice (src/cdr.js), a GEM raster image's PNG (src/gem.js), and an
 // ERDAS IMAGINE image's first band's PNG, or its three bands', at an overview
-// that fits (src/hfa.js).
+// that fits (src/hfa.js), and a Haiku vector icon's SVG (src/hvif.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -47,6 +47,7 @@ const { isGemName, isGemMaybeName, isGemUrl, gemImage } = require('./gem');
 const { isHfaMaybeName, isHfaUrl, hfaPage } = require('./hfa');
 const { isEcwName, ecwImage } = require('./ecw');
 const { isJp2Name, jp2Decode } = require('./jp2');
+const { isHvifName, hvifImage } = require('./hvif');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -105,7 +106,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, GEM and ERDAS IMAGINE, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, GEM, ERDAS IMAGINE and Haiku vector icons, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -119,7 +120,8 @@ function jxlDecode(bytes) {
 // (Micrografx Draw; a .drw only once known to be one), the first page's SVG
 // (CorelDRAW, CMX; a .cdr, .cdt or .cmx only once known to be one), the PNG (GEM; an .img
 // that is one, else VICAR's) or the first band's PNG, in color for three, at an
-// overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG")
+// overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG") or the SVG
+// (Haiku vector icon)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -144,6 +146,7 @@ async function displayableImageUrl(url, name) {
     if (isEcwName(name)) return (await ecwImage(url)).url;
     if (isDrwName(name)) return (await drwImage(url)).url;
     if (isCdrName(name)) return (await cdrImage(url, name)).url;
+    if (isHvifName(name)) return (await hvifImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;
