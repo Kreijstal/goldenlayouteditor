@@ -47,6 +47,7 @@ require('./cpt-plugin');
 require('./tvg-plugin');
 require('./videocut-plugin');
 const { isModel3dFile } = require('./model3d-plugin');
+require('./x3d-plugin');
 require('./waveform-plugin');
 require('./kicad-plugin');
 require('./fritzing-plugin');
@@ -2976,6 +2977,8 @@ const FILE_VIEWERS = [
     { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
     // PLY and AMF models; a .ply / .amf only when it starts as one (PLY's "ply" line, AMF's <amf> or its zip)
     { re: /\.(ply|amf)$/i, test: isModel3dFile, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
+    // X3D scenes (XML, classic VRML and JSON encodings, gzipped too): played by X_ITE
+    { re: /\.(x3d|x3dv|x3dj|x3dz|x3dvz)$/i, componentType: 'x3dViewer', tag: 'x3d', prefix: 'x3d-' },
     // .fz is also fpack's FITS (binary): not a sketch
     { re: /\.(fzz|fz)$/i, test: f => !/\.fz$/i.test(f.name) || f.viewType !== 'binary', componentType: 'fritzingEditor', tag: 'fritzing', prefix: 'fritzing-' },
     // .tm is also a Tcl module: only files that are TeXmacs documents
