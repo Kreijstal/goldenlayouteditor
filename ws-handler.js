@@ -26,6 +26,7 @@ const SERVED_EXTENSIONS = new Set([
   'sai2', // not .sai: SAIL programs and BWA indexes too (SAI_MAYBE_RE)
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'odg', 'otg', 'fodg', // OpenDocument drawings (a .fodg is XML, but shown drawn)
+  'xps', 'oxps',
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
   'fzz',

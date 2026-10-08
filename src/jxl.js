@@ -19,7 +19,7 @@
 // more than 4096 pixels on its long side (src/ecw.js), a Micrografx Draw
 // drawing's SVG (src/drw.js), a CorelDRAW drawing's first page's SVG, by
 // LibreOffice (src/cdr.js), an OpenDocument drawing's first page's SVG, by
-// LibreOffice (src/odg.js), a GEM raster image's PNG (src/gem.js), and an
+// LibreOffice (src/odg.js), an XPS document's first page's PNG (src/xps.js), a GEM raster image's PNG (src/gem.js), and an
 // ERDAS IMAGINE image's first band's PNG, or its three bands', at an overview
 // that fits (src/hfa.js), and a Haiku vector icon's SVG (src/hvif.js).
 const { createLogger } = require('./debug');
@@ -45,6 +45,7 @@ const { isPgfName, pgfImage } = require('./pgf');
 const { isDrwName, drwImage } = require('./drw');
 const { isCdrName, cdrImage } = require('./cdr');
 const { isOdgName, odgImage } = require('./odg');
+const { isXpsName, xpsImage } = require('./xps');
 const { isGemName, isGemMaybeName, isGemUrl, gemImage } = require('./gem');
 const { isHfaMaybeName, isHfaUrl, hfaPage } = require('./hfa');
 const { isEcwName, ecwImage } = require('./ecw');
@@ -108,7 +109,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, GEM, ERDAS IMAGINE and Haiku vector icons, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE and Haiku vector icons, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -121,7 +122,8 @@ function jxlDecode(bytes) {
 // .pgf only once known to be one), the PNG at a scale that fits (ECW), the SVG
 // (Micrografx Draw; a .drw only once known to be one), the first page's SVG
 // (CorelDRAW, CMX; a .cdr, .cdt or .cmx only once known to be one), the first
-// page's SVG (OpenDocument drawings, .odg, .otg, .fodg), the PNG (GEM; an .img
+// page's SVG (OpenDocument drawings, .odg, .otg, .fodg), the first page's PNG
+// (XPS, OpenXPS), the PNG (GEM; an .img
 // that is one, else VICAR's) or the first band's PNG, in color for three, at an
 // overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG") or the SVG
 // (Haiku vector icon)
@@ -150,6 +152,7 @@ async function displayableImageUrl(url, name) {
     if (isDrwName(name)) return (await drwImage(url)).url;
     if (isCdrName(name)) return (await cdrImage(url, name)).url;
     if (isOdgName(name)) return (await odgImage(url, name)).url;
+    if (isXpsName(name)) return (await xpsImage(url, name)).url;
     if (isHvifName(name)) return (await hvifImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
