@@ -86,6 +86,7 @@ ICON_BY_EXT.hwp = ICON_BY_EXT.hwpx = '📝';
 ICON_BY_EXT.gldf = ICON_BY_EXT.ldt = ICON_BY_EXT.ies = '💡';
 ICON_BY_EXT.vrm = '🧍';
 for (const e of ['hpgl', 'hpg', 'hgl', 'pen']) ICON_BY_EXT[e] = '🖊️';
+ICON_BY_EXT.asy = '📐';
 ICON_BY_EXT.dxf = ICON_BY_EXT.dwg = ICON_BY_EXT.dwf = ICON_BY_EXT.dwfx = '📐';
 ICON_BY_EXT.lottie = '🎞️';
 ICON_BY_EXT.mml = ICON_BY_EXT.mathml = '∑';

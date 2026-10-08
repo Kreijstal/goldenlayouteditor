@@ -62,6 +62,7 @@ require('./bpmn-plugin');
 require('./drawio-import-plugin');
 require('./gpx-plugin');
 require('./fxg-plugin');
+require('./asy-plugin');
 require('./stereo-plugin');
 const { isGerberFile } = require('./gerber-plugin');
 const { isHpglFile } = require('./hpgl-plugin');
@@ -2970,6 +2971,8 @@ const FILE_VIEWERS = [
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },
+    // Asymptote programs: the source in the editor first, what it draws (run by Asymptote) as a choice
+    { re: /\.asy$/i, componentType: 'asyViewer', tag: 'asymptote', prefix: 'asy-', afterEditor: true },
     { re: /\.vcut$/i, componentType: 'videoCut', tag: 'video editor', prefix: 'vcut-' },
     { re: /\.apng$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-' },
     { re: /\.(png|jxl|bpg|flif)$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-', afterEditor: true },
