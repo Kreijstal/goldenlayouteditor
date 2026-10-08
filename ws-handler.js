@@ -32,6 +32,7 @@ const SERVED_EXTENSIONS = new Set([
   'dae', 'wrl', 'vrml', '3ds', '3dm', // not .ply or .amf: other files' too (shown as models by their first bytes)
   'x3dz', 'x3dvz', // gzipped X3D (.x3d, .x3dv, .x3dj stay text)
   'dwg', // AutoCAD drawings (a .dxf stays text, unless it is binary DXF)
+  'dwf', 'dwfx', // Autodesk DWF (an R14 ASCII DWF too) and DWFx
   'fzz',
   'lottie', // dotLottie (a zip); Lottie's .json stays text
   'fst', 'ghw',

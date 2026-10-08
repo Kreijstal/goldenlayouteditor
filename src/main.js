@@ -66,6 +66,7 @@ require('./stereo-plugin');
 const { isGerberFile } = require('./gerber-plugin');
 const { isHpglFile } = require('./hpgl-plugin');
 require('./dxf-plugin');
+require('./dwf-plugin');
 const { isLottieFile } = require('./lottie-plugin');
 const { isMathmlFile } = require('./mathml-plugin');
 const { isPostScriptFile } = require('./ps-plugin');
@@ -2992,6 +2993,8 @@ const FILE_VIEWERS = [
     { re: /\.(hpgl|hpg|hgl|pen|plt)$/i, test: isHpglFile, componentType: 'hpglViewer', tag: 'hpgl', prefix: 'hpgl-' },
     // AutoCAD drawings: DXF (ASCII, followed as it is edited, or binary) and DWG
     { re: /\.(dxf|dwg)$/i, componentType: 'dxfViewer', tag: 'dxf', prefix: 'dxf-' },
+    // Autodesk DWF and DWFx: published sheets (2D) and models (3D)
+    { re: /\.(dwf|dwfx)$/i, componentType: 'dwfViewer', tag: 'dwf', prefix: 'dwf-' },
     // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
     { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
     { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
