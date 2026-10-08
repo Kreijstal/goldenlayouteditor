@@ -64,6 +64,8 @@ const JXR_MAYBE_RE = /\.(wdp|hdp)$/i;
 const VICAR_MAYBE_RE = /\.img$/i;
 // PGF/TikZ's pictures (TeX) have the Progressive Graphics File's name: a PGF image only if it starts "PGF" and a version
 const PGF_MAYBE_RE = /\.pgf$/i;
+// Pro/ENGINEER's, Caddie's and PWDraw's drawings have Micrografx Draw's name: one only if it starts 01 FF 02 04 03
+const DRW_MAYBE_RE = /\.drw$/i;
 
 // Maximum file size to read and send over WebSocket (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -599,7 +601,8 @@ const messageHandlers = {
               const buf = await fs.promises.readFile(fullPath);
               // an SGI image by another name (.rgb, .bw...): binary, its viewer tells by the magic number
               // (or a Sun raster by Rust's, .rs, an Amiga picture by IFF's, .iff, FITS by Fritzing's, .fz,
-              // JPEG XR by HD Photo's, .wdp/.hdp, VICAR by the PDS's, .img, or a PGF image by PGF/TikZ's, .pgf)
+              // JPEG XR by HD Photo's, .wdp/.hdp, VICAR by the PDS's, .img, a PGF image by PGF/TikZ's, .pgf,
+              // or a Micrografx drawing by the other drawings', .drw)
               if ((SGI_MAYBE_RE.test(entry.name) && buf.length >= 2 && buf.readUInt16BE(0) === 474)
                 || (SUN_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32BE(0) === 0x59a66a95)
                 || (IFF_MAYBE_RE.test(entry.name) && buf.length >= 12 && buf.toString('latin1', 0, 4) === 'FORM'
@@ -607,7 +610,8 @@ const messageHandlers = {
                 || (FZ_MAYBE_RE.test(entry.name) && buf.toString('latin1', 0, 9) === 'SIMPLE  =')
                 || (JXR_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf[0] === 0x49 && buf[1] === 0x49 && buf[2] === 0xbc && buf[3] <= 1)
                 || (VICAR_MAYBE_RE.test(entry.name) && /^LBLSIZE *=/.test(buf.toString('latin1', 0, 16)))
-                || (PGF_MAYBE_RE.test(entry.name) && buf.length >= 8 && buf.toString('latin1', 0, 3) === 'PGF' && (buf[3] & 2) && buf[3] < 0x80)) {
+                || (PGF_MAYBE_RE.test(entry.name) && buf.length >= 8 && buf.toString('latin1', 0, 3) === 'PGF' && (buf[3] & 2) && buf[3] < 0x80)
+                || (DRW_MAYBE_RE.test(entry.name) && buf.length >= 5 && buf.toString('hex', 0, 5) === '01ff020403')) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;
                 continue;

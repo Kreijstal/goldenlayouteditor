@@ -275,6 +275,7 @@ const { isNrrdName, addNrrdControls } = require('./nrrd');
 const { isVicarName, isVicarMaybeName, isVicarUrl, addVicarControls } = require('./vicar');
 const { isXisfName, addXisfControls } = require('./xisf');
 const { isPgfName, isPgfUrl, addPgfControls } = require('./pgf');
+const { isDrwName, isDrwUrl, drwImage } = require('./drw');
 const { addEcwControls } = require('./ecw');
 const { attachSubtitles } = require('./subtitles');
 
@@ -909,7 +910,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -932,6 +933,8 @@ class EditorComponent {
         if (ext === 'binary' && isVicarMaybeName(fileData.name) && await isVicarUrl(url).catch(() => false)) ext = 'vic';
         // a binary .pgf is a PGF image (the Progressive Graphics File) if it starts "PGF" (else PGF/TikZ's TeX, text)
         if (ext === 'binary' && isPgfName(fileData.name) && await isPgfUrl(url).catch(() => false)) ext = 'pgf';
+        // a binary .drw is a Micrografx drawing if it starts 01 FF 02 04 03 (else Pro/ENGINEER's, Caddie's...)
+        if (ext === 'binary' && isDrwName(fileData.name) && await isDrwUrl(url).catch(() => false)) ext = 'drw';
 
         if (IMAGE_EXTS.has(ext)) {
             const img = document.createElement('img');
@@ -1030,6 +1033,8 @@ class EditorComponent {
                 this.rootElement.style.position = 'relative';
                 addEcwControls(this.rootElement, img, url);
             }
+            // a Micrografx drawing: what it holds
+            if (ext === 'drw') drwImage(url).then(d => { img.title = d.label; }).catch(() => {});
         } else if (VIDEO_EXTS.has(ext)) {
             const video = document.createElement('video');
             video.src = url;
@@ -1311,7 +1316,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1329,6 +1334,8 @@ class PreviewComponent {
             if (ext === 'binary' && isVicarMaybeName(previewFile.name) && await isVicarUrl(url).catch(() => false)) ext = 'vic';
             // a binary .pgf: a PGF image if it starts "PGF"
             if (ext === 'binary' && isPgfName(previewFile.name) && await isPgfUrl(url).catch(() => false)) ext = 'pgf';
+            // a binary .drw: a Micrografx drawing if it starts 01 FF 02 04 03
+            if (ext === 'binary' && isDrwName(previewFile.name) && await isDrwUrl(url).catch(() => false)) ext = 'drw';
             let previewHtml;
 
             if (IMAGE_EXTS.has(ext)) {
@@ -1743,7 +1750,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';

@@ -15,8 +15,9 @@
 // slice's PNG, windowed (src/nrrd.js; an .nhdr's data read from beside it),
 // a VICAR image's first band's PNG, or its three bands' (src/vicar.js), an
 // XISF file's first image's PNG, windowed (src/xisf.js; an .xish's blocks read
-// from beside it), a PGF image's PNG (src/pgf.js), and an ECW image's PNG, no
-// more than 4096 pixels on its long side (src/ecw.js).
+// from beside it), a PGF image's PNG (src/pgf.js), an ECW image's PNG, no
+// more than 4096 pixels on its long side (src/ecw.js), and a Micrografx Draw
+// drawing's SVG (src/drw.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -37,6 +38,7 @@ const { isNrrdName, nrrdPage } = require('./nrrd');
 const { isVicarName, isVicarMaybeName, vicarPage } = require('./vicar');
 const { isXisfName, xisfPage } = require('./xisf');
 const { isPgfName, pgfImage } = require('./pgf');
+const { isDrwName, drwImage } = require('./drw');
 const { isEcwName, ecwImage } = require('./ecw');
 const { isJp2Name, jp2Decode } = require('./jp2');
 
@@ -97,7 +99,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF and ECW, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW and Micrografx Draw, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -107,7 +109,8 @@ function jxlDecode(bytes) {
 // once known to be one), the PNG/APNG (BPG, FLIF), the middle slice's PNG (NRRD),
 // the first band's PNG, in color for three (VICAR; an .img only once known to be one)
 // or the first page's PNG, windowed as the image asks (XISF), the PNG (PGF; a
-// .pgf only once known to be one), or the PNG at a scale that fits (ECW)
+// .pgf only once known to be one), the PNG at a scale that fits (ECW), or the SVG
+// (Micrografx Draw; a .drw only once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -128,6 +131,7 @@ async function displayableImageUrl(url, name) {
     if (isXisfName(name)) return (await xisfPage(url)).url;
     if (isPgfName(name)) return (await pgfImage(url)).url;
     if (isEcwName(name)) return (await ecwImage(url)).url;
+    if (isDrwName(name)) return (await drwImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

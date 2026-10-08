@@ -6,13 +6,14 @@ const { registerPlugin } = require('./plugins');
 const { resolveFileUrl } = require('./archive-fallback');
 const { displayableImageUrl } = require('./jxl');
 const { isPgfName, isPgfUrl, pgfImage } = require('./pgf');
+const { isDrwName, isDrwUrl } = require('./drw');
 const { isEcwName, ecwImage } = require('./ecw');
 
 let _ctx = null;
 let _pdfLib = null;
 let _pdfLibPromise = null;
 
-const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'iff', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
+const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'iff', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw']);
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
 const PDF_EXTS = new Set(['pdf', 'ai']);
 
@@ -119,6 +120,8 @@ async function renderImageClient(file, container) {
     if (!url) return;
     // a .pgf that is PGF/TikZ's (TeX), not a PGF image, keeps its icon
     if (isPgfName(file.name) && !await isPgfUrl(url).catch(() => false)) return;
+    // ...and a .drw that is not Micrografx's (Pro/ENGINEER's, Caddie's...)
+    if (isDrwName(file.name) && !await isDrwUrl(url).catch(() => false)) return;
     try {
         // a PGF image from its first levels only, the smallest big enough; an ECW image the same
         url = isPgfName(file.name) ? (await pgfImage(url, 'thumb')).url

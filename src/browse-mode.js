@@ -14,12 +14,13 @@ const { isIlbmMaybeName, isIlbm } = require('./ilbm');
 const { isFzName, isFits } = require('./fits');
 const { isVicarMaybeName, isVicar, isVicarUrl } = require('./vicar');
 const { isPgfName, isPgf } = require('./pgf');
+const { isDrwName, isDrw } = require('./drw');
 
 const log = createLogger('Browse');
 
 // Extensions EditorComponent can play/show directly; these default to it
 // instead of the inspector plugins project mode prefers.
-const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|deep|iff|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|ecw|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
+const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|webp|avif|svg|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|deep|iff|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|ecw|drw|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
 
 // Zip-format archives the browser opens as read-only folders. Listing and file
 // reads are answered by the service worker (public/zip-sw.js; without one, the
@@ -62,7 +63,7 @@ const ICONS = {
     archive: '📦', code: '📜', text: '📄', dir: '📁',
 };
 const ICON_BY_EXT = {};
-for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'fxg', 'psd', 'xcf', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
+for (const e of ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'fxg', 'psd', 'xcf', 'jbf', 'dcm', 'dicom']) ICON_BY_EXT[e] = ICONS.image;
 for (const e of ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', '3gp', 'vcut']) ICON_BY_EXT[e] = ICONS.video;
 for (const e of ['mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus']) ICON_BY_EXT[e] = ICONS.audio;
 for (const e of ['zip', 'tar', 'gz', 'xz', 'bz2', '7z', 'rar', 'zst', 'iso']) ICON_BY_EXT[e] = ICONS.archive;
@@ -963,9 +964,10 @@ async function initBrowseMode(root, deps) {
         file.head = bytes.slice(0, 512);
         // an Amiga picture by IFF's name (.iff) is binary even where its NULs look like UTF-16,
         // and an .fz that is FITS (fpack's) or an .img that is VICAR though their labels are text, and a .pgf
-        // that is a PGF image (not PGF/TikZ's TeX) whatever its first bytes look like
+        // that is a PGF image (not PGF/TikZ's TeX) or a .drw that is Micrografx's whatever its first bytes look like
         if (detected.binary || (isIlbmMaybeName(file.name) && isIlbm(bytes)) || (isFzName(file.name) && isFits(bytes))
-            || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))) {
+            || (isVicarMaybeName(file.name) && isVicar(bytes)) || (isPgfName(file.name) && isPgf(bytes))
+            || (isDrwName(file.name) && isDrw(bytes))) {
             file.viewType = 'binary';
         } else {
             file.bytes = bytes;
