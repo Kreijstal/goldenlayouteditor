@@ -26,7 +26,8 @@
 // SVG (WMF, EMF, EMF+; gzipped too), by emf-converter (src/wmf.js), a
 // Windows cursor's largest image's PNG, an animated cursor's first frame's (src/cur.js),
 // an Apple icon image's largest image's (src/icns.js), and an Amiga IFF animation's
-// first frame's, by FFmpeg (src/iffanim.js), and a CALS raster's PNG, by GDAL (src/cals.js).
+// first frame's, by FFmpeg (src/iffanim.js), a CALS raster's PNG, by GDAL (src/cals.js), and a DPX
+// or Cineon film scan's PNG, log to linear, by ImageMagick (src/dpx.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -59,6 +60,7 @@ const { isJp2Name, jp2Decode } = require('./jp2');
 const { isHvifName, hvifImage } = require('./hvif');
 const { isPictName, isPictUrl, pictImage } = require('./pict');
 const { isCalsName, isCalsMaybeName, isCalsUrl, calsImage } = require('./cals');
+const { isDpxName, isCinName, isCineonUrl, dpxImage } = require('./dpx');
 const { isWmfName, wmfImage } = require('./wmf');
 const { isCursorName, cursorImage } = require('./cur');
 const { isIcnsName, icnsImage } = require('./icns');
@@ -120,7 +122,7 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE, Haiku vector icons, QuickDraw PICT, Windows metafiles and CALS rasters, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF, ECW, Micrografx Draw, CorelDRAW, OpenDocument drawings, XPS, GEM, ERDAS IMAGINE, Haiku vector icons, QuickDraw PICT, Windows metafiles, CALS rasters, DPX and Cineon, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
 // the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
@@ -141,7 +143,8 @@ function jxlDecode(bytes) {
 // SVG (Windows metafile: .wmf, .emf, gzipped .wmz, .emz) or the largest image's PNG
 // (Windows cursor: .cur, an animated .ani's first frame; Apple icon image: .icns) or the
 // first frame's PNG (Amiga IFF animation: .anim, .anm; an .iff only once known to be one) or
-// the PNG (CALS raster: .cals, .ct1; a .cal or .ras only once known to be one)
+// the PNG (CALS raster: .cals, .ct1; a .cal or .ras only once known to be one) or the PNG,
+// a logarithmic one turned linear (DPX: .dpx; Cineon: a .cin only once known to be one)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -156,6 +159,8 @@ async function displayableImageUrl(url, name) {
     // a .cal or .ras: CALS if it starts as CALS does, else (a .ras) a Sun raster
     if (isCalsName(name) || (isCalsMaybeName(name) && await isCalsUrl(url).catch(() => false))) return (await calsImage(url, name)).url;
     if (isSunName(name)) return (await sunImage(url)).url;
+    // a .cin: Cineon if it starts as one (else an input method's table)
+    if (isDpxName(name) || (isCinName(name) && await isCineonUrl(url).catch(() => false))) return (await dpxImage(url)).url;
     // an .iff: an animation if its FORM is ANIM, else a picture
     if (isAnimName(name) || (isIlbmMaybeName(name) && await isAnimUrl(url).catch(() => false))) return (await animImage(url)).url;
     if (isIlbmName(name)) return (await ilbmImage(url)).url;

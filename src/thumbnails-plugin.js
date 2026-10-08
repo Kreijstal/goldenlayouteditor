@@ -12,12 +12,13 @@ const { isOdgName, odgThumbnail } = require('./odg');
 const { isPicName, isRadianceUrl } = require('./rgbe');
 const { isPictUrl } = require('./pict');
 const { isCalsUrl } = require('./cals');
+const { isCineonUrl } = require('./dpx');
 
 let _ctx = null;
 let _pdfLib = null;
 let _pdfLibPromise = null;
 
-const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'iff', 'anim', 'anm', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'odg', 'otg', 'xps', 'oxps', 'pict', 'pct', 'pic', 'cals', 'ct1', 'cal', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg']);
+const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'iff', 'anim', 'anm', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'odg', 'otg', 'xps', 'oxps', 'pict', 'pct', 'pic', 'cals', 'ct1', 'cal', 'dpx', 'cin', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg']);
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
 const PDF_EXTS = new Set(['pdf', 'ai']);
 
@@ -130,6 +131,8 @@ async function renderImageClient(file, container) {
     if (isPicName(file.name) && !await isPictUrl(url).catch(() => false) && !await isRadianceUrl(url).catch(() => false)) return;
     // ...and a .cal that is not a CALS raster (a calendar...)
     if (/\.cal$/i.test(file.name) && !await isCalsUrl(url).catch(() => false)) return;
+    // ...and a .cin that is not a Cineon film scan (an input method's table...)
+    if (/\.cin$/i.test(file.name) && !await isCineonUrl(url).catch(() => false)) return;
     // an OpenDocument drawing: the picture LibreOffice stored in it, not LibreOffice itself (some 50 MB)
     if (isOdgName(file.name)) {
         const thumb = await odgThumbnail(url, file.name).catch(() => null);

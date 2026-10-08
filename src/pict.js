@@ -60,6 +60,7 @@ async function isPictUrl(url) {
     return isPict(bytes);
 }
 
+// ImageMagick, loaded once (DPX and Cineon's too, src/dpx.js)
 function magick() {
     if (!magickPromise) {
         magickPromise = (async () => {
@@ -106,4 +107,4 @@ function pictImage(url) {
     return p;
 }
 
-module.exports = { isPictName, isPict, isPictUrl, pictDecode, pictImage };
+module.exports = { isPictName, isPict, isPictUrl, pictDecode, pictImage, magick };
