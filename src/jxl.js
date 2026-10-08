@@ -97,10 +97,10 @@ function jxlDecode(bytes) {
 
 // A URL an <img> can show: the file's own for anything but JPEG XL, TinyVG,
 // TIFF, JPEG 2000, HEIF, Netpbm, Radiance, TGA, QOI, PCX, SGI, Sun raster, IFF
-// ILBM, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF and ECW, or where the browser shows JPEG XL; else a blob: URL of the decoded
+// ILBM, DEEP, FITS, JPEG XR, BPG, FLIF, NRRD, VICAR, XISF, PGF and ECW, or where the browser shows JPEG XL; else a blob: URL of the decoded
 // PNG/APNG (JPEG XL), the SVG (TinyVG), the first page's PNG (TIFF, Netpbm, DCX,
 // FITS, zscaled; an .fz only once known to be one),
-// the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM; a .rgb, .bw..., .rs
+// the PNG (JPEG 2000, TGA, QOI, PCX, SGI, Sun raster, ILBM, DEEP (its first frame); a .rgb, .bw..., .rs
 // or .iff only once known to be one), the
 // primary image's PNG (HEIF) or the tone mapped PNG (Radiance; a .pic only
 // once known to be one; JPEG XR, if high dynamic range; a .wdp or .hdp only

@@ -1,4 +1,4 @@
-// --- Amiga IFF pictures (.ilbm, .lbm, .ham, .ham8; an .iff that is one) ---
+// --- Amiga IFF pictures (.ilbm, .lbm, .ham, .ham8, .deep; an .iff that is one) ---
 // No browser shows them. An IFF FORM (big-endian chunks, each padded to an
 // even length) of type ILBM (bitplanes, each row's planes one after another),
 // PBM (DeluxePaint for the PC: one byte per pixel) or ACBM (Amiga BASIC: the
@@ -23,20 +23,41 @@
 // not). 24 and 32-plane ILBMs are 8 planes
 // each of red, green, blue (and alpha), least significant first. The pixel
 // aspect (xAspect:yAspect) is kept for the viewer. The picture becomes a PNG an
-// <img> shows. .iff is IFF's name for anything (8SVX sound, ANIM...): one is
-// only shown here if its FORM is ILBM, PBM or ACBM.
+// <img> shows.
+//
+// FORM DEEP (TVPaint and other 24-bit paint programs; TVPaint's TVPP projects
+// carry the same chunks) holds chunky pixels instead: DGBL the display size,
+// the compression and the pixel aspect, DPEL what each pixel is made of (red,
+// green, blue, alpha, cyan, magenta, yellow, black, mask, Z-buffer... each of
+// some bits, most significant first, the pixel padded to a byte), DLOC where
+// and how large the next DBOD (the pixels) is. Each holds until the next one
+// of its kind, so a file may draw several bodies onto the display, and DCHG
+// ends a frame (an animation's, or with -1 a picture's of several). The
+// compression: none, run length (ByteRun1 counting whole pixels, as FFmpeg and
+// deark read it) or TVPaint's TVDC (each row a line per element, every 4-bit
+// code a delta from the 16 in the TVDC chunk, or with a zero delta a run of up
+// to 16, each line from zero and starting on a byte). Huffman, dynamic Huffman
+// and JPEG were named in the spec but never described. Element type 17, which
+// isn't in the spec, is alpha with the colors multiplied by it (Video
+// Toaster's brushes, as deark has it; FFmpeg takes it as plain alpha).
+//
+// .iff is IFF's name for anything (8SVX sound, ANIM...): one is only shown
+// here if its FORM is ILBM, PBM, ACBM, DEEP or TVPP.
 const { createLogger } = require('./debug');
 
 const log = createLogger('ILBM');
-const ILBM_RE = /\.(ilbm|lbm|ham8?|iff)$/i;
+const ILBM_RE = /\.(ilbm|lbm|ham8?|deep|iff)$/i;
 // the name an ILBM shares with every other IFF file
 const MAYBE_RE = /\.iff$/i;
-const FORM_TYPES = ['ILBM', 'PBM ', 'ACBM'];
+const FORM_TYPES = ['ILBM', 'PBM ', 'ACBM', 'DEEP', 'TVPP'];
 const CAMG_EHB = 0x80, CAMG_HAM = 0x800, CAMG_LACE = 0x4;
 // to keep a hostile header from asking for gigabytes
 const MAX_PIXELS = 400000000;
 
-const decoded = new Map(); // source URL -> Promise<{ url, pages, aspect }>
+// a DEEP file's frames, at most (each a whole display of pixels)
+const MAX_FRAMES = 256;
+
+const decoded = new Map(); // source URL -> Promise<{ url, pages, aspect, frames, urls }>
 
 // Whether the name is one an ILBM goes by (an .iff is one only once its bytes
 // say so, see isIlbmMaybeName)
@@ -53,20 +74,27 @@ const fourcc = (bytes, p) => String.fromCharCode(bytes[p], bytes[p + 1], bytes[p
 const u16 = (bytes, p) => (bytes[p] << 8) | bytes[p + 1];
 const u32 = (bytes, p) => ((bytes[p] << 24) | (bytes[p + 1] << 16) | (bytes[p + 2] << 8) | bytes[p + 3]) >>> 0;
 
-// Bytes that are an IFF picture: a FORM of type ILBM, PBM or ACBM
+// Bytes that are an IFF picture: a FORM of type ILBM, PBM, ACBM, DEEP or TVPP
 function isIlbm(bytes) {
     return bytes.length >= 12 && fourcc(bytes, 0) === 'FORM' && FORM_TYPES.includes(fourcc(bytes, 8));
 }
 
-// The FORM's chunks: { id: [{ start, size }] }, in file order within each id
-function readChunks(bytes) {
+// The FORM's chunks in file order: [{ id, start, size }]
+function chunkList(bytes) {
     const end = Math.min(bytes.length, 8 + u32(bytes, 4));
-    const chunks = {};
+    const list = [];
     for (let p = 12; p + 8 <= end;) {
         const id = fourcc(bytes, p), size = u32(bytes, p + 4);
-        (chunks[id] = chunks[id] || []).push({ start: p + 8, size: Math.min(size, end - p - 8) });
+        list.push({ id, start: p + 8, size: Math.min(size, end - p - 8) });
         p += 8 + size + (size & 1);
     }
+    return list;
+}
+
+// The FORM's chunks: { id: [{ start, size }] }, in file order within each id
+function readChunks(bytes) {
+    const chunks = {};
+    for (const { id, start, size } of chunkList(bytes)) (chunks[id] = chunks[id] || []).push({ start, size });
     return chunks;
 }
 
@@ -177,10 +205,202 @@ function pchgChanges(bytes, chunk, height) {
     return { rows, before };
 }
 
-// { width, height, rgba, aspect, label }
+// DPEL's element types (17 isn't in the spec: alpha the colors are multiplied by)
+const DEEP_ELEMENTS = {
+    1: 'R', 2: 'G', 3: 'B', 4: 'A', 5: 'Y', 6: 'C', 7: 'M', 8: 'K', 9: 'mask',
+    10: 'Z-buffer', 11: 'opacity', 12: 'linear key', 13: 'binary key', 17: 'premultiplied A',
+};
+const DEEP_COMPRESSIONS = ['none', 'run length', 'Huffman', 'dynamic Huffman', 'JPEG', 'TVPaint delta (TVDC)'];
+
+// ByteRun1 counting pixels of pixelBytes bytes: n 0..127 copies n + 1 pixels,
+// -1..-127 repeats the next pixel 1 - n times (a short stream leaves the rest zero)
+function unByteRunPixels(bytes, p, end, size, pixelBytes) {
+    const out = new Uint8Array(size);
+    let o = 0;
+    while (p < end && o < size) {
+        const n = (bytes[p++] << 24) >> 24;
+        if (n >= 0) {
+            const len = Math.min((n + 1) * pixelBytes, end - p, size - o);
+            out.set(bytes.subarray(p, p + len), o);
+            o += len;
+            p += (n + 1) * pixelBytes;
+        } else if (n !== -128) {
+            if (p + pixelBytes > end) break;
+            for (let i = 0; i < 1 - n && o < size; i++, o += pixelBytes) out.set(bytes.subarray(p, p + Math.min(pixelBytes, size - o)), o);
+            p += pixelBytes;
+        }
+    }
+    return out;
+}
+
+// TVDC undone: each row a line of width bytes per element, every nibble an
+// index into the 16 deltas added to the running value (0 at a line's start),
+// one whose delta is zero followed by a nibble n: the value n + 1 times; each
+// line starts on a byte. Into width * height pixels of elements bytes each.
+function unTvdc(bytes, p, end, width, height, elements, table) {
+    const out = new Uint8Array(width * height * elements);
+    let nib = p * 2;
+    const nibEnd = end * 2;
+    const next = () => { const b = bytes[nib >> 1]; return nib++ & 1 ? b & 15 : b >> 4; };
+    for (let y = 0; y < height; y++) {
+        for (let e = 0; e < elements; e++) {
+            let v = 0, o = y * width * elements + e;
+            for (let x = 0; x < width && nib < nibEnd;) {
+                const d = table[next()];
+                if (d) {
+                    v = (v + d) & 255;
+                    out[o] = v; o += elements; x++;
+                } else {
+                    if (nib >= nibEnd) break;
+                    for (let n = Math.min(next() + 1, width - x); n > 0; n--, x++, o += elements) out[o] = v;
+                }
+            }
+            nib = (nib + 1) & ~1;
+            if (nib >= nibEnd) return out;
+        }
+    }
+    return out;
+}
+
+// A FORM DEEP (or TVPP): { width, height, aspect, frames: [{ rgba, label }] }
+function deepDecode(bytes, type) {
+    let width = 0, height = 0, compression = 0, aspect = 1;
+    let elements = null, loc = null, table = null;
+    let frame = null, drawn = false, bodies = 0;
+    const frames = [], kinds = new Set(), ignored = new Set();
+    const finish = () => {
+        if (frame && drawn && frames.length < MAX_FRAMES) frames.push(frame);
+        drawn = false;
+    };
+    for (const chunk of chunkList(bytes)) {
+        const s = chunk.start;
+        if (chunk.id === 'DGBL' && chunk.size >= 8) {
+            if (frame && (u16(bytes, s) !== width || u16(bytes, s + 2) !== height)) { finish(); frame = null; }
+            width = u16(bytes, s); height = u16(bytes, s + 2);
+            compression = u16(bytes, s + 4);
+            aspect = (bytes[s + 6] || 1) / (bytes[s + 7] || 1);
+            if (width * height > MAX_PIXELS) throw new Error(`IFF ${type} too large (${width}x${height})`);
+        } else if (chunk.id === 'DPEL' && chunk.size >= 4) {
+            const n = Math.min(u32(bytes, s), (chunk.size - 4) >> 2);
+            elements = [];
+            for (let i = 0; i < n; i++) elements.push({ type: u16(bytes, s + 4 + i * 4), bits: u16(bytes, s + 6 + i * 4) });
+        } else if (chunk.id === 'DLOC' && chunk.size >= 8) {
+            loc = { w: u16(bytes, s), h: u16(bytes, s + 2), x: (u16(bytes, s + 4) << 16) >> 16, y: (u16(bytes, s + 6) << 16) >> 16 };
+        } else if (chunk.id === 'TVDC' && chunk.size >= 32) {
+            table = new Int16Array(16);
+            for (let i = 0; i < 16; i++) table[i] = u16(bytes, s + i * 2);
+        } else if (chunk.id === 'DCHG') {
+            // the frame is complete: the next draws over it (an animation's
+            // change), or from nothing (-1: the next of several pictures)
+            const rate = chunk.size >= 4 ? u32(bytes, s) | 0 : 0;
+            const prev = drawn ? frame : null;
+            finish();
+            if (prev) frame = { rgba: rate === -1 ? new Uint8ClampedArray(prev.rgba.length) : prev.rgba.slice(), label: '' };
+        } else if (chunk.id === 'DBOD') {
+            if (!width || !height) throw new Error(`IFF ${type} has no DGBL (display size) before its DBOD`);
+            if (!elements || !elements.length) throw new Error(`IFF ${type} has no DPEL (pixel elements) before its DBOD`);
+            if (compression !== 0 && compression !== 1 && compression !== 5) {
+                throw new Error(`IFF ${type} compression ${compression} (${DEEP_COMPRESSIONS[compression] || 'unknown'}) isn't supported (none, run length and TVDC are)`);
+            }
+            const w = loc ? loc.w : width, h = loc ? loc.h : height;
+            if (w * h > MAX_PIXELS) throw new Error(`IFF ${type} body too large (${w}x${h})`);
+            const bits = elements.reduce((t, e) => t + e.bits, 0);
+            const pixelBytes = (bits + 7) >> 3;
+            if (!bits || bits > 256) throw new Error(`IFF ${type} with ${bits}-bit pixels isn't supported`);
+            const size = w * h * pixelBytes;
+            let data;
+            if (compression === 5) {
+                if (!table) throw new Error(`IFF ${type} uses TVDC compression but has no TVDC table`);
+                if (elements.some(e => e.bits !== 8)) throw new Error(`IFF ${type} TVDC with elements other than 8 bits isn't supported`);
+                data = unTvdc(bytes, s, s + chunk.size, w, h, elements.length, table);
+            } else if (compression === 1) data = unByteRunPixels(bytes, s, s + chunk.size, size, pixelBytes);
+            else {
+                data = bytes.subarray(s, s + Math.min(chunk.size, size));
+                if (data.length < size) { const full = new Uint8Array(size); full.set(data); data = full; }
+            }
+            if (!frame) frame = { rgba: new Uint8ClampedArray(width * height * 4), label: '' };
+            deepDraw(frame.rgba, width, height, data, w, h, loc ? loc.x : 0, loc ? loc.y : 0, elements, pixelBytes, ignored);
+            drawn = true;
+            bodies++;
+            kinds.add(DEEP_COMPRESSIONS[compression]);
+        }
+    }
+    finish();
+    if (!frames.length) throw new Error(`IFF ${type} has no DBOD (no pixels)`);
+    const names = elements.map(e => DEEP_ELEMENTS[e.type] || `type ${e.type}`);
+    const simple = elements.every(e => /^[RGBACMYK]$/.test(DEEP_ELEMENTS[e.type] || ''));
+    const kind = simple ? `${names.join('')} ${elements.map(e => e.bits).join(':')}` : elements.map((e, i) => `${names[i]} ${e.bits}`).join(', ');
+    const label = [
+        `IFF ${type}, ${kind}`,
+        [...kinds].filter(k => k !== 'none').join(' and '),
+        bodies > frames.length ? `${bodies} bodies` : '',
+        ignored.size ? `${[...ignored].join(', ')} not shown` : '',
+        Math.abs(aspect - 1) > 0.02 ? `pixels ${aspect.toFixed(2)}:1` : '',
+    ].filter(Boolean).join(', ');
+    frames.forEach((f, i) => { f.label = frames.length > 1 ? `${label}, frame ${i + 1} of ${frames.length}` : label; });
+    return { width, height, aspect, frames };
+}
+
+// One body's pixels (w x h of pixelBytes bytes, elements most significant bit
+// first) into the display's rgba at x, y: red, green and blue (or cyan,
+// magenta, yellow and black), alpha (or failing that opacity, or a mask)
+function deepDraw(rgba, width, height, data, w, h, dx, dy, elements, pixelBytes, ignored) {
+    const roles = elements.map(e => DEEP_ELEMENTS[e.type] || `element type ${e.type}`);
+    const alphaRole = ['A', 'premultiplied A', 'opacity', 'mask'].find(r => roles.includes(r));
+    const cmyk = !roles.some(r => r === 'R' || r === 'G' || r === 'B') && roles.some(r => /^[CMYK]$/.test(r));
+    for (const r of roles) if (!/^[RGBCMYK]$/.test(r) && r !== alphaRole) ignored.add(r);
+    // each element's bit offset, and a scale to 8 bits
+    let off = 0;
+    const layout = elements.map((e, i) => {
+        const l = { role: roles[i], off, bits: e.bits, max: 2 ** Math.min(e.bits, 32) - 1 };
+        off += e.bits;
+        return l;
+    });
+    const get = (p, l) => {
+        if (l.bits === 8 && !(l.off & 7)) return data[p + (l.off >> 3)];
+        // the bits most significant first, then scaled to 0..255
+        let v = 0;
+        for (let b = 0; b < l.bits; b++) {
+            const at = l.off + b;
+            v = v * 2 + ((data[p + (at >> 3)] >> (7 - (at & 7))) & 1);
+        }
+        return l.bits > 8 ? Math.floor(v / 2 ** (l.bits - 8)) : Math.round(v * 255 / l.max);
+    };
+    const px = { R: 0, G: 0, B: 0, A: 255, C: 0, M: 0, Y: 0, K: 0 };
+    for (let y = 0; y < h; y++) {
+        const ty = dy + y;
+        if (ty < 0 || ty >= height) continue;
+        for (let x = 0; x < w; x++) {
+            const tx = dx + x;
+            if (tx < 0 || tx >= width) continue;
+            const p = (y * w + x) * pixelBytes;
+            px.R = px.G = px.B = px.C = px.M = px.Y = px.K = 0;
+            let a = 255;
+            for (const l of layout) {
+                if (l.role === alphaRole) a = l.role === 'mask' ? (get(p, l) ? 255 : 0) : get(p, l);
+                else if (l.role in px) px[l.role] = get(p, l);
+            }
+            let r = px.R, g = px.G, b = px.B;
+            if (cmyk) {
+                r = (255 - px.C) * (255 - px.K) / 255;
+                g = (255 - px.M) * (255 - px.K) / 255;
+                b = (255 - px.Y) * (255 - px.K) / 255;
+            }
+            if (alphaRole === 'premultiplied A' && a && a < 255) { r = r * 255 / a; g = g * 255 / a; b = b * 255 / a; }
+            const o = (ty * width + tx) * 4;
+            rgba[o] = r; rgba[o + 1] = g; rgba[o + 2] = b; rgba[o + 3] = a;
+        }
+    }
+}
+
+// { width, height, rgba, aspect, label, frames (DEEP's: [{ rgba, label }]) }
 function ilbmDecode(bytes) {
-    if (!isIlbm(bytes)) throw new Error('Not an IFF picture (no FORM of type ILBM, PBM or ACBM)');
+    if (!isIlbm(bytes)) throw new Error('Not an IFF picture (no FORM of type ILBM, PBM, ACBM, DEEP or TVPP)');
     const type = fourcc(bytes, 8).trim();
+    if (type === 'DEEP' || type === 'TVPP') {
+        const d = deepDecode(bytes, type);
+        return { width: d.width, height: d.height, rgba: d.frames[0].rgba, aspect: d.aspect, label: d.frames[0].label, frames: d.frames };
+    }
     const chunks = readChunks(bytes);
     const bmhd = chunks.BMHD && chunks.BMHD[0];
     if (!bmhd || bmhd.size < 20) throw new Error(`IFF ${type} has no BMHD (bitmap header)`);
@@ -327,8 +547,9 @@ async function rgbaToPng(rgba, width, height) {
     return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('PNG encoding failed'))), 'image/png'));
 }
 
-// The IFF picture at url: { url (a blob: URL of its PNG), aspect (a pixel's
-// width over its height), pages: [{ width, height, label }] }
+// The IFF picture at url: { url (a blob: URL of its PNG; a DEEP file's first
+// frame's), aspect (a pixel's width over its height), pages: [{ width, height,
+// label }] (a DEEP file's frames) }
 function ilbmImage(url) {
     let p = decoded.get(url);
     if (!p) {
@@ -337,17 +558,33 @@ function ilbmImage(url) {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const r = ilbmDecode(new Uint8Array(await resp.arrayBuffer()));
             const png = await rgbaToPng(r.rgba, r.width, r.height);
-            return { url: URL.createObjectURL(png), aspect: r.aspect, pages: [{ width: r.width, height: r.height, label: r.label }] };
+            const frames = r.frames || [r];
+            return {
+                url: URL.createObjectURL(png), aspect: r.aspect,
+                pages: frames.map(f => ({ width: r.width, height: r.height, label: f.label })),
+                // the other frames' pixels, made PNGs when shown (ilbmPage)
+                width: r.width, height: r.height, frames: frames.length > 1 ? frames : null, urls: [],
+            };
         })();
         decoded.set(url, p);
         p.catch(err => { decoded.delete(url); log.warn('IFF picture decode failed:', err); });
         if (decoded.size > 64) {
             const [oldUrl, old] = decoded.entries().next().value;
             decoded.delete(oldUrl);
-            old.then(d => URL.revokeObjectURL(d.url)).catch(() => {});
+            old.then(d => { URL.revokeObjectURL(d.url); d.urls.forEach(u => u && URL.revokeObjectURL(u)); }).catch(() => {});
         }
     }
     return p;
+}
+
+// Frame n of the IFF picture at url (a DEEP file's): { url, pages }, as ilbmImage
+async function ilbmPage(url, n) {
+    const d = await ilbmImage(url);
+    if (!n || !d.frames) return d;
+    const f = d.frames[n];
+    if (!f) throw new Error(`No frame ${n + 1}`);
+    if (!d.urls[n]) d.urls[n] = URL.createObjectURL(await rgbaToPng(f.rgba, d.width, d.height));
+    return { url: d.urls[n], pages: d.pages, aspect: d.aspect };
 }
 
 // Whether the file at url starts like an IFF picture
@@ -368,4 +605,4 @@ function applyPixelAspect(img, aspect) {
     img.style.transform = aspect < 1 ? `scaleX(${aspect})` : `scaleY(${1 / aspect})`;
 }
 
-module.exports = { isIlbmName, isIlbmMaybeName, isIlbm, isIlbmUrl, ilbmDecode, ilbmImage, applyPixelAspect };
+module.exports = { isIlbmName, isIlbmMaybeName, isIlbm, isIlbmUrl, ilbmDecode, ilbmImage, ilbmPage, applyPixelAspect };

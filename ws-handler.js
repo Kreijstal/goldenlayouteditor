@@ -36,7 +36,7 @@ const SERVED_EXTENSIONS = new Set([
   'pcx', 'dcx',
   'sgi', // not .rgb/.rgba/.bw/.int/.inta: raw dumps and other things too (SGI_MAYBE_RE)
   'ras', 'sun', 'im1', 'im8', 'im24', 'im32', // not .rs: Rust far more often (SUN_MAYBE_RE)
-  'ilbm', 'lbm', 'ham', 'ham8', // not .iff: sound, animations... too (IFF_MAYBE_RE)
+  'ilbm', 'lbm', 'ham', 'ham8', 'deep', // not .iff: sound, animations... too (IFF_MAYBE_RE)
   'fits', 'fit', 'fts', // not .fz: Fritzing's sketches too (FZ_MAYBE_RE)
   'jxr', // not .wdp/.hdp: WinDev and Dylan projects too (JXR_MAYBE_RE)
   'bpg', 'flif',
@@ -53,9 +53,9 @@ const SERVED_EXTENSIONS = new Set([
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 // The name a Sun raster shares with Rust: one only if its magic number is 0x59a66a95
 const SUN_MAYBE_RE = /\.rs$/i;
-// IFF's name for anything: an Amiga picture only if its FORM is ILBM, PBM or ACBM
+// IFF's name for anything: an Amiga picture only if its FORM is ILBM, PBM, ACBM, DEEP or TVPP
 const IFF_MAYBE_RE = /\.iff$/i;
-const IFF_PICTURE_TYPES = ['ILBM', 'PBM ', 'ACBM'];
+const IFF_PICTURE_TYPES = ['ILBM', 'PBM ', 'ACBM', 'DEEP', 'TVPP'];
 // fpack's FITS shares .fz with Fritzing's sketch (XML): FITS only if it starts as FITS does
 const FZ_MAYBE_RE = /\.fz$/i;
 // HD Photo's names, which WinDev and Dylan projects have too: JPEG XR only if it starts "II", 0xBC

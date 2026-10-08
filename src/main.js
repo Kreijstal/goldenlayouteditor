@@ -266,7 +266,7 @@ const { isTgaUrl } = require('./tga');
 const { isPcxName, pcxPage } = require('./pcx');
 const { isSgiMaybeName, isSgiUrl } = require('./sgi');
 const { isSunMaybeName, isSunUrl } = require('./sunras');
-const { isIlbmName, isIlbmMaybeName, isIlbmUrl, ilbmImage, applyPixelAspect } = require('./ilbm');
+const { isIlbmName, isIlbmMaybeName, isIlbmUrl, ilbmImage, ilbmPage, applyPixelAspect } = require('./ilbm');
 const { isFitsName, isFzName, isFitsUrl, addFitsControls } = require('./fits');
 const { isJxrMaybeName, isJxrUrl, jxrImage } = require('./jxr');
 const { bpgImage } = require('./bpg');
@@ -909,7 +909,7 @@ class EditorComponent {
             return;
         }
 
-        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
+        const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
         const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
         let ext = fileData.viewType;
@@ -922,7 +922,7 @@ class EditorComponent {
         if (ext === 'binary' && isSgiMaybeName(fileData.name) && await isSgiUrl(url).catch(() => false)) ext = 'sgi';
         // a binary .rs is a Sun raster if its magic number is one (else whatever made Rust's name binary)
         if (ext === 'binary' && isSunMaybeName(fileData.name) && await isSunUrl(url).catch(() => false)) ext = 'ras';
-        // a binary .iff is an Amiga picture if its FORM is ILBM, PBM or ACBM (else 8SVX sound, ANIM...)
+        // a binary .iff is an Amiga picture if its FORM is ILBM, PBM, ACBM, DEEP or TVPP (else 8SVX sound, ANIM...)
         if (ext === 'binary' && isIlbmMaybeName(fileData.name) && await isIlbmUrl(url).catch(() => false)) ext = 'lbm';
         // a binary .fz is FITS (fpack's tiles) if it starts as FITS does (else a Fritzing sketch)
         if (ext === 'binary' && isFzName(fileData.name) && await isFitsUrl(url).catch(() => false)) ext = 'fits';
@@ -972,11 +972,14 @@ class EditorComponent {
                     addTiffPager(this.rootElement, img, url, first.pages, pcxPage);
                 }).catch(() => {});
             }
-            // an Amiga picture: its pixels as wide as they were (10:11 for a PAL/NTSC lores screen...)
+            // an Amiga picture: its pixels as wide as they were (10:11 for a PAL/NTSC lores screen...),
+            // a DEEP file's frames
             if (isIlbmName(fileData.name)) {
                 ilbmImage(url).then(d => {
                     applyPixelAspect(img, d.aspect);
                     img.title = d.pages[0].label;
+                    this.rootElement.style.position = 'relative';
+                    addTiffPager(this.rootElement, img, url, d.pages, ilbmPage);
                 }).catch(() => {});
             }
             // a FITS file: its HDUs and planes, the interval and stretch, the header
@@ -1308,7 +1311,7 @@ class PreviewComponent {
             const fullPath = currentWorkspacePath + '/' + relPath;
             let url = await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(fullPath)).catch(() => '');
 
-            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
+            const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'avif', 'svg', 'tvg', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw']);
             const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg']);
             const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
             let ext = previewFile.viewType;
@@ -1316,7 +1319,7 @@ class PreviewComponent {
             if (ext === 'binary' && isSgiMaybeName(previewFile.name) && await isSgiUrl(url).catch(() => false)) ext = 'sgi';
             // a binary .rs: a Sun raster if its magic number is one
             if (ext === 'binary' && isSunMaybeName(previewFile.name) && await isSunUrl(url).catch(() => false)) ext = 'ras';
-            // a binary .iff: an Amiga picture if its FORM is ILBM, PBM or ACBM
+            // a binary .iff: an Amiga picture if its FORM is ILBM, PBM, ACBM, DEEP or TVPP
             if (ext === 'binary' && isIlbmMaybeName(previewFile.name) && await isIlbmUrl(url).catch(() => false)) ext = 'lbm';
             // a binary .fz: FITS if it starts as FITS does
             if (ext === 'binary' && isFzName(previewFile.name) && await isFitsUrl(url).catch(() => false)) ext = 'fits';
@@ -1740,7 +1743,7 @@ class ProjectFilesComponent {
     _getFileIcon(name) {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
-        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw'];
+        const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'fxg', 'webp', 'ico', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw'];
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
