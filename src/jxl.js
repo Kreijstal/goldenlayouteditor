@@ -23,8 +23,9 @@
 // ERDAS IMAGINE image's first band's PNG, or its three bands', at an overview
 // that fits (src/hfa.js), a Haiku vector icon's SVG (src/hvif.js), a
 // QuickDraw PICT's PNG, by ImageMagick (src/pict.js), a Windows metafile's
-// SVG (WMF, EMF, EMF+; gzipped too), by emf-converter (src/wmf.js), and a
-// Windows cursor's largest image's PNG, an animated cursor's first frame's (src/cur.js).
+// SVG (WMF, EMF, EMF+; gzipped too), by emf-converter (src/wmf.js), a
+// Windows cursor's largest image's PNG, an animated cursor's first frame's (src/cur.js),
+// and an Apple icon image's largest image's (src/icns.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -57,6 +58,7 @@ const { isHvifName, hvifImage } = require('./hvif');
 const { isPictName, isPictUrl, pictImage } = require('./pict');
 const { isWmfName, wmfImage } = require('./wmf');
 const { isCursorName, cursorImage } = require('./cur');
+const { isIcnsName, icnsImage } = require('./icns');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -134,7 +136,7 @@ function jxlDecode(bytes) {
 // overview that fits (ERDAS IMAGINE; an .img that starts "EHFA_HEADER_TAG"), the SVG
 // (Haiku vector icon), the PNG (QuickDraw PICT; a .pic only once known to be one) or the
 // SVG (Windows metafile: .wmf, .emf, gzipped .wmz, .emz) or the largest image's PNG
-// (Windows cursor: .cur, an animated .ani's first frame)
+// (Windows cursor: .cur, an animated .ani's first frame; Apple icon image: .icns)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -166,6 +168,7 @@ async function displayableImageUrl(url, name) {
     if (isHvifName(name)) return (await hvifImage(url)).url;
     if (isWmfName(name)) return (await wmfImage(url)).url;
     if (isCursorName(name)) return (await cursorImage(url)).url;
+    if (isIcnsName(name)) return (await icnsImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

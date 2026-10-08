@@ -41,7 +41,7 @@ const SERVED_EXTENSIONS = new Set([
   'fst', 'ghw',
   'wasm',
   'fla', 'xfl',
-  'png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff',
+  'png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff',
   'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc',
   'heic', 'heif', 'hif',
   'pbm', 'pgm', 'ppm', 'pnm', 'pam',
