@@ -38,6 +38,7 @@ require('./pcap-plugin');
 require('./apng-plugin');
 require('./xcf-plugin');
 require('./kra-plugin');
+require('./pdn-plugin');
 require('./tvg-plugin');
 require('./videocut-plugin');
 require('./model3d-plugin');
@@ -2886,6 +2887,8 @@ const FILE_VIEWERS = [
     { re: /\.xcf$/i, componentType: 'xcfViewer', tag: 'layers', prefix: 'xcf-' },
     // Krita documents: the merged picture, the layers
     { re: /\.kr[az]$/i, componentType: 'kraViewer', tag: 'layers', prefix: 'kra-' },
+    // Paint.NET images: the layers composited, as Paint.NET does
+    { re: /\.pdn$/i, componentType: 'pdnViewer', tag: 'layers', prefix: 'pdn-' },
     { re: /\.tvg$/i, componentType: 'tvgViewer', tag: 'vector', prefix: 'tvg-' },
     // Flash XML Graphics: the picture; the XML stays in the editor, the second choice
     { re: /\.fxg$/i, componentType: 'fxgViewer', tag: 'vector', prefix: 'fxg-' },

@@ -20,6 +20,7 @@ const SERVED_EXTENSIONS = new Set([
   'epub',
   'psd',
   'kra', 'krz',
+  'pdn',
   'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
