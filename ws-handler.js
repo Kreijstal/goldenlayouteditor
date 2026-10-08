@@ -30,6 +30,7 @@ const SERVED_EXTENSIONS = new Set([
   'sqlite', 'sqlite3', 'db',
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
   'dae', 'wrl', 'vrml', '3ds', '3dm', 'skp', // not .ply or .amf: other files' too (shown as models by their first bytes)
+  'zgl', // zlib-compressed XGL (a .xgl stays text)
   'x3dz', 'x3dvz', // gzipped X3D (.x3d, .x3dv, .x3dj stay text)
   'dwg', // AutoCAD drawings (a .dxf stays text, unless it is binary DXF)
   'dgn', // MicroStation drawings

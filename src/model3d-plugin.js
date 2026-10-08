@@ -32,7 +32,7 @@ const CAD_FORMATS = { step: 'step', stp: 'step', p21: 'step', iges: 'iges', igs:
 // Formats three.js has no loader for, converted to GLB by assimpjs (Assimp as WebAssembly, from jsDelivr).
 // On the page itself: Assimp's OpenGEX parser recurses deeper than a worker's stack allows
 const ASSIMPJS_PATH = 'https://cdn.jsdelivr.net/npm/assimpjs@0.0.10/dist/';
-const ASSIMP_FORMATS = { ogex: 'OpenGEX' };
+const ASSIMP_FORMATS = { ogex: 'OpenGEX', xgl: 'XGL', zgl: 'XGL (zlib-compressed)' };
 // PRC (3D PDF's B-rep / tessellation format) converted to GLB by @needle-tools/prc's prc-convert (WebAssembly,
 // from jsDelivr), on the page like Assimp
 const NEEDLE_PRC_URL = 'https://cdn.jsdelivr.net/npm/@needle-tools/prc@0.1.0/dist/index.js';
@@ -51,12 +51,12 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc|skp)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp)$/i;
 // Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert or openskp): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|prc|skp)$/i;
-// Names other files have too: a .ply, .amf, .stp or .prc only when it starts as a PLY, AMF, STEP or PRC file
-// (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs)
-const SHARED_NAME_RE = /\.(ply|amf|stp|prc)$/i;
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp)$/i;
+// Names other files have too: a .ply, .amf, .stp, .prc or .xgl only when it starts as a PLY, AMF, STEP, PRC or
+// XGL file (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs; .xgl: other programs' XML)
+const SHARED_NAME_RE = /\.(ply|amf|stp|prc|xgl)$/i;
 const THUMB_SIZE = 256;
 const THUMB_CACHE_LIMIT = 64;
 
@@ -112,6 +112,11 @@ function looksLikePrc(head) {
     return head.startsWith('PRC');
 }
 
+// An XGL file (RealityWave's 3D XML) is XML whose root is <WORLD>
+function looksLikeXgl(head) {
+    return /^\uFEFF?\s*(<\?xml[^]*?\?>\s*)?(<!--[^]*?-->\s*)*<WORLD[\s>]/i.test(head);
+}
+
 function headText(bytes) {
     return new TextDecoder('latin1').decode(bytes.subarray(0, 1024));
 }
@@ -119,6 +124,7 @@ function headText(bytes) {
 function isSharedModel(name, head) {
     if (/\.stp$/i.test(name)) return looksLikeStep(head);
     if (/\.prc$/i.test(name)) return looksLikePrc(head);
+    if (/\.xgl$/i.test(name)) return looksLikeXgl(head);
     return /\.ply$/i.test(name) ? looksLikePly(head) : looksLikeAmf(head);
 }
 
@@ -212,7 +218,7 @@ function occtRead(format, buffer) {
     });
 }
 
-// --- Assimp (OpenGEX) ---
+// --- Assimp (OpenGEX, XGL) ---
 let _assimp = null;
 
 function ensureAssimp() {
@@ -668,7 +674,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.prc,.skp';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
