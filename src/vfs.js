@@ -26,7 +26,7 @@ const SERVER = 'server';
 const { normalize, split, join, dirname, basename } = LocalFS;
 // Extensions with a dedicated viewer, never read as text (mirrors SERVED_EXTENSIONS in ws-handler.js)
 const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods odg otg fodg xps oxps sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp 3dxml zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
-    + 'png apng jxl jpg jpeg gif bmp ico cur ani icns webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep anim anm fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
+    + 'png apng jxl jpg jpeg gif bmp ico cur ani icns webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep anim anm fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct cals ct1 wmf emf wmz emz mpo jps pns ximg timg mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 // Names an SGI image shares with other files (mirrors SGI_MAYBE_RE in ws-handler.js)
 const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 // ...and a Sun raster (mirrors SUN_MAYBE_RE in ws-handler.js)
@@ -58,6 +58,8 @@ const SAI_MAYBE_RE = /\.sai$/i;
 const CPT_MAYBE_RE = /\.cpt$/i;
 // ...and a DOS EPS, binary though EPS is text (mirrors EPS_MAYBE_RE in ws-handler.js)
 const EPS_MAYBE_RE = /\.(eps|epsf|epsi|ps)$/i;
+// ...and a CALS raster by a calendar's name (mirrors CAL_MAYBE_RE in ws-handler.js)
+const CAL_MAYBE_RE = /\.cal$/i;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_RANGE_READ_SIZE = 8 * 1024 * 1024;
 // "New from template" without a server lists the files in here
@@ -700,14 +702,15 @@ const handlers = {
                     // header and size), an ERDAS IMAGINE one (.img), a Paint Shop Pro image by a makefile's
                     // (.psp, .tub, .pfr), a MediBang Paint / FireAlpaca file by a Developer Studio project's
                     // (.mdp), a PaintTool SAI document by a SAIL program's (.sai, its first page
-                    // deciphered), a Corel PHOTO-PAINT image by a Compact Pro archive's (.cpt) or a DOS EPS: binary,
+                    // deciphered), a Corel PHOTO-PAINT image by a Compact Pro archive's (.cpt), a CALS raster by a
+                    // calendar's (.cal) or a DOS EPS: binary,
                     // its viewer tells by the magic number
                     const sgi = SGI_MAYBE_RE.test(e.name), sun = SUN_MAYBE_RE.test(e.name), iff = IFF_MAYBE_RE.test(e.name), fz = FZ_MAYBE_RE.test(e.name);
                     const jxr = JXR_MAYBE_RE.test(e.name), vicar = VICAR_MAYBE_RE.test(e.name), pgf = PGF_MAYBE_RE.test(e.name);
                     const drw = DRW_MAYBE_RE.test(e.name), gem = GEM_MAYBE_RE.test(e.name), hfa = HFA_MAYBE_RE.test(e.name);
                     const psp = PSP_MAYBE_RE.test(e.name), mdp = MDP_MAYBE_RE.test(e.name), sai = SAI_MAYBE_RE.test(e.name), cpt = CPT_MAYBE_RE.test(e.name);
-                    const eps = EPS_MAYBE_RE.test(e.name);
-                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp || mdp || sai || cpt || eps ? new Uint8Array(await blob.slice(0, sai ? 4096 : 32).arrayBuffer()) : null;
+                    const eps = EPS_MAYBE_RE.test(e.name), cal = CAL_MAYBE_RE.test(e.name);
+                    const head = sgi || sun || iff || fz || jxr || vicar || pgf || drw || gem || hfa || psp || mdp || sai || cpt || eps || cal ? new Uint8Array(await blob.slice(0, sai ? 4096 : 32).arrayBuffer()) : null;
                     if (head && ((sgi && head[0] === 0x01 && head[1] === 0xDA)
                         || (sun && head[0] === 0x59 && head[1] === 0xA6 && head[2] === 0x6A && head[3] === 0x95)
                         || (iff && IFF_PICTURE_RE.test(String.fromCharCode(...head)))
@@ -722,6 +725,7 @@ const handlers = {
                         || (mdp && String.fromCharCode(...head.subarray(0, 8)) === 'mdipack\0')
                         || (sai && isSai(head))
                         || (cpt && /^(CPT[789]FILE|II\*\0|MM\0\*)/.test(String.fromCharCode(...head.subarray(0, 8))))
+                        || (cal && /^(version: MIL-STD-1840|srcdocid:|rorient:)/.test(String.fromCharCode(...head)))
                         || (eps && head[0] === 0xC5 && head[1] === 0xD0 && head[2] === 0xD3 && head[3] === 0xC6))) children.push({ name: e.name, type: 'file', viewType: 'binary', content: null, size: e.size });
                     else children.push({ name: e.name, type: 'file', content: await blob.text() });
                 }
