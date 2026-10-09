@@ -2,15 +2,13 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-generic claims: **515**. Shared: **200**. Missing suffixes: **315**.
+Our explicit viewer/native/archive handling: **624** suffixes. Upstream non-generic claims: **515**. Shared: **230**. Missing suffixes: **285**.
 
 ## Missing extensions
 
 | Extension | Upstream handlers |
 | --- | --- |
 | `.3g2` | open-file-viewer: video |
-| `.7z` | flyfish: archive, jdeworks: archive, open-file-viewer: archive |
-| `.aab` | jdeworks: binary/apk |
 | `.abc` | jdeworks: text/abc |
 | `.abr` | flyfish: photoshop-resource-design |
 | `.acf` | jdeworks: text/acf |
@@ -22,7 +20,6 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.als` | jdeworks: text/als |
 | `.amr` | open-file-viewer: audio |
 | `.ans` | jdeworks: text/asciiart |
-| `.ar` | flyfish: archive |
 | `.arrow` | jdeworks: binary/arrow |
 | `.ase` | flyfish: adobe-palette-design |
 | `.asf` | jdeworks: VIDEO |
@@ -40,14 +37,8 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.blend2` | jdeworks: binary/blend |
 | `.bson` | jdeworks: binary/bson |
 | `.bsp` | jdeworks: binary/bsp |
-| `.bz2` | flyfish: archive, jdeworks: archive, open-file-viewer: archive |
-| `.bzip2` | flyfish: archive |
-| `.cab` | flyfish: archive |
 | `.caf` | open-file-viewer: audio |
-| `.cb7` | jdeworks: ebook/comic |
 | `.cbor` | jdeworks: binary/cbor |
-| `.cbr` | flyfish: archive, jdeworks: ebook/comic |
-| `.cbt` | jdeworks: ebook/comic |
 | `.cer` | jdeworks: text/pem |
 | `.cfg` | jdeworks: text/ini |
 | `.cif` | jdeworks: text/cif |
@@ -56,14 +47,12 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.cms` | flyfish: signature |
 | `.cmsc` | flyfish: signature |
 | `.conf` | jdeworks: text/ini |
-| `.cpio` | flyfish: archive |
 | `.crash` | jdeworks: text/crash |
 | `.crt` | jdeworks: text/pem |
 | `.csh` | flyfish: photoshop-resource-design |
 | `.csproj` | jdeworks: text/xml |
 | `.db3` | jdeworks: sqlite |
 | `.dbf` | flyfish: spreadsheet-dbf, jdeworks: binary/dbf |
-| `.deb` | jdeworks: binary/deb |
 | `.der` | jdeworks: text/pem |
 | `.diff` | jdeworks: text/patch |
 | `.dio` | flyfish: drawing, open-file-viewer: drawing |
@@ -116,7 +105,6 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.gpkg` | jdeworks: sqlite |
 | `.grd` | flyfish: photoshop-resource-design |
 | `.gtf` | jdeworks: text/bio, jdeworks: text/gff |
-| `.gzip` | flyfish: archive |
 | `.h2drumkit` | jdeworks: text/hydrogen |
 | `.h2pattern` | jdeworks: text/hydrogen |
 | `.h2song` | jdeworks: text/hydrogen |
@@ -151,14 +139,11 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.kube` | jdeworks: text/kubeconfig |
 | `.kubeconfig` | jdeworks: text/kubeconfig |
 | `.ldjson` | jdeworks: text/jsonl |
-| `.lha` | flyfish: archive |
 | `.lnk` | jdeworks: binary/lnk |
 | `.lot` | jdeworks: text/json |
 | `.lrc` | flyfish: code |
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
-| `.lzh` | flyfish: archive |
-| `.lzma` | flyfish: archive |
 | `.m2v` | jdeworks: VIDEO |
 | `.m3u8` | flyfish: video, open-file-viewer: video |
 | `.m4b` | jdeworks: AUDIO |
@@ -167,9 +152,6 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.mat` | jdeworks: binary/mat |
 | `.mbox` | flyfish: email, jdeworks: mbox, open-file-viewer: email |
 | `.mbtiles` | jdeworks: binary/mbtiles |
-| `.mcpack` | jdeworks: binary/mcworld |
-| `.mctemplate` | jdeworks: binary/mcworld |
-| `.mcworld` | jdeworks: binary/mcworld |
 | `.mdmp` | jdeworks: binary/dmp |
 | `.mdown` | jdeworks: markdown |
 | `.mermaid` | flyfish: drawing |
@@ -239,13 +221,11 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.pyo` | jdeworks: binary/pyc |
 | `.qfx` | jdeworks: text/ofx, jdeworks: text/qif |
 | `.qif` | jdeworks: text/qif |
-| `.rar` | flyfish: archive, jdeworks: archive, open-file-viewer: archive |
 | `.rdp` | jdeworks: text/rdp |
 | `.reg` | jdeworks: text/reg |
 | `.resx` | jdeworks: text/xml |
 | `.rm` | jdeworks: AUDIO |
 | `.rmvb` | jdeworks: AUDIO |
-| `.rpm` | jdeworks: binary/rpm |
 | `.rss` | jdeworks: text/xml |
 | `.rtf` | flyfish: open-document, jdeworks: text/rtf, open-file-viewer: office |
 | `.s3db` | jdeworks: sqlite |
@@ -263,7 +243,6 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
 | `.snd` | open-file-viewer: audio |
-| `.srpm` | jdeworks: binary/rpm |
 | `.srt` | jdeworks: text/subtitle |
 | `.ssh-config` | jdeworks: text/ssh-config |
 | `.sta` | jdeworks: text/mt940 |
@@ -271,11 +250,7 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.stringsdict` | jdeworks: text/strings |
 | `.svgz` | jdeworks: image/svg |
 | `.tab` | jdeworks: text/csv |
-| `.tar.bz2` | jdeworks: archive |
-| `.tar.xz` | jdeworks: archive |
 | `.targets` | jdeworks: text/xml |
-| `.tbz` | flyfish: archive |
-| `.tbz2` | flyfish: archive, jdeworks: archive |
 | `.text` | jdeworks: text/yaml |
 | `.thrift` | jdeworks: text/thrift |
 | `.tldraw` | open-file-viewer: drawing |
@@ -287,9 +262,7 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.tsr` | flyfish: signature |
 | `.tst` | flyfish: signature |
 | `.txt` | jdeworks: text/chat, jdeworks: text/yaml |
-| `.txz` | flyfish: archive, jdeworks: archive |
 | `.typst` | flyfish: typst |
-| `.udeb` | jdeworks: binary/deb |
 | `.umd` | flyfish: umd |
 | `.url` | jdeworks: text/url |
 | `.vhd` | jdeworks: emulator/v86 |
@@ -308,7 +281,6 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.wsdl` | jdeworks: text/xml |
 | `.x_b` | open-file-viewer: cad |
 | `.x_t` | open-file-viewer: cad |
-| `.xar` | flyfish: archive |
 | `.xd` | flyfish: adobe-xd-design |
 | `.xhtml` | jdeworks: html |
 | `.xla` | flyfish: spreadsheet-openxml |
@@ -319,10 +291,8 @@ Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-gene
 | `.xsd` | jdeworks: text/xml |
 | `.xsl` | jdeworks: text/xml |
 | `.xslt` | jdeworks: text/xml |
-| `.xz` | flyfish: archive, jdeworks: archive, open-file-viewer: archive |
 | `.yaml` | jdeworks: text/yaml |
 | `.yml` | jdeworks: text/yaml |
-| `.zipx` | flyfish: archive |
 
 ## Shared suffixes with missing capabilities
 

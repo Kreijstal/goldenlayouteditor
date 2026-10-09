@@ -12,8 +12,10 @@
     "3fr",
     "3gp",
     "3mf",
+    "7z",
     "a26",
     "a78",
+    "aab",
     "aac",
     "aar",
     "afdesign",
@@ -27,6 +29,7 @@
     "anm",
     "apk",
     "apng",
+    "ar",
     "art",
     "arw",
     "asc",
@@ -43,9 +46,15 @@
     "brep",
     "bundle",
     "bw",
+    "bz2",
+    "bzip2",
+    "cab",
     "cal",
     "cals",
     "cap",
+    "cb7",
+    "cbr",
+    "cbt",
     "cbz",
     "cd5",
     "cdr",
@@ -57,6 +66,7 @@
     "cmp",
     "cmx",
     "col",
+    "cpio",
     "cpt",
     "cr2",
     "cr3",
@@ -74,6 +84,7 @@
     "dcm",
     "dcx",
     "dds",
+    "deb",
     "debug",
     "deep",
     "dgn",
@@ -266,6 +277,7 @@
     "gtp",
     "gts",
     "gz",
+    "gzip",
     "h5",
     "ham",
     "ham8",
@@ -349,13 +361,19 @@
     "latex",
     "lbm",
     "ldt",
+    "lha",
     "lnx",
     "lottie",
     "ltx",
+    "lzh",
+    "lzma",
     "m2ts",
     "m4a",
     "m4v",
     "mathml",
+    "mcpack",
+    "mctemplate",
+    "mcworld",
     "md",
     "mdp",
     "mef",
@@ -470,11 +488,13 @@
     "qcow2",
     "qoi",
     "raf",
+    "rar",
     "ras",
     "rgb",
     "rgba",
     "rgbe",
     "rip",
+    "rpm",
     "rs",
     "rw2",
     "rwl",
@@ -499,6 +519,7 @@
     "sqlite3",
     "sr2",
     "srf",
+    "srpm",
     "srw",
     "stc",
     "step",
@@ -510,8 +531,12 @@
     "swc",
     "swf",
     "tar",
+    "tar.bz2",
     "tar.gz",
+    "tar.xz",
     "tar.zst",
+    "tbz",
+    "tbz2",
     "tex",
     "tga",
     "tgz",
@@ -526,8 +551,10 @@
     "ttf",
     "tub",
     "tvg",
+    "txz",
     "typ",
     "tzst",
+    "udeb",
     "unf",
     "unif",
     "usd",
@@ -575,6 +602,7 @@
     "x3dvz",
     "x3dz",
     "xapk",
+    "xar",
     "xbm",
     "xcf",
     "xfl",
@@ -595,9 +623,11 @@
     "xwd",
     "xyz",
     "xyze",
+    "xz",
     "z64",
     "zgl",
     "zip",
+    "zipx",
     "zst"
   ],
   "their_formats": [
@@ -1119,8 +1149,6 @@
   ],
   "missing": [
     "3g2",
-    "7z",
-    "aab",
     "abc",
     "abr",
     "acf",
@@ -1132,7 +1160,6 @@
     "als",
     "amr",
     "ans",
-    "ar",
     "arrow",
     "ase",
     "asf",
@@ -1150,14 +1177,8 @@
     "blend2",
     "bson",
     "bsp",
-    "bz2",
-    "bzip2",
-    "cab",
     "caf",
-    "cb7",
     "cbor",
-    "cbr",
-    "cbt",
     "cer",
     "cfg",
     "cif",
@@ -1166,14 +1187,12 @@
     "cms",
     "cmsc",
     "conf",
-    "cpio",
     "crash",
     "crt",
     "csh",
     "csproj",
     "db3",
     "dbf",
-    "deb",
     "der",
     "diff",
     "dio",
@@ -1226,7 +1245,6 @@
     "gpkg",
     "grd",
     "gtf",
-    "gzip",
     "h2drumkit",
     "h2pattern",
     "h2song",
@@ -1261,14 +1279,11 @@
     "kube",
     "kubeconfig",
     "ldjson",
-    "lha",
     "lnk",
     "lot",
     "lrc",
     "lrf",
     "lrx",
-    "lzh",
-    "lzma",
     "m2v",
     "m3u8",
     "m4b",
@@ -1277,9 +1292,6 @@
     "mat",
     "mbox",
     "mbtiles",
-    "mcpack",
-    "mctemplate",
-    "mcworld",
     "mdmp",
     "mdown",
     "mermaid",
@@ -1349,13 +1361,11 @@
     "pyo",
     "qfx",
     "qif",
-    "rar",
     "rdp",
     "reg",
     "resx",
     "rm",
     "rmvb",
-    "rpm",
     "rss",
     "rtf",
     "s3db",
@@ -1373,7 +1383,6 @@
     "sldasm",
     "sldprt",
     "snd",
-    "srpm",
     "srt",
     "ssh-config",
     "sta",
@@ -1381,11 +1390,7 @@
     "stringsdict",
     "svgz",
     "tab",
-    "tar.bz2",
-    "tar.xz",
     "targets",
-    "tbz",
-    "tbz2",
     "text",
     "thrift",
     "tldraw",
@@ -1397,9 +1402,7 @@
     "tsr",
     "tst",
     "txt",
-    "txz",
     "typst",
-    "udeb",
     "umd",
     "url",
     "vhd",
@@ -1418,7 +1421,6 @@
     "wsdl",
     "x_b",
     "x_t",
-    "xar",
     "xd",
     "xhtml",
     "xla",
@@ -1429,21 +1431,22 @@
     "xsd",
     "xsl",
     "xslt",
-    "xz",
     "yaml",
-    "yml",
-    "zipx"
+    "yml"
   ],
   "shared": [
     "3dm",
     "3ds",
     "3gp",
     "3mf",
+    "7z",
+    "aab",
     "aac",
     "ai",
     "amf",
     "apk",
     "apng",
+    "ar",
     "asc",
     "avi",
     "avif",
@@ -1453,15 +1456,23 @@
     "bpmn",
     "brep",
     "bundle",
+    "bz2",
+    "bzip2",
+    "cab",
     "cap",
+    "cb7",
+    "cbr",
+    "cbt",
     "cbz",
     "chm",
     "clip",
+    "cpio",
     "csv",
     "cur",
     "dae",
     "db",
     "dcm",
+    "deb",
     "dicom",
     "djv",
     "djvu",
@@ -1498,6 +1509,7 @@
     "gpg",
     "gpx",
     "gz",
+    "gzip",
     "h5",
     "hdf",
     "hdf5",
@@ -1531,9 +1543,15 @@
     "kicad_sch",
     "kmz",
     "kra",
+    "lha",
+    "lzh",
+    "lzma",
     "m2ts",
     "m4a",
     "m4v",
+    "mcpack",
+    "mctemplate",
+    "mcworld",
     "md",
     "mid",
     "midi",
@@ -1579,28 +1597,37 @@
     "psb",
     "psd",
     "qcow2",
+    "rar",
+    "rpm",
     "sfc",
     "skp",
     "smc",
     "so",
     "sqlite",
     "sqlite3",
+    "srpm",
     "step",
     "stl",
     "stp",
     "svg",
     "swf",
     "tar",
+    "tar.bz2",
     "tar.gz",
+    "tar.xz",
     "tar.zst",
+    "tbz",
+    "tbz2",
     "tgz",
     "tif",
     "tiff",
     "ts",
     "tsv",
     "ttf",
+    "txz",
     "typ",
     "tzst",
+    "udeb",
     "usd",
     "usda",
     "usdc",
@@ -1623,6 +1650,7 @@
     "woff2",
     "wrl",
     "xapk",
+    "xar",
     "xfl",
     "xls",
     "xlsb",
@@ -1632,8 +1660,10 @@
     "xml",
     "xps",
     "xyz",
+    "xz",
     "z64",
     "zip",
+    "zipx",
     "zst"
   ],
   "ours_only": [
@@ -2142,24 +2172,17 @@
   ],
   "missing_by_project": {
     "flyfish": [
-      "7z",
       "abr",
       "aco",
       "ait",
-      "ar",
       "ase",
       "asice",
       "asics",
       "asl",
       "avro",
-      "bz2",
-      "bzip2",
-      "cab",
-      "cbr",
       "class",
       "cms",
       "cmsc",
-      "cpio",
       "csh",
       "dbf",
       "dio",
@@ -2176,7 +2199,6 @@
       "gds",
       "geojson",
       "grd",
-      "gzip",
       "hex",
       "icml",
       "idms",
@@ -2186,10 +2208,7 @@
       "jws",
       "key",
       "kml",
-      "lha",
       "lrc",
-      "lzh",
-      "lzma",
       "m3u8",
       "macho",
       "markdown",
@@ -2221,19 +2240,15 @@
       "ppt",
       "psdt",
       "puml",
-      "rar",
       "rtf",
       "sce",
       "scs",
       "shp",
       "sig",
-      "tbz",
-      "tbz2",
       "tsd",
       "tsq",
       "tsr",
       "tst",
-      "txz",
       "typst",
       "umd",
       "weba",
@@ -2242,19 +2257,14 @@
       "wp5",
       "wp6",
       "wpd",
-      "xar",
       "xd",
       "xla",
       "xlam",
       "xlt",
       "xltm",
-      "xltx",
-      "xz",
-      "zipx"
+      "xltx"
     ],
     "jdeworks": [
-      "7z",
-      "aab",
       "abc",
       "acf",
       "als",
@@ -2271,11 +2281,7 @@
       "blend2",
       "bson",
       "bsp",
-      "bz2",
-      "cb7",
       "cbor",
-      "cbr",
-      "cbt",
       "cer",
       "cfg",
       "cif",
@@ -2287,7 +2293,6 @@
       "csproj",
       "db3",
       "dbf",
-      "deb",
       "der",
       "diff",
       "divx",
@@ -2362,9 +2367,6 @@
       "mat",
       "mbox",
       "mbtiles",
-      "mcpack",
-      "mctemplate",
-      "mcworld",
       "mdmp",
       "mdown",
       "mkd",
@@ -2409,13 +2411,11 @@
       "pyo",
       "qfx",
       "qif",
-      "rar",
       "rdp",
       "reg",
       "resx",
       "rm",
       "rmvb",
-      "rpm",
       "rss",
       "rtf",
       "s3db",
@@ -2425,7 +2425,6 @@
       "shp",
       "sketch",
       "sl3",
-      "srpm",
       "srt",
       "ssh-config",
       "sta",
@@ -2433,18 +2432,13 @@
       "stringsdict",
       "svgz",
       "tab",
-      "tar.bz2",
-      "tar.xz",
       "targets",
-      "tbz2",
       "text",
       "thrift",
       "toml",
       "topojson",
       "torrent",
       "txt",
-      "txz",
-      "udeb",
       "url",
       "vhd",
       "vob",
@@ -2458,20 +2452,17 @@
       "xsd",
       "xsl",
       "xslt",
-      "xz",
       "yaml",
       "yml"
     ],
     "open-file-viewer": [
       "3g2",
-      "7z",
       "aif",
       "aifc",
       "aiff",
       "amr",
       "au",
       "avro",
-      "bz2",
       "caf",
       "dio",
       "doc",
@@ -2512,7 +2503,6 @@
       "pps",
       "ppsm",
       "ppt",
-      "rar",
       "rtf",
       "sab",
       "sat",
@@ -2530,8 +2520,7 @@
       "x_t",
       "xlt",
       "xltm",
-      "xltx",
-      "xz"
+      "xltx"
     ]
   },
   "missing_evidence": {
@@ -2547,40 +2536,6 @@
         "owner": "video",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
         "line": 1
-      }
-    ],
-    "7z": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 7
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/archive.ts",
-        "line": 11
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "aab": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/apk",
-        "source": "../jdeworks-file-viewer/docs/types/binary/apk/detect.js",
-        "line": 7
       }
     ],
     "abc": [
@@ -2693,14 +2648,6 @@
         "owner": "text/asciiart",
         "source": "../jdeworks-file-viewer/docs/types/text/asciiart/detect.js",
         "line": 12
-      }
-    ],
-    "ar": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
       }
     ],
     "arrow": [
@@ -2905,48 +2852,6 @@
         "line": 28
       }
     ],
-    "bz2": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 7
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/archive.ts",
-        "line": 11
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "bzip2": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "cab": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "caf": [
       {
         "project": "open-file-viewer",
@@ -2961,42 +2866,12 @@
         "line": 1
       }
     ],
-    "cb7": [
-      {
-        "project": "jdeworks",
-        "owner": "ebook/comic",
-        "source": "../jdeworks-file-viewer/docs/types/ebook/comic/detect.js",
-        "line": 8
-      }
-    ],
     "cbor": [
       {
         "project": "jdeworks",
         "owner": "binary/cbor",
         "source": "../jdeworks-file-viewer/docs/types/binary/cbor/detect.js",
         "line": 26
-      }
-    ],
-    "cbr": [
-      {
-        "project": "jdeworks",
-        "owner": "ebook/comic",
-        "source": "../jdeworks-file-viewer/docs/types/ebook/comic/detect.js",
-        "line": 8
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "cbt": [
-      {
-        "project": "jdeworks",
-        "owner": "ebook/comic",
-        "source": "../jdeworks-file-viewer/docs/types/ebook/comic/detect.js",
-        "line": 8
       }
     ],
     "cer": [
@@ -3069,14 +2944,6 @@
         "line": 8
       }
     ],
-    "cpio": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "crash": [
       {
         "project": "jdeworks",
@@ -3129,14 +2996,6 @@
         "owner": "spreadsheet-dbf",
         "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
-      }
-    ],
-    "deb": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/deb",
-        "source": "../jdeworks-file-viewer/docs/types/binary/deb/detect.js",
-        "line": 7
       }
     ],
     "der": [
@@ -3861,14 +3720,6 @@
         "line": 7
       }
     ],
-    "gzip": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "h2drumkit": [
       {
         "project": "jdeworks",
@@ -4225,14 +4076,6 @@
         "line": 5
       }
     ],
-    "lha": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "lnk": [
       {
         "project": "jdeworks",
@@ -4277,22 +4120,6 @@
         "owner": "ebook/lrf",
         "source": "../jdeworks-file-viewer/docs/types/ebook/lrf/detect.js",
         "line": 8
-      }
-    ],
-    "lzh": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "lzma": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
       }
     ],
     "m2v": [
@@ -4393,30 +4220,6 @@
         "owner": "binary/mbtiles",
         "source": "../jdeworks-file-viewer/docs/types/binary/mbtiles/detect.js",
         "line": 12
-      }
-    ],
-    "mcpack": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/mcworld",
-        "source": "../jdeworks-file-viewer/docs/types/binary/mcworld/detect.js",
-        "line": 4
-      }
-    ],
-    "mctemplate": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/mcworld",
-        "source": "../jdeworks-file-viewer/docs/types/binary/mcworld/detect.js",
-        "line": 4
-      }
-    ],
-    "mcworld": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/mcworld",
-        "source": "../jdeworks-file-viewer/docs/types/binary/mcworld/detect.js",
-        "line": 4
       }
     ],
     "mdmp": [
@@ -5223,32 +5026,6 @@
         "line": 7
       }
     ],
-    "rar": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 7
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/archive.ts",
-        "line": 11
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
     "rdp": [
       {
         "project": "jdeworks",
@@ -5287,14 +5064,6 @@
         "owner": "AUDIO",
         "source": "../jdeworks-file-viewer/docs/types/media/medialib.js",
         "line": 13
-      }
-    ],
-    "rpm": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/rpm",
-        "source": "../jdeworks-file-viewer/docs/types/binary/rpm/detect.js",
-        "line": 4
       }
     ],
     "rss": [
@@ -5511,14 +5280,6 @@
         "line": 1
       }
     ],
-    "srpm": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/rpm",
-        "source": "../jdeworks-file-viewer/docs/types/binary/rpm/detect.js",
-        "line": 4
-      }
-    ],
     "srt": [
       {
         "project": "jdeworks",
@@ -5587,50 +5348,12 @@
         "line": 7
       }
     ],
-    "tar.bz2": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 10
-      }
-    ],
-    "tar.xz": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 10
-      }
-    ],
     "targets": [
       {
         "project": "jdeworks",
         "owner": "text/xml",
         "source": "../jdeworks-file-viewer/docs/types/text/xml/detect.js",
         "line": 7
-      }
-    ],
-    "tbz": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "tbz2": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 7
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
       }
     ],
     "text": [
@@ -5745,34 +5468,12 @@
         "line": 22
       }
     ],
-    "txz": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 7
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "typst": [
       {
         "project": "flyfish",
         "owner": "typst",
         "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
-      }
-    ],
-    "udeb": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/deb",
-        "source": "../jdeworks-file-viewer/docs/types/binary/deb/detect.js",
-        "line": 7
       }
     ],
     "umd": [
@@ -5979,14 +5680,6 @@
         "line": 1
       }
     ],
-    "xar": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "xd": [
       {
         "project": "flyfish",
@@ -6103,32 +5796,6 @@
         "line": 7
       }
     ],
-    "xz": [
-      {
-        "project": "jdeworks",
-        "owner": "archive",
-        "source": "../jdeworks-file-viewer/docs/types/archive/detect.js",
-        "line": 7
-      },
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/archive.ts",
-        "line": 11
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "archive",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
     "yaml": [
       {
         "project": "jdeworks",
@@ -6144,14 +5811,6 @@
         "source": "../jdeworks-file-viewer/docs/types/text/yaml/detect.js",
         "line": 6
       }
-    ],
-    "zipx": [
-      {
-        "project": "flyfish",
-        "owner": "archive",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
     ]
   },
   "our_evidence": [
@@ -6160,7 +5819,7 @@
       "owner": "IMAGE_EXTS",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 970,
+      "line": 971,
       "extensions": [
         "3fr",
         "ani",
@@ -6303,7 +5962,7 @@
       "owner": "VIDEO_EXTS",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 971,
+      "line": 972,
       "extensions": [
         "m4v",
         "mkv",
@@ -6319,23 +5978,12 @@
       "owner": "AUDIO_EXTS",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 972,
+      "line": 973,
       "extensions": [
         "flac",
         "mp3",
         "ogg",
         "wav"
-      ],
-      "filenames": []
-    },
-    {
-      "project": "ours",
-      "owner": "core media/PDF rendering",
-      "kind": "viewer",
-      "source": "src/main.js",
-      "line": 975,
-      "extensions": [
-        "pic"
       ],
       "filenames": []
     },
@@ -6352,10 +6000,21 @@
     },
     {
       "project": "ours",
+      "owner": "core media/PDF rendering",
+      "kind": "viewer",
+      "source": "src/main.js",
+      "line": 977,
+      "extensions": [
+        "pic"
+      ],
+      "filenames": []
+    },
+    {
+      "project": "ours",
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1004,
+      "line": 1005,
       "extensions": [
         "cal"
       ],
@@ -6368,7 +6027,7 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1006,
+      "line": 1007,
       "extensions": [
         "cin"
       ],
@@ -6381,7 +6040,7 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1008,
+      "line": 1009,
       "extensions": [
         "mng"
       ],
@@ -6394,7 +6053,7 @@
       "owner": "core media/PDF rendering",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1233,
+      "line": 1234,
       "extensions": [
         "pdf"
       ],
@@ -6405,7 +6064,7 @@
       "owner": "core media/PDF rendering",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1233,
+      "line": 1234,
       "extensions": [
         "ai"
       ],
@@ -6416,7 +6075,7 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1260,
+      "line": 1261,
       "extensions": [
         "ai"
       ],
@@ -6429,7 +6088,7 @@
       "owner": "IMAGE_EXTS",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1490,
+      "line": 1491,
       "extensions": [
         "3fr",
         "ani",
@@ -6572,7 +6231,7 @@
       "owner": "VIDEO_EXTS",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1491,
+      "line": 1492,
       "extensions": [
         "mp4",
         "ogg",
@@ -6585,7 +6244,7 @@
       "owner": "AUDIO_EXTS",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1492,
+      "line": 1493,
       "extensions": [
         "flac",
         "mp3",
@@ -6599,7 +6258,7 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1519,
+      "line": 1520,
       "extensions": [
         "cin"
       ],
@@ -6612,7 +6271,7 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 1521,
+      "line": 1522,
       "extensions": [
         "mng"
       ],
@@ -6625,35 +6284,65 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 2954,
+      "line": 2955,
       "extensions": [
+        "7z",
+        "aab",
+        "ar",
         "bundle",
+        "bz2",
+        "bzip2",
+        "cab",
+        "cb7",
+        "cbr",
+        "cbt",
         "cd5",
+        "cpio",
+        "deb",
         "fb2",
         "fbx",
+        "gzip",
         "h5",
         "hdf",
         "hdf5",
         "he5",
         "idml",
         "ifc",
+        "lha",
+        "lzh",
+        "lzma",
+        "mcpack",
+        "mctemplate",
+        "mcworld",
         "nc",
         "nc4",
         "netcdf",
         "npy",
         "npz",
         "pcd",
+        "rar",
+        "rpm",
+        "srpm",
+        "tar.bz2",
+        "tar.xz",
+        "tbz",
+        "tbz2",
+        "txz",
+        "udeb",
         "usd",
         "usda",
         "usdc",
         "usdz",
         "vtk",
         "vtp",
+        "xar",
         "xmind",
-        "xyz"
+        "xyz",
+        "xz",
+        "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$",
+      "pattern": "\\.(7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$",
       "flags": "i"
     },
     {
@@ -6661,35 +6350,65 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 2964,
+      "line": 2965,
       "extensions": [
+        "7z",
+        "aab",
+        "ar",
         "bundle",
+        "bz2",
+        "bzip2",
+        "cab",
+        "cb7",
+        "cbr",
+        "cbt",
         "cd5",
+        "cpio",
+        "deb",
         "fb2",
         "fbx",
+        "gzip",
         "h5",
         "hdf",
         "hdf5",
         "he5",
         "idml",
         "ifc",
+        "lha",
+        "lzh",
+        "lzma",
+        "mcpack",
+        "mctemplate",
+        "mcworld",
         "nc",
         "nc4",
         "netcdf",
         "npy",
         "npz",
         "pcd",
+        "rar",
+        "rpm",
+        "srpm",
+        "tar.bz2",
+        "tar.xz",
+        "tbz",
+        "tbz2",
+        "txz",
+        "udeb",
         "usd",
         "usda",
         "usdc",
         "usdz",
         "vtk",
         "vtp",
+        "xar",
         "xmind",
-        "xyz"
+        "xyz",
+        "xz",
+        "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$",
+      "pattern": "\\.(7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$",
       "flags": "i"
     },
     {
@@ -6697,35 +6416,65 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 2980,
+      "line": 2981,
       "extensions": [
+        "7z",
+        "aab",
+        "ar",
         "bundle",
+        "bz2",
+        "bzip2",
+        "cab",
+        "cb7",
+        "cbr",
+        "cbt",
         "cd5",
+        "cpio",
+        "deb",
         "fb2",
         "fbx",
+        "gzip",
         "h5",
         "hdf",
         "hdf5",
         "he5",
         "idml",
         "ifc",
+        "lha",
+        "lzh",
+        "lzma",
+        "mcpack",
+        "mctemplate",
+        "mcworld",
         "nc",
         "nc4",
         "netcdf",
         "npy",
         "npz",
         "pcd",
+        "rar",
+        "rpm",
+        "srpm",
+        "tar.bz2",
+        "tar.xz",
+        "tbz",
+        "tbz2",
+        "txz",
+        "udeb",
         "usd",
         "usda",
         "usdc",
         "usdz",
         "vtk",
         "vtp",
+        "xar",
         "xmind",
-        "xyz"
+        "xyz",
+        "xz",
+        "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$",
+      "pattern": "\\.(7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$",
       "flags": "i"
     },
     {
@@ -6733,7 +6482,7 @@
       "owner": "core filename handling",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3111,
+      "line": 3113,
       "extensions": [
         "fz"
       ],
@@ -6743,10 +6492,52 @@
     },
     {
       "project": "ours",
+      "owner": "archiveReader",
+      "kind": "viewer",
+      "source": "src/main.js",
+      "line": 3023,
+      "extensions": [
+        "7z",
+        "aab",
+        "ar",
+        "bz2",
+        "bzip2",
+        "cab",
+        "cb7",
+        "cbr",
+        "cbt",
+        "cpio",
+        "deb",
+        "gzip",
+        "lha",
+        "lzh",
+        "lzma",
+        "mcpack",
+        "mctemplate",
+        "mcworld",
+        "rar",
+        "rpm",
+        "srpm",
+        "tar.bz2",
+        "tar.xz",
+        "tbz",
+        "tbz2",
+        "txz",
+        "udeb",
+        "xar",
+        "xz",
+        "zipx"
+      ],
+      "filenames": [],
+      "pattern": "\\.(7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|tar\\.bz2|tar\\.xz|gzip|aab|mcpack|mctemplate|mcworld)$",
+      "flags": "i"
+    },
+    {
+      "project": "ours",
       "owner": "scientificViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3022,
+      "line": 3024,
       "extensions": [
         "h5",
         "hdf",
@@ -6767,7 +6558,7 @@
       "owner": "bundleViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3023,
+      "line": 3025,
       "extensions": [
         "bundle"
       ],
@@ -6780,7 +6571,7 @@
       "owner": "idmlViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3024,
+      "line": 3026,
       "extensions": [
         "idml"
       ],
@@ -6793,7 +6584,7 @@
       "owner": "vcardViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3025,
+      "line": 3027,
       "extensions": [
         "vcard",
         "vcf"
@@ -6807,7 +6598,7 @@
       "owner": "calendarViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3026,
+      "line": 3028,
       "extensions": [
         "ical",
         "ics"
@@ -6821,7 +6612,7 @@
       "owner": "fb2Viewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3027,
+      "line": 3029,
       "extensions": [
         "fb2"
       ],
@@ -6834,7 +6625,7 @@
       "owner": "xmindViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3028,
+      "line": 3030,
       "extensions": [
         "xmind"
       ],
@@ -6847,7 +6638,7 @@
       "owner": "cd5Viewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3029,
+      "line": 3031,
       "extensions": [
         "cd5"
       ],
@@ -6860,7 +6651,7 @@
       "owner": "povrayViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3030,
+      "line": 3032,
       "extensions": [
         "pov"
       ],
@@ -6873,7 +6664,7 @@
       "owner": "affinityPreview",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3031,
+      "line": 3033,
       "extensions": [
         "afdesign",
         "afphoto",
@@ -6888,7 +6679,7 @@
       "owner": "ripViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3032,
+      "line": 3034,
       "extensions": [
         "rip"
       ],
@@ -6901,7 +6692,7 @@
       "owner": "naplpsViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3033,
+      "line": 3035,
       "extensions": [
         "nap",
         "naplps"
@@ -6915,7 +6706,7 @@
       "owner": "vsdxViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3034,
+      "line": 3036,
       "extensions": [
         "vsd",
         "vsdx"
@@ -6929,7 +6720,7 @@
       "owner": "ruffleSwf",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3035,
+      "line": 3037,
       "extensions": [
         "swf"
       ],
@@ -6942,7 +6733,7 @@
       "owner": "epubReader",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3036,
+      "line": 3038,
       "extensions": [
         "epub"
       ],
@@ -6955,7 +6746,7 @@
       "owner": "djvuViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3037,
+      "line": 3039,
       "extensions": [
         "djv",
         "djvu"
@@ -6969,7 +6760,7 @@
       "owner": "psdViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3039,
+      "line": 3041,
       "extensions": [
         "psb",
         "psd"
@@ -6983,7 +6774,7 @@
       "owner": "jupyterLite",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3040,
+      "line": 3042,
       "extensions": [
         "ipynb"
       ],
@@ -6996,7 +6787,7 @@
       "owner": "mathematicaViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3042,
+      "line": 3044,
       "extensions": [
         "nb"
       ],
@@ -7009,7 +6800,7 @@
       "owner": "jupyterLite",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3044,
+      "line": 3046,
       "extensions": [],
       "filenames": [
         "_toc.yml",
@@ -7021,38 +6812,6 @@
     {
       "project": "ours",
       "owner": "officeEditor",
-      "kind": "viewer",
-      "source": "src/main.js",
-      "line": 3045,
-      "extensions": [
-        "docm",
-        "docx",
-        "dotm",
-        "dotx"
-      ],
-      "filenames": [],
-      "pattern": "\\.(docx|docm|dotx|dotm)$",
-      "flags": "i"
-    },
-    {
-      "project": "ours",
-      "owner": "officeEditor",
-      "kind": "viewer",
-      "source": "src/main.js",
-      "line": 3046,
-      "extensions": [
-        "potx",
-        "ppsx",
-        "pptm",
-        "pptx"
-      ],
-      "filenames": [],
-      "pattern": "\\.(pptx|pptm|ppsx|potx)$",
-      "flags": "i"
-    },
-    {
-      "project": "ours",
-      "owner": "docxViewer",
       "kind": "viewer",
       "source": "src/main.js",
       "line": 3047,
@@ -7068,10 +6827,42 @@
     },
     {
       "project": "ours",
-      "owner": "spreadsheetEditor",
+      "owner": "officeEditor",
       "kind": "viewer",
       "source": "src/main.js",
       "line": 3048,
+      "extensions": [
+        "potx",
+        "ppsx",
+        "pptm",
+        "pptx"
+      ],
+      "filenames": [],
+      "pattern": "\\.(pptx|pptm|ppsx|potx)$",
+      "flags": "i"
+    },
+    {
+      "project": "ours",
+      "owner": "docxViewer",
+      "kind": "viewer",
+      "source": "src/main.js",
+      "line": 3049,
+      "extensions": [
+        "docm",
+        "docx",
+        "dotm",
+        "dotx"
+      ],
+      "filenames": [],
+      "pattern": "\\.(docx|docm|dotx|dotm)$",
+      "flags": "i"
+    },
+    {
+      "project": "ours",
+      "owner": "spreadsheetEditor",
+      "kind": "viewer",
+      "source": "src/main.js",
+      "line": 3050,
       "extensions": [
         "xlsx"
       ],
@@ -7084,7 +6875,7 @@
       "owner": "xlsxAst",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3049,
+      "line": 3051,
       "extensions": [
         "ods",
         "xls",
@@ -7101,7 +6892,7 @@
       "owner": "spreadsheetEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3051,
+      "line": 3053,
       "extensions": [
         "csv",
         "tsv"
@@ -7115,7 +6906,7 @@
       "owner": "soundfontViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3052,
+      "line": 3054,
       "extensions": [
         "dls",
         "sf2",
@@ -7131,7 +6922,7 @@
       "owner": "midiEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3053,
+      "line": 3055,
       "extensions": [
         "kar",
         "mid",
@@ -7147,7 +6938,7 @@
       "owner": "scoreViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3055,
+      "line": 3057,
       "extensions": [
         "kar",
         "mid",
@@ -7162,7 +6953,7 @@
       "owner": "fontEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3056,
+      "line": 3058,
       "extensions": [
         "otf",
         "ttf",
@@ -7178,7 +6969,7 @@
       "owner": "fontEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3058,
+      "line": 3060,
       "extensions": [
         "mf"
       ],
@@ -7191,7 +6982,7 @@
       "owner": "fontEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3059,
+      "line": 3061,
       "extensions": [
         "mp"
       ],
@@ -7204,7 +6995,7 @@
       "owner": "sqliteInspector",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3060,
+      "line": 3062,
       "extensions": [
         "db",
         "sqlite",
@@ -7219,7 +7010,7 @@
       "owner": "pstViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3061,
+      "line": 3063,
       "extensions": [
         "ost",
         "pst"
@@ -7233,7 +7024,7 @@
       "owner": "xcfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3064,
+      "line": 3066,
       "extensions": [
         "xcf"
       ],
@@ -7246,7 +7037,7 @@
       "owner": "kraViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3066,
+      "line": 3068,
       "extensions": [
         "kra",
         "krz"
@@ -7260,7 +7051,7 @@
       "owner": "pdnViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3068,
+      "line": 3070,
       "extensions": [
         "pdn"
       ],
@@ -7273,7 +7064,7 @@
       "owner": "oraViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3070,
+      "line": 3072,
       "extensions": [
         "ora"
       ],
@@ -7286,7 +7077,7 @@
       "owner": "pspViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3072,
+      "line": 3074,
       "extensions": [
         "pspbrush",
         "pspframe",
@@ -7305,7 +7096,7 @@
       "owner": "pspViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3074,
+      "line": 3076,
       "extensions": [
         "pfr",
         "psp",
@@ -7320,7 +7111,7 @@
       "owner": "clipViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3076,
+      "line": 3078,
       "extensions": [
         "clip"
       ],
@@ -7333,7 +7124,7 @@
       "owner": "mdpViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3079,
+      "line": 3081,
       "extensions": [
         "mdp"
       ],
@@ -7346,7 +7137,7 @@
       "owner": "saiViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3082,
+      "line": 3084,
       "extensions": [
         "sai"
       ],
@@ -7359,7 +7150,7 @@
       "owner": "saiViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3083,
+      "line": 3085,
       "extensions": [
         "sai2"
       ],
@@ -7372,7 +7163,7 @@
       "owner": "cptViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3086,
+      "line": 3088,
       "extensions": [
         "cpt"
       ],
@@ -7385,7 +7176,7 @@
       "owner": "tvgViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3087,
+      "line": 3089,
       "extensions": [
         "tvg"
       ],
@@ -7398,7 +7189,7 @@
       "owner": "fxgViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3089,
+      "line": 3091,
       "extensions": [
         "fxg"
       ],
@@ -7411,7 +7202,7 @@
       "owner": "xpmViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3092,
+      "line": 3094,
       "extensions": [
         "xbm",
         "xpm"
@@ -7425,7 +7216,7 @@
       "owner": "asyViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3094,
+      "line": 3096,
       "extensions": [
         "asy"
       ],
@@ -7438,7 +7229,7 @@
       "owner": "videoCut",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3095,
+      "line": 3097,
       "extensions": [
         "vcut"
       ],
@@ -7451,7 +7242,7 @@
       "owner": "stereoViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3097,
+      "line": 3099,
       "extensions": [
         "jps",
         "mpo",
@@ -7466,7 +7257,7 @@
       "owner": "apngViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3098,
+      "line": 3100,
       "extensions": [
         "apng"
       ],
@@ -7479,7 +7270,7 @@
       "owner": "apngViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3099,
+      "line": 3101,
       "extensions": [
         "bpg",
         "flif",
@@ -7495,7 +7286,7 @@
       "owner": "pcapViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3100,
+      "line": 3102,
       "extensions": [
         "cap",
         "erf",
@@ -7513,7 +7304,7 @@
       "owner": "model3dViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3103,
+      "line": 3105,
       "extensions": [
         "3dm",
         "3ds",
@@ -7558,7 +7349,7 @@
       "owner": "model3dViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3107,
+      "line": 3109,
       "extensions": [
         "amf",
         "ply",
@@ -7575,7 +7366,7 @@
       "owner": "x3dViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3109,
+      "line": 3111,
       "extensions": [
         "x3d",
         "x3dj",
@@ -7592,7 +7383,7 @@
       "owner": "fritzingEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3111,
+      "line": 3113,
       "extensions": [
         "fz",
         "fzz"
@@ -7606,7 +7397,7 @@
       "owner": "texmacsEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3113,
+      "line": 3115,
       "extensions": [
         "tm",
         "tmu"
@@ -7620,7 +7411,7 @@
       "owner": "kicadViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3114,
+      "line": 3116,
       "extensions": [
         "kicad_pcb",
         "kicad_sch"
@@ -7634,7 +7425,7 @@
       "owner": "gerberViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3117,
+      "line": 3119,
       "extensions": [
         "art",
         "cmp",
@@ -7784,7 +7575,7 @@
       "owner": "hpglViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3119,
+      "line": 3121,
       "extensions": [
         "hgl",
         "hpg",
@@ -7801,7 +7592,7 @@
       "owner": "dxfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3121,
+      "line": 3123,
       "extensions": [
         "dwg",
         "dxf"
@@ -7815,7 +7606,7 @@
       "owner": "dxfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3123,
+      "line": 3125,
       "extensions": [
         "dgn"
       ],
@@ -7828,7 +7619,7 @@
       "owner": "dwfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3125,
+      "line": 3127,
       "extensions": [
         "dwf",
         "dwfx"
@@ -7842,7 +7633,7 @@
       "owner": "lottieViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3127,
+      "line": 3129,
       "extensions": [
         "json",
         "lottie"
@@ -7856,7 +7647,7 @@
       "owner": "mathmlViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3129,
+      "line": 3131,
       "extensions": [
         "bpmn20.xml",
         "mathml",
@@ -7872,7 +7663,7 @@
       "owner": "psViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3131,
+      "line": 3133,
       "extensions": [
         "eps",
         "epsf",
@@ -7888,7 +7679,7 @@
       "owner": "scoreViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3133,
+      "line": 3135,
       "extensions": [
         "gpx"
       ],
@@ -7901,7 +7692,7 @@
       "owner": "gpxViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3134,
+      "line": 3136,
       "extensions": [
         "gpx"
       ],
@@ -7914,7 +7705,7 @@
       "owner": "waveformViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3135,
+      "line": 3137,
       "extensions": [
         "fst",
         "ghw",
@@ -7929,7 +7720,7 @@
       "owner": "wasmInspector",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3136,
+      "line": 3138,
       "extensions": [
         "wasm"
       ],
@@ -7942,7 +7733,7 @@
       "owner": "mediaMetadata",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3137,
+      "line": 3139,
       "extensions": [
         "3gp",
         "aac",
@@ -7972,7 +7763,7 @@
       "owner": "mediaMetadata",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3139,
+      "line": 3141,
       "extensions": [
         "ts"
       ],
@@ -7985,7 +7776,7 @@
       "owner": "flaInspector",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3140,
+      "line": 3142,
       "extensions": [
         "fla",
         "xfl"
@@ -7999,7 +7790,7 @@
       "owner": "latexEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3142,
+      "line": 3144,
       "extensions": [
         "latex",
         "ltx",
@@ -8014,7 +7805,7 @@
       "owner": "bpmnEditor",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3143,
+      "line": 3145,
       "extensions": [
         "bpmn",
         "bpmn20.xml"
@@ -8028,7 +7819,7 @@
       "owner": "gliffyViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3145,
+      "line": 3147,
       "extensions": [
         "gliffy"
       ],
@@ -8041,7 +7832,7 @@
       "owner": "graphmlViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3146,
+      "line": 3148,
       "extensions": [
         "graphml"
       ],
@@ -8054,7 +7845,7 @@
       "owner": "flpViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3147,
+      "line": 3149,
       "extensions": [
         "flp"
       ],
@@ -8067,7 +7858,7 @@
       "owner": "mhtViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3150,
+      "line": 3152,
       "extensions": [
         "mht",
         "mhtml"
@@ -8081,7 +7872,7 @@
       "owner": "gpgViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3151,
+      "line": 3153,
       "extensions": [
         "gpg",
         "pgp"
@@ -8095,7 +7886,7 @@
       "owner": "gpgViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3152,
+      "line": 3154,
       "extensions": [
         "asc"
       ],
@@ -8108,7 +7899,7 @@
       "owner": "kdbxViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3154,
+      "line": 3156,
       "extensions": [
         "kdb",
         "kdbx"
@@ -8122,7 +7913,7 @@
       "owner": "jbfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3156,
+      "line": 3158,
       "extensions": [
         "jbf"
       ],
@@ -8135,7 +7926,7 @@
       "owner": "vrmViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3158,
+      "line": 3160,
       "extensions": [
         "vrm"
       ],
@@ -8148,7 +7939,7 @@
       "owner": "dicomViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3160,
+      "line": 3162,
       "extensions": [
         "dcm",
         "dicom"
@@ -8162,7 +7953,7 @@
       "owner": "dicomViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3161,
+      "line": 3163,
       "extensions": [],
       "filenames": [],
       "pattern": "^[^.]+$",
@@ -8173,7 +7964,7 @@
       "owner": "elfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3163,
+      "line": 3165,
       "extensions": [
         "axf",
         "elf",
@@ -8190,7 +7981,7 @@
       "owner": "scoreViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3165,
+      "line": 3167,
       "extensions": [
         "gp",
         "gp3",
@@ -8213,7 +8004,7 @@
       "owner": "scoreViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3167,
+      "line": 3169,
       "extensions": [
         "bpmn20.xml",
         "xml"
@@ -8227,7 +8018,7 @@
       "owner": "chmViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3169,
+      "line": 3171,
       "extensions": [
         "chm"
       ],
@@ -8240,7 +8031,7 @@
       "owner": "hwpViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3171,
+      "line": 3173,
       "extensions": [
         "hwp",
         "hwpx"
@@ -8254,7 +8045,7 @@
       "owner": "gldfViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3173,
+      "line": 3175,
       "extensions": [
         "gldf"
       ],
@@ -8267,7 +8058,7 @@
       "owner": "photometryViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3175,
+      "line": 3177,
       "extensions": [
         "ies",
         "ldt"
@@ -8281,7 +8072,7 @@
       "owner": "hlpViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3177,
+      "line": 3179,
       "extensions": [
         "hlp"
       ],
@@ -8294,7 +8085,7 @@
       "owner": "hlpViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3178,
+      "line": 3180,
       "extensions": [
         "inf"
       ],
@@ -8307,7 +8098,7 @@
       "owner": "emulatorViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3180,
+      "line": 3182,
       "extensions": [
         "32x",
         "a26",
@@ -8354,7 +8145,7 @@
       "owner": "emulatorViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3182,
+      "line": 3184,
       "extensions": [
         "md"
       ],
@@ -8367,7 +8158,7 @@
       "owner": "emulatorViewer",
       "kind": "viewer",
       "source": "src/main.js",
-      "line": 3183,
+      "line": 3185,
       "extensions": [
         "bin",
         "chd",
@@ -8383,7 +8174,7 @@
       "owner": "elfViewer",
       "kind": "magic",
       "source": "src/main.js",
-      "line": 3185,
+      "line": 3187,
       "extensions": [
         "elf",
         "so",
@@ -9889,6 +9680,46 @@
     },
     {
       "project": "ours",
+      "owner": "archive-reader-plugin",
+      "kind": "viewer",
+      "source": "src/archive-reader-plugin.js",
+      "line": 9,
+      "extensions": [
+        "7z",
+        "aab",
+        "ar",
+        "bz2",
+        "bzip2",
+        "cab",
+        "cb7",
+        "cbr",
+        "cbt",
+        "cpio",
+        "deb",
+        "gzip",
+        "lha",
+        "lzh",
+        "lzma",
+        "mcpack",
+        "mctemplate",
+        "mcworld",
+        "rar",
+        "rpm",
+        "srpm",
+        "tar.bz2",
+        "tar.xz",
+        "tbz",
+        "tbz2",
+        "txz",
+        "udeb",
+        "xar",
+        "xz",
+        "zipx"
+      ],
+      "filenames": []
+    },
+    {
+      "project": "ours",
       "owner": "photometry-plugin",
       "kind": "viewer",
       "source": "src/photometry-plugin.js",
@@ -11227,21 +11058,21 @@
       "owner": "gerberViewer",
       "pattern": "\\.(ger|gtl|gbl|gto|gbo|gts|gbs|gtp|gbp|gko|gml|gta|gba|gm\\d+|gp[1-9tb]|gbr|art|pho|cmp|sol|plc|pls|stc|sts|crc|crs|drl|xln|drd|exc|g[1-9]\\d?)$",
       "source": "src/main.js",
-      "line": 3117
+      "line": 3119
     },
     {
       "project": "ours",
       "owner": "dicomViewer",
       "pattern": "^[^.]+$",
       "source": "src/main.js",
-      "line": 3161
+      "line": 3163
     },
     {
       "project": "ours",
       "owner": "elfViewer",
       "pattern": "\\.(elf|axf|ko|o|so(\\.\\d+)*)$",
       "source": "src/main.js",
-      "line": 3163
+      "line": 3165
     },
     {
       "project": "ours",

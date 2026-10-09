@@ -1,0 +1,3 @@
+const {build}=require('esbuild');const fs=require('node:fs/promises');const path=require('node:path');const root=path.resolve(__dirname,'..');
+async function main(){const output=path.join(root,'public/archive-viewer');await fs.mkdir(output,{recursive:true});const source=path.dirname(require.resolve('libarchive.js'));for(const file of ['worker-bundle.js','libarchive.wasm'])await fs.copyFile(path.join(source,file),path.join(output,file));await build({entryPoints:[path.join(root,'src/compression-worker.mjs'),path.join(root,'src/xar-worker.mjs')],outdir:output,bundle:true,splitting:true,format:'esm',platform:'browser',target:'es2022',legalComments:'eof',inject:[path.join(root,'src/worker-buffer-shim.mjs')]});}
+main().catch(error=>{console.error(error);process.exitCode=1;});
