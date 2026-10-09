@@ -1,0 +1,1 @@
+The 2×2 ABR tip is authored here. PAT, GRD, and ASL fixtures are original Apache-2.0 fixtures from Flyfish file-viewer, commit e03662c883cdd089814d2d21e4c805b9d7320e0f. CSH contains original geometric shapes dedicated to CC0 by that project. See the retained project Apache-2.0 license and CSH CC0 notice.

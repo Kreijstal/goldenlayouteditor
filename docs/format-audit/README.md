@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-generic claims: **515**. Shared: **238**. Missing suffixes: **277**.
+Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-generic claims: **515**. Shared: **243**. Missing suffixes: **272**.
 
 ## Missing extensions
 
@@ -10,7 +10,6 @@ Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-gene
 | --- | --- |
 | `.3g2` | open-file-viewer: video |
 | `.abc` | jdeworks: text/abc |
-| `.abr` | flyfish: photoshop-resource-design |
 | `.acf` | jdeworks: text/acf |
 | `.aif` | open-file-viewer: audio |
 | `.aifc` | open-file-viewer: audio |
@@ -23,7 +22,6 @@ Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-gene
 | `.asf` | jdeworks: VIDEO |
 | `.asice` | flyfish: signature |
 | `.asics` | flyfish: signature |
-| `.asl` | flyfish: photoshop-resource-design |
 | `.atom` | jdeworks: text/xml |
 | `.au` | open-file-viewer: audio |
 | `.avro` | flyfish: data-asset, jdeworks: binary/avro, open-file-viewer: asset |
@@ -47,7 +45,6 @@ Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-gene
 | `.conf` | jdeworks: text/ini |
 | `.crash` | jdeworks: text/crash |
 | `.crt` | jdeworks: text/pem |
-| `.csh` | flyfish: photoshop-resource-design |
 | `.csproj` | jdeworks: text/xml |
 | `.db3` | jdeworks: sqlite |
 | `.dbf` | flyfish: spreadsheet-dbf, jdeworks: binary/dbf |
@@ -101,7 +98,6 @@ Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-gene
 | `.gff3` | jdeworks: text/bio, jdeworks: text/gff |
 | `.gitignore` | jdeworks: text/gitignore |
 | `.gpkg` | jdeworks: sqlite |
-| `.grd` | flyfish: photoshop-resource-design |
 | `.gtf` | jdeworks: text/bio, jdeworks: text/gff |
 | `.h2drumkit` | jdeworks: text/hydrogen |
 | `.h2pattern` | jdeworks: text/hydrogen |
@@ -186,7 +182,6 @@ Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-gene
 | `.p7s` | flyfish: signature |
 | `.pages` | flyfish: apple-pages |
 | `.parquet` | flyfish: data-asset, jdeworks: binary/parquet, open-file-viewer: asset |
-| `.pat` | flyfish: photoshop-resource-design |
 | `.patch` | jdeworks: text/patch |
 | `.pdb` | jdeworks: text/pdb |
 | `.pdd` | flyfish: photoshop-design |

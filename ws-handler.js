@@ -13,6 +13,7 @@ const fileWatchers = new Map();
 
 // Files served via HTTP with specialized viewers (not loaded into memory as text)
 const SERVED_EXTENSIONS = new Set([
+  'abr', 'csh', 'pat', 'grd', 'asl',
   'indd', 'indt', 'xd', 'icml', 'idms', 'inx', 'ase', 'aco',
   '7z', 'ar', 'cpio', 'cab', 'rar', 'cbr', 'cb7', 'cbt', 'xar', 'zipx', 'bz2', 'bzip2', 'xz', 'lzma', 'lha', 'lzh', 'rpm', 'srpm', 'deb', 'udeb', 'tbz', 'tbz2', 'txz', 'gzip', 'aab', 'mcpack', 'mctemplate', 'mcworld',
   'ifc', 'h5', 'hdf', 'hdf5', 'he5', 'nc', 'nc4', 'netcdf', 'npy', 'npz',

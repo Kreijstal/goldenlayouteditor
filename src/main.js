@@ -91,7 +91,7 @@ require('./idml-plugin');
 require('./bundle-plugin');
 require('./scientific-plugin');
 require('./archive-reader-plugin');
-require('./adobe-container-plugin');
+const {isAdobeResourceFile}=require('./adobe-container-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
 require('./photometry-plugin');
@@ -2953,7 +2953,8 @@ class ProjectFilesComponent {
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fileContent = /\.(indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i.test(file.name) ? '' : e.target.result;
+                    const textResource = /\.(csh|grd)$/i.test(file.name) && !/^(cush|8BGR)$/.test(new TextDecoder().decode(new Uint8Array(e.target.result).subarray(0,4)));
+                    const fileContent = textResource ? new TextDecoder().decode(e.target.result) : /\.(abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name) ? '' : e.target.result;
                     const fileName = file.name;
                     const fileType = getFileTypeFromExtension(fileName);
                     const newFileId = generateUniqueId('file');
@@ -2963,7 +2964,7 @@ class ProjectFilesComponent {
                         name: fileName,
                         type: fileType,
                         content: fileContent,
-                        ...(/\.(indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), viewType: 'binary' } : {}),
+                        ...(/\.(abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), ...(textResource ? {} : {viewType:'binary'}) } : {}),
                         cursor: { row: 0, column: 0 },
                         selection: null
                     };
@@ -2979,7 +2980,7 @@ class ProjectFilesComponent {
                 reader.onerror = (err) => {
                     log.error(`ProjectFiles: Error reading file ${file.name}:`, err);
                 };
-                if (/\.(indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i.test(file.name)) reader.readAsArrayBuffer(file);
+                if (/\.(abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name)) reader.readAsArrayBuffer(file);
                 else reader.readAsText(file);
             });
         }
@@ -3021,6 +3022,7 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
+    { re: /\.(abr|csh|pat|grd|asl)$/i, test: isAdobeResourceFile, componentType: 'adobeContainerViewer', tag: 'Adobe resource', prefix: 'adobe-container-' },
     { re: /\.(indd|indt|xd|icml|idms|inx|ase|aco)$/i, componentType: 'adobeContainerViewer', tag: 'Adobe container', prefix: 'adobe-container-' },
     { re: /\.(7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|tar\.bz2|tar\.xz|gzip|aab|mcpack|mctemplate|mcworld)$/i, componentType: 'archiveReader', tag: 'Archive', prefix: 'archive-' },
     { re: /\.(h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz)$/i, componentType: 'scientificViewer', tag: 'Scientific data', prefix: 'scientific-' },
