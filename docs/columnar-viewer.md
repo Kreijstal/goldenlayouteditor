@@ -1,0 +1,13 @@
+# Parquet, Avro, Arrow and Feather
+
+The lazy columnar panel reads Parquet (`.parquet`), Avro object-container files (`.avro`), Arrow IPC files and streams (`.arrow`, `.ipc`), and Feather v2 (`.feather`). It displays decoded rows and schema using text nodes, not an executable HTML representation of values. Inputs and all codec assets are local after building.
+
+Pinned readers are hyparquet 1.30.0 with hyparquet-compressors 1.1.2, avsc 5.7.9, and Apache Arrow 21.1.0. The Parquet and Avro integration follows the Apache-2.0 Flyfish data renderer at e03662c883cdd089814d2d21e4c805b9d7320e0f. The browser polyfill build and bundle-notice collector are adapted from that source. All bundled dependency license/notice files are collected in public/licenses/imported-viewers/columnar-NOTICES.txt. lz4js publishes an ISC declaration and author but no license file; its actual metadata attribution and README are retained in that notice.
+
+Parquet supports the reader's native encodings with Snappy WASM, gzip, Zstd, Brotli, LZ4 and uncompressed pages. Arrow/Feather additionally register LZ4-frame and Zstd codecs. Decompressed Arrow buffers are copied to aligned storage: Zstd output can be a subarray, whereas typed int64 vectors require eight-byte alignment. Invalid data is rejected; no header-only substitute is presented.
+
+The preview is capped at 100 rows and 256 columns. Input is bounded to 128 MiB and worker time to 60 seconds. Parquet reads only the selected row range. Avro stops after the sample and labels its row count as a lower bound. Arrow reads IPC record batches before selecting its displayed sample; codec memory allocation is not a streaming memory guarantee. Individual Arrow decompressed buffers larger than 256 MiB are rejected after decoding. Workers terminate on completion, tab closure and picker replacement.
+
+Feather v1, arbitrary schema-less Avro datum streams, Avro codecs beyond the reader's null/deflate defaults, and application-specific logical-type conversions are outside this reader. JavaScript Avro numeric long limits still apply. Int64 values decoded as BigInt are displayed as exact decimal strings, not rounded numbers. The schema remains visible for type interpretation.
+
+`npm run test:columnar` tests decoded text, numeric/null/boolean values and schema for six Parquet codecs, three Arrow IPC codecs, stream IPC, LZ4 Feather v2 and null/deflate Avro. It also checks literal HTML-looking cell data, file-picker replacement, lazy/subdirectory loading, zero external requests, worker cleanup, cancellation and invalid signatures. All fixtures contain data authored here; Python/PyArrow was used only to generate binary test inputs, not as a runtime dependency.

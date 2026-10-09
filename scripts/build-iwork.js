@@ -1,0 +1,3 @@
+const {build}=require('esbuild');const path=require('node:path');const root=path.resolve(__dirname,'..');
+async function main(){await build({entryPoints:[path.join(root,'src/imported-iwork/worker.ts')],outdir:path.join(root,'public/iwork-viewer'),bundle:true,splitting:true,format:'esm',platform:'browser',target:'es2022',legalComments:'eof'});await build({entryPoints:[path.join(root,'src/imported-iwork/iwork.ts')],outfile:path.join(root,'src/imported-iwork/viewer.js'),bundle:true,format:'cjs',platform:'browser',target:'es2022',legalComments:'eof'});}
+main().catch(error=>{console.error(error);process.exitCode=1;});

@@ -12,7 +12,7 @@ const ptyProcesses = new Map();
 const fileWatchers = new Map();
 
 // Files served via HTTP with specialized viewers (not loaded into memory as text)
-const SERVED_EXTENSIONS = new Set([
+const SERVED_EXTENSIONS = new Set(['gds','gdsii','parquet','avro','arrow','feather','ipc','doc','dot','pages','numbers','key',
   'abr', 'csh', 'pat', 'grd', 'asl',
   'indd', 'indt', 'xd', 'icml', 'idms', 'inx', 'ase', 'aco',
   '7z', 'ar', 'cpio', 'cab', 'rar', 'cbr', 'cb7', 'cbt', 'xar', 'zipx', 'bz2', 'bzip2', 'xz', 'lzma', 'lha', 'lzh', 'rpm', 'srpm', 'deb', 'udeb', 'tbz', 'tbz2', 'txz', 'gzip', 'aab', 'mcpack', 'mctemplate', 'mcworld',

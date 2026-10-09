@@ -33,7 +33,7 @@ const SGI_MAYBE_RE = /\.(rgba?|bw|inta?)$/i;
 const SUN_MAYBE_RE = /\.rs$/i;
 // ...and an Amiga picture (mirrors IFF_MAYBE_RE in ws-handler.js)
 const IFF_MAYBE_RE = /\.iff$/i;
-const IFF_PICTURE_RE = /^FORM[\s\S]{4}(ILBM|PBM |ACBM|DEEP|TVPP|ANIM)/;
+const IFF_PICTURE_RE = /^FORM['gds','gdsii','parquet','avro','arrow','feather','ipc','doc','dot','pages','numbers','key',\s\S]{4}(ILBM|PBM |ACBM|DEEP|TVPP|ANIM)/;
 // ...and fpack's FITS, with Fritzing's sketch (mirrors FZ_MAYBE_RE in ws-handler.js)
 const FZ_MAYBE_RE = /\.fz$/i;
 // ...and JPEG XR by HD Photo's names, with WinDev and Dylan projects (mirrors JXR_MAYBE_RE in ws-handler.js)

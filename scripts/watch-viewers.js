@@ -14,7 +14,7 @@ function build() {
     });
 }
 for (const directory of ['src', 'scripts']) fs.watch(path.join(root, directory), { recursive: true }, (_, filename) => {
-    if (!filename || !/\.(js|ts|mjs)$/.test(filename) || /imported-(idml|bundle)\/viewer\.js$/.test(filename.replaceAll('\\','/'))) return;
+    if (!filename || !/\.(js|ts|mjs)$/.test(filename) || /imported-(idml|bundle|iwork)\/viewer\.js$/.test(filename.replaceAll('\\','/'))) return;
     clearTimeout(timer);
     timer = setTimeout(build, 150);
 });

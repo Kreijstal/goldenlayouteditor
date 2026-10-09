@@ -23,3 +23,12 @@ public/scientific-viewer/
 public/ifc-viewer/
 public/archive-viewer/
 public/adobe-viewer/
+
+public/iwork-viewer/
+src/imported-iwork/viewer.js
+
+public/doc-viewer/
+
+public/columnar-viewer/
+
+public/layout-viewer/

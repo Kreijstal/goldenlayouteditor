@@ -1,0 +1,1 @@
+Original three-row synthetic data written with PyArrow (Parquet six codecs, Arrow IPC three codecs, stream IPC, Feather v2), plus original Avro null/deflate fixtures authored with avsc. Columns name/value/flag include literal script-looking text, 42, null, -7, and boolean values. No third-party data. These are fixtures, not runtime dependencies.

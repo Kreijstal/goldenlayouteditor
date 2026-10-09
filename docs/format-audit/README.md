@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-generic claims: **515**. Shared: **243**. Missing suffixes: **272**.
+Our explicit viewer/native/archive handling: **649** suffixes. Upstream non-generic claims: **515**. Shared: **255**. Missing suffixes: **260**.
 
 ## Missing extensions
 
@@ -18,13 +18,11 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.als` | jdeworks: text/als |
 | `.amr` | open-file-viewer: audio |
 | `.ans` | jdeworks: text/asciiart |
-| `.arrow` | jdeworks: binary/arrow |
 | `.asf` | jdeworks: VIDEO |
 | `.asice` | flyfish: signature |
 | `.asics` | flyfish: signature |
 | `.atom` | jdeworks: text/xml |
 | `.au` | open-file-viewer: audio |
-| `.avro` | flyfish: data-asset, jdeworks: binary/avro, open-file-viewer: asset |
 | `.azw` | jdeworks: ebook/mobi |
 | `.azw3` | jdeworks: ebook/mobi |
 | `.bcf` | jdeworks: text/bio |
@@ -55,10 +53,8 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.diz` | jdeworks: text/asciiart |
 | `.dll` | flyfish: binary-inspector, jdeworks: binary/exe |
 | `.dmp` | jdeworks: binary/dmp |
-| `.doc` | flyfish: office-word-binary, open-file-viewer: office |
 | `.dockerfile` | jdeworks: text/dockerfile |
 | `.dockerignore` | jdeworks: text/gitignore |
-| `.dot` | flyfish: office-word-binary, open-file-viewer: office |
 | `.dps` | open-file-viewer: office |
 | `.dra` | flyfish: eda |
 | `.drawio` | flyfish: drawing, open-file-viewer: drawing |
@@ -79,7 +75,6 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.faa` | jdeworks: text/bio |
 | `.fasta` | jdeworks: text/bio |
 | `.fastq` | jdeworks: text/bio |
-| `.feather` | jdeworks: binary/arrow |
 | `.ffn` | jdeworks: text/bio |
 | `.flv` | jdeworks: VIDEO, open-file-viewer: video |
 | `.fna` | jdeworks: text/bio |
@@ -90,8 +85,6 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.frn` | jdeworks: text/bio |
 | `.fsa` | jdeworks: text/bio |
 | `.gc` | jdeworks: text/gcode |
-| `.gds` | flyfish: eda, open-file-viewer: cad |
-| `.gdsii` | open-file-viewer: cad |
 | `.geojson` | flyfish: geo, jdeworks: geo, jdeworks: text/geojson, jdeworks: text/json, open-file-viewer: gis |
 | `.gff` | jdeworks: text/bio, jdeworks: text/gff |
 | `.gff2` | jdeworks: text/gff |
@@ -110,14 +103,12 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.icalendar` | jdeworks: ics |
 | `.ifb` | jdeworks: ics |
 | `.ini` | jdeworks: text/ini |
-| `.ipc` | jdeworks: binary/arrow |
 | `.ips` | jdeworks: text/crash |
 | `.jfif` | open-file-viewer: image |
 | `.json5` | jdeworks: text/json |
 | `.jsonc` | jdeworks: text/json |
 | `.jsonl` | jdeworks: text/jsonl |
 | `.jws` | flyfish: signature |
-| `.key` | flyfish: apple-keynote, jdeworks: text/pem, open-file-viewer: office |
 | `.kicad_dru` | jdeworks: text/kicad |
 | `.kicad_mod` | jdeworks: text/kicad |
 | `.kicad_prl` | jdeworks: text/kicad |
@@ -165,7 +156,6 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.nfo` | jdeworks: text/asciiart |
 | `.nii` | jdeworks: binary/nifti |
 | `.npmignore` | jdeworks: text/gitignore |
-| `.numbers` | flyfish: apple-numbers, open-file-viewer: office |
 | `.oas` | flyfish: eda, open-file-viewer: cad |
 | `.oasis` | flyfish: eda, open-file-viewer: cad |
 | `.odp` | flyfish: open-document, jdeworks: office/odf, open-file-viewer: office |
@@ -180,8 +170,6 @@ Our explicit viewer/native/archive handling: **637** suffixes. Upstream non-gene
 | `.p7c` | flyfish: signature, jdeworks: text/pem |
 | `.p7m` | flyfish: signature |
 | `.p7s` | flyfish: signature |
-| `.pages` | flyfish: apple-pages |
-| `.parquet` | flyfish: data-asset, jdeworks: binary/parquet, open-file-viewer: asset |
 | `.patch` | jdeworks: text/patch |
 | `.pdb` | jdeworks: text/pdb |
 | `.pdd` | flyfish: photoshop-design |
