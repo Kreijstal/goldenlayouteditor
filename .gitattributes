@@ -1,0 +1,3 @@
+# Keep upstream source formatting intact; it includes mixed indentation.
+public/legacy-art/vendor/** -whitespace
+package.json whitespace=cr-at-eol

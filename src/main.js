@@ -79,6 +79,8 @@ require('./gpg-plugin');
 require('./kdbx-plugin');
 require('./mht-plugin');
 require('./jbf-plugin');
+require('./legacy-art-plugin');
+require('./povray-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
 require('./photometry-plugin');
@@ -3005,6 +3007,10 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
+    { re: /\.pov$/i, componentType: 'povrayViewer', tag: 'POV-Ray', prefix: 'povray-' },
+    { re: /\.(afphoto|afdesign|afpub)$/i, componentType: 'affinityPreview', tag: 'embedded preview', prefix: 'affinity-' },
+    { re: /\.rip$/i, componentType: 'ripViewer', tag: 'RIPscrip', prefix: 'rip-' },
+    { re: /\.(nap|naplps)$/i, componentType: 'naplpsViewer', tag: 'NAPLPS', prefix: 'naplps-' },
     { re: /\.(vsd|vsdx)$/i, componentType: 'vsdxViewer', tag: 'vsdx', prefix: 'vsdx-' },
     { re: /\.swf$/i, componentType: 'ruffleSwf', tag: 'swf', prefix: 'swf-' },
     { re: /\.epub$/i, componentType: 'epubReader', tag: 'epub', prefix: 'epub-' },

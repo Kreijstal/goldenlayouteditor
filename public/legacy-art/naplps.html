@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>NAPLPS viewer</title>
+<style>
+body{margin:0;background:#111;color:#ddd;font:12px system-ui}
+canvas{display:block;max-width:100%;max-height:calc(100vh - 45px);width:auto!important;height:auto!important;margin:auto}
+footer{padding:8px;text-align:center}a{color:#9cf}
+</style>
+<div id="stage"></div>
+<footer><a href="https://github.com/n1ckfg/Telidon" target="_blank" rel="noopener">TelidonP5 by Nick Fox-Gieg</a> · experimental geometry/color viewer; text, animation and several control instructions are incomplete</footer>
+<script src="vendor/telidon/p5.min.js"></script>
+<script src="vendor/telidon/naplps.js"></script>
+<script src="vendor/telidon/TelidonP5.js"></script>
+<script>
+let ready;
+const canvasReady = new Promise(resolve => { ready = resolve; });
+function setup() {
+    pixelDensity(1);
+    createCanvas(640, 640).parent('stage');
+    noLoop();
+    ready();
+}
+window.renderArt = async function(bytes) {
+    await canvasReady;
+    if (!bytes.length) throw new Error('Empty NAPLPS file');
+    // Preserve all byte values; UTF-8 decoding corrupts NAPLPS coordinate data.
+    let text = '';
+    for (let i = 0; i < bytes.length; i += 8192) text += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    const drawing = new TelidonDraw([text], 640, 640);
+    background(drawing.decoder.version === 699 ? 127 : 0);
+    for (const command of drawing.drawCmds) {
+        command.progressiveDraw = false;
+        command.points = command.cmd.points.filter(point => point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1);
+        command.setColor(command.cmd.col);
+        command.draw();
+    }
+    return `NAPLPS / Telidon ${drawing.decoder.version} · ${drawing.drawCmds.length} commands · partial support`;
+};
+</script>
+</html>

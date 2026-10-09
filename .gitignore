@@ -1,4 +1,5 @@
 node_modules/
+public/povray-viewer/povray.wasm
 package-lock.json
 public/bundle.js
 public/wanix-command.wasm

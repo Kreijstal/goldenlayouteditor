@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>RIPscrip viewer</title>
+<style>
+body{margin:0;background:#111;color:#ddd;font:12px system-ui}
+canvas{display:block;max-width:100%;max-height:calc(100vh - 35px);width:auto;height:auto;margin:auto;image-rendering:pixelated}
+footer{padding:8px;text-align:center}a{color:#9cf}
+</style>
+<canvas id="art" width="640" height="350"></canvas>
+<footer>RIPscrip 1.54 · <a href="https://github.com/cgorringe/RIPtermJS" target="_blank" rel="noopener">RIPtermJS by Carl Gorringe</a> · external icons and ANSI text windows are not displayed</footer>
+<script src="vendor/ripterm/BGI.js"></script>
+<script src="vendor/ripterm/ripterm.js"></script>
+<script>
+window.renderArt = async function(bytes, name) {
+    const viewer = new RIPterm({canvasId:'art', fontsPath:'/legacy-art/vendor/ripterm/fonts', audioOn:false, logQuiet:true});
+    // Local icon files are not automatically fetched from the workspace.
+    // Keep commands requiring them visible in the documented coverage limit.
+    await viewer.initFonts();
+    await viewer.reset();
+    await viewer.openFile(new File([bytes], name));
+    await viewer.play();
+    return `RIPscrip 1.54 · ${viewer.cmdi} commands`;
+};
+</script>
+</html>
