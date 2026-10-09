@@ -7,3 +7,6 @@ public/wanix-rc.wasm
 public/preview-output/
 .c9revisions/
 .settings
+
+public/cd5-viewer/worker.js
+public/cd5-viewer/viewer.js

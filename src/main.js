@@ -81,6 +81,7 @@ require('./mht-plugin');
 require('./jbf-plugin');
 require('./legacy-art-plugin');
 require('./povray-plugin');
+require('./cd5-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
 require('./photometry-plugin');
@@ -2941,7 +2942,7 @@ class ProjectFilesComponent {
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fileContent = e.target.result;
+                    const fileContent = /\.cd5$/i.test(file.name) ? '' : e.target.result;
                     const fileName = file.name;
                     const fileType = getFileTypeFromExtension(fileName);
                     const newFileId = generateUniqueId('file');
@@ -2951,6 +2952,7 @@ class ProjectFilesComponent {
                         name: fileName,
                         type: fileType,
                         content: fileContent,
+                        ...(/\.cd5$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), viewType: 'binary' } : {}),
                         cursor: { row: 0, column: 0 },
                         selection: null
                     };
@@ -2966,7 +2968,8 @@ class ProjectFilesComponent {
                 reader.onerror = (err) => {
                     log.error(`ProjectFiles: Error reading file ${file.name}:`, err);
                 };
-                reader.readAsText(file);
+                if (/\.cd5$/i.test(file.name)) reader.readAsArrayBuffer(file);
+                else reader.readAsText(file);
             });
         }
     }
@@ -3007,6 +3010,7 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
+    { re: /\.cd5$/i, componentType: 'cd5Viewer', tag: 'CD5 layers', prefix: 'cd5-' },
     { re: /\.pov$/i, componentType: 'povrayViewer', tag: 'POV-Ray', prefix: 'povray-' },
     { re: /\.(afphoto|afdesign|afpub)$/i, componentType: 'affinityPreview', tag: 'embedded preview', prefix: 'affinity-' },
     { re: /\.rip$/i, componentType: 'ripViewer', tag: 'RIPscrip', prefix: 'rip-' },
