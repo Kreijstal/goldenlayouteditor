@@ -167,7 +167,7 @@ class TerminalComponent {
     async _startLocalMode() {
         this.terminal.writeln('No server connection: starting a shell in the browser (Wanix).');
         try {
-            const { attachShell } = require('./wanix-plugin');
+            const { attachShell } = await require('./lazy-viewers').loadModule('wanix-plugin');
             const detach = await attachShell(this.terminal);
             if (this._destroyed) detach();
             else this._detachShell = detach;

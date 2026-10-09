@@ -113,16 +113,17 @@ function toVirtual(real) {
 }
 
 // ---- the shell's namespace ----
-const wanix = () => require('./wanix-plugin'); // late: it loads the terminal and plugins
+const { loadModule, getLoadedModule } = require('./lazy-viewers');
+const wanix = () => getLoadedModule('wanix-plugin');
 const wpath = p => split(p).join('/') || '.';
 
 async function wanixRoot() {
-    return wanix().wanixRoot();
+    return (await loadModule('wanix-plugin')).wanixRoot();
 }
 
 // Whether the namespace has this name at its top (without starting Wanix for it)
 async function wanixHas(name) {
-    if (!wanix().wanixStarted()) return false;
+    if (!wanix()?.wanixStarted()) return false;
     try {
         await (await wanixRoot()).stat(name);
         return true;

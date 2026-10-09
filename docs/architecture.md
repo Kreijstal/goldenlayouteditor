@@ -58,6 +58,7 @@ When a server is available (WebSocket connects):
 | `ws-client.js` | WebSocket client. Auto-connects, request/response with ID tracking, workspace selector dialog, message listeners |
 | `debug.js` | Gated logging. Enabled via `?debug` URL param, localStorage, or server config. Forwards logs to server via WS |
 | `plugins.js` | Plugin registry. Plugins register components, toolbar buttons, init hooks |
+| `lazy-viewers.js` | Cached viewer chunks, lazy component constructors and callback dispatch |
 | `terminal.js` | Terminal plugin. xterm.js from esm.sh, server PTY or client JS REPL |
 | `handlers/index.js` | Handler registry for file type preview/rendering |
 | `handlers/web-handler.js` | Preview for HTML, CSS, JS, JSON, Markdown (with KaTeX) |
@@ -76,7 +77,8 @@ When a server is available (WebSocket connects):
 |------|---------|
 | `public/worker.js` | Service Worker for offline preview |
 | `public/index.html` | App shell |
-| `public/bundle.js` | Browserify output (gitignored) |
+| `public/bundle.js` | Startup bundle and viewer manifest (gitignored) |
+| `public/viewer-chunks/` | Hashed, on-demand viewer/decoder bundles (gitignored) |
 
 ## Data Flow
 

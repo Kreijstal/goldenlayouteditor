@@ -31,7 +31,7 @@ registerPlugin({
 require('./my-plugin');
 ```
 
-Build with `npm run build` and the button appears in the file browser toolbar.
+Build with `npm run build` and the button appears in the file browser toolbar. Viewer implementations are loaded on demand; see [Lazy viewer loading](lazy-viewers.md).
 
 ## Plugin Interface
 
@@ -84,7 +84,8 @@ registerPlugin({
     ],
 
     init(ctx): void,
-    // Called once after GoldenLayout is initialized.
+    // Context is captured after GoldenLayout is initialized.
+    // The real init hook runs when this plugin is first loaded.
     // ctx provides:
     //   ctx.wsClient              - WebSocket client
     //   ctx.goldenLayoutInstance  - The GoldenLayout instance
@@ -101,11 +102,11 @@ registerPlugin({
 
 ## Lifecycle
 
-1. Plugin file is `require()`'d — `registerPlugin()` adds it to the registry
-2. GoldenLayout initializes, registers plugin components
-3. `plugin.init(ctx)` is called with app references
-4. Toolbar buttons are rendered in the file browser panel
-5. User clicks button — panel opens in the main column
+1. The build extracts lightweight registration metadata from the plugin.
+2. Startup registers lazy constructors, menus and synchronous predicates.
+3. GoldenLayout supplies the application context without loading the implementation.
+4. Opening a panel, invoking an action or rendering a visible thumbnail loads the plugin chunk.
+5. The real `init(ctx)` hook runs, then the requested operation executes.
 
 ## WebSocket Integration
 

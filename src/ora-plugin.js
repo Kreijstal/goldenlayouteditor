@@ -10,7 +10,7 @@
 const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
 const { resolveFileUrl } = require('./archive-fallback');
-const { zipEntry } = require('./kra-plugin');
+const { zipEntry } = require('./zip-entry');
 
 const log = createLogger('ORA');
 const JSORA_URL = 'https://cdn.jsdelivr.net/npm/jsora@0.3.0/dist/jsora.min.js';

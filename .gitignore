@@ -10,3 +10,6 @@ public/preview-output/
 
 public/cd5-viewer/worker.js
 public/cd5-viewer/viewer.js
+
+public/viewer-chunks/
+public/bundle.js.tmp-browserify-*

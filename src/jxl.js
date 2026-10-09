@@ -229,7 +229,7 @@ async function displayableImageUrl(url, name) {
             const resp = await fetch(url);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const bytes = new Uint8Array(await resp.arrayBuffer());
-            if (tvg) return URL.createObjectURL(new Blob([tvgToSvg(bytes)], { type: 'image/svg+xml' }));
+            if (tvg) return URL.createObjectURL(new Blob([await tvgToSvg(bytes)], { type: 'image/svg+xml' }));
             const r = jp2 ? await jp2Decode(bytes) : await jxlDecode(bytes);
             return URL.createObjectURL(new Blob([r.png], { type: 'image/png' }));
         })();

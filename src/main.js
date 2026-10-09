@@ -3,6 +3,7 @@ const { GoldenLayout, Stack, LayoutConfig } = require('golden-layout');
 const ace = window.ace;
 const handlerRegistry = require('./handlers');
 const { getPlugins } = require('./plugins');
+const { loadModule } = require('./lazy-viewers');
 const { renderTree } = require('./tree-renderer');
 const { isMobile, MobileLayout, createContainerAdapter } = require('./mobile-layout');
 const { initBrowseMode } = require('./browse-mode');
@@ -1209,7 +1210,7 @@ class EditorComponent {
                     name: projectFiles[f.id].name,
                     url: () => resolveFileUrl('/workspace-file?path=' + encodeURIComponent(currentWorkspacePath + '/' + f.rel)),
                 }));
-            this._subtitles = attachSubtitles(video, { url, name: fileData.name, siblings });
+            this._subtitles = await attachSubtitles(video, { url, name: fileData.name, siblings });
             this.rootElement.style.cssText += 'display:flex;align-items:center;justify-content:center;';
             this.rootElement.appendChild(this._subtitles.element);
         } else if (AUDIO_EXTS.has(ext)) {
@@ -1236,6 +1237,7 @@ class EditorComponent {
     async _initFlaViewer(url, fileName) {
         this.rootElement.style.cssText += 'overflow:hidden;';
         try {
+            await loadModule('fla-viewer-plugin');
             if (!window.__goldenlayoutFlaViewer || !window.__goldenlayoutFlaViewer.mount) {
                 throw new Error('FLA viewer plugin is not initialized');
             }
@@ -1440,7 +1442,7 @@ class PreviewComponent {
             
             // Clear previous custom UI and build new one
             this.customPreviewContainer.innerHTML = '';
-            const ui = handlerRegistry.createPreviewUI(previewFile.name, this.customPreviewContainer, this);
+            const ui = await handlerRegistry.createPreviewUI(previewFile.name, this.customPreviewContainer, this);
             this.outputDiv = ui.outputDiv;
             this.diagnosticsDiv = ui.diagnosticsDiv;
             this.zoomDisplay = ui.zoomDisplay; // The handler provides this now

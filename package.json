@@ -8,12 +8,13 @@
     "test:povray": "node scripts/test-povray.js",
     "fetch:povray": "node scripts/fetch-povray.js",
     "test:legacy-art": "node scripts/test-legacy-art.js",
-    "build": "npm run build:cd5 && browserify src/main.js -o public/bundle.js",
+    "build": "npm run build:cd5 && node scripts/build-viewers.js",
     "build:wanix": "sh scripts/build-wanix.sh",
-    "watch": "watchify src/main.js -o public/bundle.js -v",
+    "watch": "node scripts/watch-viewers.js",
     "start": "node server.js",
     "build:cd5": "browserify src/cd5-worker.js -o public/cd5-viewer/worker.js && browserify src/cd5-standalone.js -o public/cd5-viewer/viewer.js",
-    "test:cd5": "node scripts/test-cd5.js"
+    "test:cd5": "node scripts/test-cd5.js",
+    "test:lazy-viewers": "node scripts/test-lazy-viewers.js"
   },
   "keywords": [
     "golden-layout",
@@ -35,6 +36,8 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "acorn": "^8.19.0",
+    "acorn-walk": "^8.3.5",
     "browserify": "^17.0.0",
     "watchify": "^4.0.0"
   }

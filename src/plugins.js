@@ -24,7 +24,12 @@ const _plugins = [];
 
 function registerPlugin(plugin) {
     if (!plugin.id) throw new Error('Plugin must have an id');
-    if (_plugins.some(p => p.id === plugin.id)) {
+    const existing = _plugins.find(p => p.id === plugin.id);
+    if (existing && existing.acceptImplementation) {
+        existing.acceptImplementation(plugin);
+        return;
+    }
+    if (existing) {
         log.warn('Plugin already registered:', plugin.id);
         return;
     }

@@ -15,7 +15,7 @@
 // project), and what is edited in editors or saved in JupyterLite comes into
 // the shell. Deleting a file in the shell deletes nothing outside it.
 const { registerPlugin } = require('./plugins');
-const { ensureXtermLoaded, makeTerminal } = require('./terminal');
+const { loadModule, getLoadedModule } = require('./lazy-viewers');
 const { createLogger } = require('./debug');
 const log = createLogger('Wanix');
 
@@ -716,13 +716,13 @@ class WanixTerminalComponent {
 
     async _init(container) {
         try {
-            await ensureXtermLoaded();
+            await (await loadModule('terminal')).ensureXtermLoaded();
         } catch (err) {
             this.rootElement.innerHTML = `<div style="padding:20px;color:#f88;">Failed to load xterm.js: ${err.message}</div>`;
             return;
         }
         if (this.destroyed) return;
-        const { terminal, fit } = makeTerminal(this.rootElement, container);
+        const { terminal, fit } = getLoadedModule('terminal').makeTerminal(this.rootElement, container);
         this.terminal = terminal;
         terminal.writeln(`Wanix rc shell, in the browser. The project is in ${this.dir ? '/project' : './ (project/)'}; help lists the commands.`);
         try {

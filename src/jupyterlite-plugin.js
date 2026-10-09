@@ -9,7 +9,9 @@ const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
 const { ensureArchiveAccess } = require('./archive-fallback');
 const { rejoinLines } = require('./notebook-lines');
-const { attachShell, noteWrite } = require('./wanix-plugin');
+const { loadModule } = require('./lazy-viewers');
+const attachShell = (...args) => loadModule('wanix-plugin').then(m => m.attachShell(...args));
+const noteWrite = (...args) => loadModule('wanix-plugin').then(m => m.noteWrite(...args));
 
 const log = createLogger('JupyterLite');
 const NOTEBOOK_RE = /\.ipynb$/i;
