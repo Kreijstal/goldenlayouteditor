@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **573** suffixes. Upstream non-generic claims: **515**. Shared: **179**. Missing suffixes: **336**.
+Our explicit viewer/native/archive handling: **574** suffixes. Upstream non-generic claims: **515**. Shared: **180**. Missing suffixes: **335**.
 
 ## Missing extensions
 
@@ -133,7 +133,6 @@ Our explicit viewer/native/archive handling: **573** suffixes. Upstream non-gene
 | `.hl7v2` | jdeworks: text/hl7 |
 | `.icalendar` | jdeworks: ics |
 | `.icml` | flyfish: indesign-exchange-design |
-| `.idml` | flyfish: indesign-idml-design |
 | `.idms` | flyfish: indesign-exchange-design |
 | `.ifb` | jdeworks: ics |
 | `.ifc` | flyfish: model, open-file-viewer: cad |

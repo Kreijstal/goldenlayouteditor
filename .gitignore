@@ -13,3 +13,6 @@ public/cd5-viewer/viewer.js
 
 public/viewer-chunks/
 public/bundle.js.tmp-browserify-*
+
+public/idml-viewer/
+src/imported-idml/viewer.js

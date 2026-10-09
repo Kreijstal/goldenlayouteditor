@@ -5,6 +5,10 @@ const modules = new Map();
 let manifest;
 const assetBase = typeof document !== 'undefined' && document.currentScript
     ? new URL('.', document.currentScript.src) : null;
+function resolveAssetUrl(path) {
+    if (!assetBase) throw new Error('Application asset base is unavailable.');
+    return new URL(path, assetBase).href;
+}
 function setManifest(value) { manifest = value; }
 function getLoadedModule(name) { return modules.get(name); }
 function defineModule(name, exports) { modules.set(name, exports); }
@@ -85,4 +89,4 @@ function registerLazyPlugin(metadata, moduleName) {
     }
     registerPlugin(plugin);
 }
-module.exports = { setManifest, defineModule, loadModule, getLoadedModule, registerLazyPlugin };
+module.exports = { resolveAssetUrl, setManifest, defineModule, loadModule, getLoadedModule, registerLazyPlugin };

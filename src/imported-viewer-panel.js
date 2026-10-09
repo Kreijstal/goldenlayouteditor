@@ -92,4 +92,4 @@ class ImportedViewerPanel {
         if (this.search) this.filter();
     }
 }
-module.exports = { ImportedViewerPanel, text, element, details, card };
+module.exports = { ImportedViewerPanel, readBytes, text, element, details, card };

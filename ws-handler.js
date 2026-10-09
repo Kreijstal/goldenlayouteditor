@@ -13,7 +13,7 @@ const fileWatchers = new Map();
 
 // Files served via HTTP with specialized viewers (not loaded into memory as text)
 const SERVED_EXTENSIONS = new Set([
-  'xmind', 'fb2',
+  'idml', 'xmind', 'fb2',
   'pdf', 'ai',
   'djvu', 'djv',
   'vsd', 'vsdx',

@@ -1,6 +1,6 @@
 # Lazy viewer loading
 
-`npm run build` produces the application bundle and 130 separately named viewer/decoder modules in `public/viewer-chunks/`. The generated files are ignored by Git and included by the existing Pages deployment. `npm run watch` rebuilds both the startup bundle and its chunks when JavaScript sources change.
+`npm run build` produces the application bundle and 131 separately named viewer/decoder modules in `public/viewer-chunks/`. The generated files are ignored by Git and included by the existing Pages deployment. `npm run watch` rebuilds both the startup bundle and its chunks when JavaScript sources change.
 
 The application bundle contains plugin IDs, component names, menu labels, defaults, and synchronous filename/header predicates. A panel constructor, menu action, new-file generator, or visible thumbnail renderer loads its implementation on demand. Restored panels use the same lazy constructors. Each module request is cached, so concurrent tabs and later reopens share the download. A tab closed during download never constructs its viewer. A loading failure rejects the panel's `ready` promise and displays the error in the tab.
 
@@ -24,6 +24,7 @@ After `npm run build`, run:
 ```sh
 npm run test:lazy-viewers
 npm run test:imported-viewers
+npm run test:idml
 npm run test:cd5
 npm run test:legacy-art
 ```

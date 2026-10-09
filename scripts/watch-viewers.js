@@ -14,7 +14,7 @@ function build() {
     });
 }
 for (const directory of ['src', 'scripts']) fs.watch(path.join(root, directory), { recursive: true }, (_, filename) => {
-    if (!filename?.endsWith('.js')) return;
+    if (!filename || !/\.(js|ts)$/.test(filename) || filename.replaceAll('\\','/').endsWith('imported-idml/viewer.js')) return;
     clearTimeout(timer);
     timer = setTimeout(build, 150);
 });
