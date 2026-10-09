@@ -10,9 +10,11 @@ const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
 const { ensureArchiveAccess } = require('./archive-fallback');
 const { insideArchive } = require('./browse-mode');
+const { mountMeta } = require('./metafont-view');
 
 const log = createLogger('Font');
-const FONT_RE = /\.(ttf|otf|woff2?)$/i;
+const FONT_RE = /\.(ttf|otf|woff2?|mf|mp)$/i;
+const META_RE = /\.(mf|mp)$/i;
 const OPENTYPE_URL = 'https://esm.sh/opentype.js@2.0.0';
 const PYODIDE_VERSION = '0.28.3';
 const PYODIDE_URL = `https://esm.sh/pyodide@${PYODIDE_VERSION}/pyodide.mjs?raw`;
@@ -261,6 +263,8 @@ class FontComponent {
     async _init() {
         this.path = this._path();
         if (!this.path) return this._fail('Fonts need the server workspace.');
+        // a METAFONT or MetaPost program: what it draws, run in MetaPost
+        if (META_RE.test(this.path)) return mountMeta(this);
         this.readOnly = insideArchive(this.path);
         let opentype;
         try {

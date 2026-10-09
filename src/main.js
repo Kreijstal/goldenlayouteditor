@@ -3028,6 +3028,9 @@ const FILE_VIEWERS = [
     // the same MIDI file engraved as a score, a second choice
     { re: /\.(mid|midi|kar)$/i, componentType: 'scoreViewer', tag: 'score', prefix: 'score-', afterEditor: true },
     { re: /\.(ttf|otf|woff2?)$/i, componentType: 'fontEditor', tag: 'font', prefix: 'font-' },
+    // METAFONT and MetaPost: the source in the editor first, what it draws (run in MetaPost) as a choice
+    { re: /\.mf$/i, componentType: 'fontEditor', tag: 'metafont', prefix: 'font-', afterEditor: true },
+    { re: /\.mp$/i, componentType: 'fontEditor', tag: 'metapost', prefix: 'font-', afterEditor: true },
     { re: /\.(sqlite|sqlite3|db)$/i, componentType: 'sqliteInspector', tag: 'sqlite', prefix: 'sqlite-' },
     { re: /\.(pst|ost)$/i, componentType: 'pstViewer', tag: 'outlook', prefix: 'pst-' },
     // Animated PNG: the frame viewer for .apng; for .png (animated or not, unknown until read) a choice after the editor,
@@ -4023,6 +4026,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         getRelativePath,
         setFileContent: setFileContentFromPlugin,
         markDirty,
+        isDirty: (fileId) => dirtyFiles.has(fileId),
         clearDirty(fileId) {
             dirtyFiles.delete(fileId);
             updateDirtyIndicator(fileId);
