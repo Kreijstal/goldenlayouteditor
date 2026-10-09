@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **584** suffixes. Upstream non-generic claims: **515**. Shared: **190**. Missing suffixes: **325**.
+Our explicit viewer/native/archive handling: **594** suffixes. Upstream non-generic claims: **515**. Shared: **200**. Missing suffixes: **315**.
 
 ## Missing extensions
 
@@ -120,11 +120,7 @@ Our explicit viewer/native/archive handling: **584** suffixes. Upstream non-gene
 | `.h2drumkit` | jdeworks: text/hydrogen |
 | `.h2pattern` | jdeworks: text/hydrogen |
 | `.h2song` | jdeworks: text/hydrogen |
-| `.h5` | jdeworks: binary/hdf5 |
 | `.har` | jdeworks: text/har |
-| `.hdf` | jdeworks: binary/hdf5 |
-| `.hdf5` | jdeworks: binary/hdf5 |
-| `.he5` | jdeworks: binary/hdf5 |
 | `.hex` | flyfish: binary-inspector |
 | `.hgignore` | jdeworks: text/gitignore |
 | `.hl7` | jdeworks: text/hl7 |
@@ -133,7 +129,6 @@ Our explicit viewer/native/archive handling: **584** suffixes. Upstream non-gene
 | `.icml` | flyfish: indesign-exchange-design |
 | `.idms` | flyfish: indesign-exchange-design |
 | `.ifb` | jdeworks: ics |
-| `.ifc` | flyfish: model, open-file-viewer: cad |
 | `.indd` | flyfish: indesign-native-design |
 | `.indt` | flyfish: indesign-native-design |
 | `.ini` | jdeworks: text/ini |
@@ -195,15 +190,10 @@ Our explicit viewer/native/archive handling: **584** suffixes. Upstream non-gene
 | `.mt` | jdeworks: text/mt940 |
 | `.mt940` | jdeworks: text/mt940 |
 | `.mt942` | jdeworks: text/mt940 |
-| `.nc` | jdeworks: binary/netcdf, jdeworks: text/gcode |
-| `.nc4` | jdeworks: binary/netcdf |
 | `.ndjson` | jdeworks: text/jsonl |
-| `.netcdf` | jdeworks: binary/netcdf |
 | `.nfo` | jdeworks: text/asciiart |
 | `.nii` | jdeworks: binary/nifti |
 | `.npmignore` | jdeworks: text/gitignore |
-| `.npy` | jdeworks: binary/npy |
-| `.npz` | jdeworks: binary/npy |
 | `.numbers` | flyfish: apple-numbers, open-file-viewer: office |
 | `.oas` | flyfish: eda, open-file-viewer: cad |
 | `.oasis` | flyfish: eda, open-file-viewer: cad |

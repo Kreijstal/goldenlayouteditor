@@ -89,6 +89,7 @@ require('./fb2-plugin');
 require('./xmind-plugin');
 require('./idml-plugin');
 require('./bundle-plugin');
+require('./scientific-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
 require('./photometry-plugin');
@@ -2950,7 +2951,7 @@ class ProjectFilesComponent {
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fileContent = /\.(cd5|xmind|fb2|idml|bundle|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name) ? '' : e.target.result;
+                    const fileContent = /\.(cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i.test(file.name) ? '' : e.target.result;
                     const fileName = file.name;
                     const fileType = getFileTypeFromExtension(fileName);
                     const newFileId = generateUniqueId('file');
@@ -2960,7 +2961,7 @@ class ProjectFilesComponent {
                         name: fileName,
                         type: fileType,
                         content: fileContent,
-                        ...(/\.(cd5|xmind|fb2|idml|bundle|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), viewType: 'binary' } : {}),
+                        ...(/\.(cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), viewType: 'binary' } : {}),
                         cursor: { row: 0, column: 0 },
                         selection: null
                     };
@@ -2976,7 +2977,7 @@ class ProjectFilesComponent {
                 reader.onerror = (err) => {
                     log.error(`ProjectFiles: Error reading file ${file.name}:`, err);
                 };
-                if (/\.(cd5|xmind|fb2|idml|bundle|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name)) reader.readAsArrayBuffer(file);
+                if (/\.(cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i.test(file.name)) reader.readAsArrayBuffer(file);
                 else reader.readAsText(file);
             });
         }
@@ -3018,6 +3019,7 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
+    { re: /\.(h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz)$/i, componentType: 'scientificViewer', tag: 'Scientific data', prefix: 'scientific-' },
     { re: /\.bundle$/i, componentType: 'bundleViewer', tag: 'Git bundle', prefix: 'bundle-' },
     { re: /\.idml$/i, componentType: 'idmlViewer', tag: 'InDesign IDML', prefix: 'idml-' },
     { re: /\.(vcf|vcard)$/i, sniff: /BEGIN:VCARD/i, componentType: 'vcardViewer', tag: 'contacts', prefix: 'vcard-' },
@@ -3098,7 +3100,7 @@ const FILE_VIEWERS = [
     { re: /\.(pcap|pcapng|cap|ntar|erf|snoop)$/i, componentType: 'pcapViewer', tag: 'pcap', prefix: 'pcap-' },
     // STEP, IGES, OpenCASCADE BREP and OpenGEX (text: the editor is the second choice); SketchUp; zlib-compressed XGL;
     // 3DXML
-    { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
+    { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
     // PLY, AMF, STEP, PRC and XGL models; a .ply / .amf / .stp / .prc / .xgl only when it starts as one (PLY's
     // "ply" line, AMF's <amf> or its zip, STEP's "ISO-10303-21;", PRC's "PRC", XGL's <WORLD>; XGL is text: the
     // editor is the second choice)

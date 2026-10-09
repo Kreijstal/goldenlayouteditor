@@ -19,3 +19,5 @@ src/imported-idml/viewer.js
 
 public/model3d-runtime/
 src/imported-bundle/viewer.js
+public/scientific-viewer/
+public/ifc-viewer/

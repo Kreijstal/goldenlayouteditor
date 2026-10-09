@@ -2,6 +2,7 @@
 // Lazy-loads Three.js and loaders when a 3D model is opened.
 const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
+const { readIfc, buildIfcObject } = require('./ifc-reader');
 const { readBytes } = require('./imported-viewer-panel');
 const { parseGcode } = require('./gcode-parse');
 
@@ -57,9 +58,9 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i;
 // Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert, openskp or xeokit): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i;
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i;
 // Names other files have too: a .ply, .amf, .stp, .prc or .xgl only when it starts as a PLY, AMF, STEP, PRC or
 // XGL file (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs; .xgl: other programs' XML)
 const SHARED_NAME_RE = /\.(ply|amf|stp|prc|xgl)$/i;
@@ -459,7 +460,7 @@ function buildCadObject(THREE, result) {
 
 // A model read by one of three's loaders, Y-up as the viewer shows it.
 // manager: a resourceManager, for the textures (and glTF buffers) it names
-async function parseModel(libs, ext, buffer, manager) {
+async function parseModel(libs, ext, buffer, manager, signal) {
     const THREE = libs.THREE;
     let object;
     if (ext === 'glb' || ext === 'gltf') {
@@ -534,6 +535,8 @@ async function parseModel(libs, ext, buffer, manager) {
         const header = new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(16, buffer.byteLength)));
         if (!header.startsWith('PXR-USDC') && !header.startsWith('#usda ') && !header.startsWith('PK')) throw new Error('Not a USD layer or USDZ archive');
         object = new libs.USDLoader(manager).parse(buffer);
+    } else if (ext === 'ifc') {
+        object = buildIfcObject(THREE, await readIfc(buffer, signal));
     } else if (ext === 'fbx') {
         object = new libs.FBXLoader(manager).parse(buffer, '');
     } else if (ext === 'pcd') {
@@ -703,6 +706,7 @@ class Model3dComponent {
             container.on('resize', () => this._resize());
             container.on('destroy', () => this._destroy());
         }
+        this.abortController = new AbortController();
         this.loadSequence = 0;
         this.destroyed = false;
         this.ready = this._init();
@@ -797,7 +801,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml,.usd,.usda,.usdc,.usdz,.fbx,.pcd,.vtk,.vtp,.xyz';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml,.usd,.usda,.usdc,.usdz,.fbx,.pcd,.vtk,.vtp,.xyz,.ifc';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -960,7 +964,7 @@ class Model3dComponent {
                 if (ext === 'prc') this.statusEl.textContent = 'Reading with prc-convert...';
                 if (ext === 'skp') this.statusEl.textContent = 'Reading with openskp...';
                 if (ext === '3dxml') this.statusEl.textContent = 'Reading with xeokit...';
-                object = await parseModel(libs, ext, buffer, manager);
+                object = await parseModel(libs, ext, buffer, manager, this.abortController.signal);
                 manager.settled().then(() => dropMissingTextures(object));
                 if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
                 if (ASSIMP_FORMATS[ext]) this.extraStats = { format: ASSIMP_FORMATS[ext], reader: 'assimpjs 0.0.10 (Assimp)' };
@@ -1803,6 +1807,7 @@ class Model3dComponent {
 
     _destroy() {
         this.destroyed = true;
+        this.abortController.abort();
         this.loadSequence++;
         this._stopPlay();
         for (const worker of this.scadWorkers || []) worker.terminate();
