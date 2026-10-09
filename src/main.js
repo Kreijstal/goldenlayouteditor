@@ -3067,11 +3067,11 @@ const FILE_VIEWERS = [
     // Asymptote programs: the source in the editor first, what it draws (run by Asymptote) as a choice
     { re: /\.asy$/i, componentType: 'asyViewer', tag: 'asymptote', prefix: 'asy-', afterEditor: true },
     { re: /\.vcut$/i, componentType: 'videoCut', tag: 'video editor', prefix: 'vcut-' },
+    // Stereo pictures (MPO, side-by-side JPS / PNS): the two eyes' pictures; the plain picture, the second choice
+    { re: /\.(mpo|jps|pns)$/i, componentType: 'stereoViewer', tag: 'stereo', prefix: 'stereo-' },
     { re: /\.apng$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-' },
     { re: /\.(png|jxl|bpg|flif)$/i, componentType: 'apngViewer', tag: 'frames', prefix: 'apng-', afterEditor: true },
     { re: /\.(pcap|pcapng|cap|ntar|erf|snoop)$/i, componentType: 'pcapViewer', tag: 'pcap', prefix: 'pcap-' },
-    // Stereo pictures (MPO, side-by-side JPS / PNS): the two eyes' pictures; the plain picture, the second choice
-    { re: /\.(mpo|jps|pns)$/i, componentType: 'stereoViewer', tag: 'stereo', prefix: 'stereo-' },
     // STEP, IGES, OpenCASCADE BREP and OpenGEX (text: the editor is the second choice); SketchUp; zlib-compressed XGL;
     // 3DXML
     { re: /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl|3dxml)$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
@@ -3097,15 +3097,15 @@ const FILE_VIEWERS = [
     { re: /\.dgn$/i, binaryOnly: true, test: f => !(f.head || f.bytes) || isDgn(f.head || f.bytes), componentType: 'dxfViewer', tag: 'dgn', prefix: 'dxf-' },
     // Autodesk DWF and DWFx: published sheets (2D) and models (3D)
     { re: /\.(dwf|dwfx)$/i, componentType: 'dwfViewer', tag: 'dwf', prefix: 'dwf-' },
-    // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
-    { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
-    { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
     // Lottie animations: dotLottie bundles, and a .json only when its text is Lottie (other JSON stays in the editor)
     { re: /\.(lottie|json)$/i, test: isLottieFile, componentType: 'lottieViewer', tag: 'lottie', prefix: 'lottie-' },
     // MathML documents, typeset by MathJax; a .xml only when its root is <math>
     { re: /\.(mml|mathml|xml)$/i, test: isMathmlFile, componentType: 'mathmlViewer', tag: 'mathml', prefix: 'mathml-' },
     // PostScript and EPS, drawn by Ghostscript (a DOS EPS too, binary); a .ps only when its text has %!
     { re: /\.(ps|eps|epsf|epsi)$/i, test: isPostScriptFile, componentType: 'psViewer', tag: 'postscript', prefix: 'ps-' },
+    // .gpx is a GPS track (XML); a binary one is a Guitar Pro 6 score
+    { re: /\.gpx$/i, binaryOnly: true, componentType: 'scoreViewer', tag: 'score', prefix: 'score-' },
+    { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
     { re: /\.(vcd|fst|ghw)$/i, componentType: 'waveformViewer', tag: 'wave', prefix: 'wave-' },
     { re: /\.wasm$/i, componentType: 'wasmInspector', tag: 'wasm', prefix: 'wasm-' },
     { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
@@ -3143,13 +3143,13 @@ const FILE_VIEWERS = [
     { re: /\.chm$/i, componentType: 'chmViewer', tag: 'help', prefix: 'chm-' },
     // Hangul Word Processor documents (HWP 5.0, HWP 3.x, HWPX), laid out page by page by rhwp
     { re: /\.(hwp|hwpx)$/i, componentType: 'hwpViewer', tag: 'hwp', prefix: 'hwp-' },
-    // Windows Help and OS/2 help; text-mode programs' plain-text .hlp files (and Windows .inf setup files) stay in the editor
-    { re: /\.hlp$/i, sniff: /^(?:\?_\x03\x00|HSP|$)|\x00/, componentType: 'hlpViewer', tag: 'winhelp', prefix: 'hlp-' },
-    { re: /\.inf$/i, sniff: /^(?:HSP|$)/, componentType: 'hlpViewer', tag: 'os/2 help', prefix: 'hlp-' },
     // GLDF luminaire data: the product, its variants and pictures, the photometry drawn by eulumdat-rs
     { re: /\.gldf$/i, componentType: 'gldfViewer', tag: 'gldf', prefix: 'gldf-' },
     // Photometry (EULUMDAT, IES LM-63): eulumdat-rs's diagrams of the text, which the editor next to it changes
     { re: /\.(ldt|ies)$/i, componentType: 'photometryViewer', tag: 'photometry', prefix: 'phot-' },
+    // Windows Help and OS/2 help; text-mode programs' plain-text .hlp files (and Windows .inf setup files) stay in the editor
+    { re: /\.hlp$/i, sniff: /^(?:\?_\x03\x00|HSP|$)|\x00/, componentType: 'hlpViewer', tag: 'winhelp', prefix: 'hlp-' },
+    { re: /\.inf$/i, sniff: /^(?:HSP|$)/, componentType: 'hlpViewer', tag: 'os/2 help', prefix: 'hlp-' },
     // Game ROMs, run with EmulatorJS; disc images and raw dumps could be for several systems: a choice after the editor
     { re: /\.(nes|unf|unif|sfc|smc|fig|swc|n64|z64|v64|gbc?|gba|agb|nds|vb|vboy|sms|sg|gen|smd|gg|32x|pbp|pce|ngp|ngc|wsc?|lnx|j64|jag|a26|a78|col)$/i, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-' },
     // .md is usually Markdown: a Mega Drive ROM only when the file turned out binary
