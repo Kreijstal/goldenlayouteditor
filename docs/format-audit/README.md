@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **624** suffixes. Upstream non-generic claims: **515**. Shared: **230**. Missing suffixes: **285**.
+Our explicit viewer/native/archive handling: **632** suffixes. Upstream non-generic claims: **515**. Shared: **238**. Missing suffixes: **277**.
 
 ## Missing extensions
 
@@ -12,7 +12,6 @@ Our explicit viewer/native/archive handling: **624** suffixes. Upstream non-gene
 | `.abc` | jdeworks: text/abc |
 | `.abr` | flyfish: photoshop-resource-design |
 | `.acf` | jdeworks: text/acf |
-| `.aco` | flyfish: adobe-palette-design |
 | `.aif` | open-file-viewer: audio |
 | `.aifc` | open-file-viewer: audio |
 | `.aiff` | open-file-viewer: audio |
@@ -21,7 +20,6 @@ Our explicit viewer/native/archive handling: **624** suffixes. Upstream non-gene
 | `.amr` | open-file-viewer: audio |
 | `.ans` | jdeworks: text/asciiart |
 | `.arrow` | jdeworks: binary/arrow |
-| `.ase` | flyfish: adobe-palette-design |
 | `.asf` | jdeworks: VIDEO |
 | `.asice` | flyfish: signature |
 | `.asics` | flyfish: signature |
@@ -114,13 +112,8 @@ Our explicit viewer/native/archive handling: **624** suffixes. Upstream non-gene
 | `.hl7` | jdeworks: text/hl7 |
 | `.hl7v2` | jdeworks: text/hl7 |
 | `.icalendar` | jdeworks: ics |
-| `.icml` | flyfish: indesign-exchange-design |
-| `.idms` | flyfish: indesign-exchange-design |
 | `.ifb` | jdeworks: ics |
-| `.indd` | flyfish: indesign-native-design |
-| `.indt` | flyfish: indesign-native-design |
 | `.ini` | jdeworks: text/ini |
-| `.inx` | flyfish: indesign-exchange-design |
 | `.ipc` | jdeworks: binary/arrow |
 | `.ips` | jdeworks: text/crash |
 | `.jfif` | open-file-viewer: image |
@@ -281,7 +274,6 @@ Our explicit viewer/native/archive handling: **624** suffixes. Upstream non-gene
 | `.wsdl` | jdeworks: text/xml |
 | `.x_b` | open-file-viewer: cad |
 | `.x_t` | open-file-viewer: cad |
-| `.xd` | flyfish: adobe-xd-design |
 | `.xhtml` | jdeworks: html |
 | `.xla` | flyfish: spreadsheet-openxml |
 | `.xlam` | flyfish: spreadsheet-openxml |
