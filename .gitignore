@@ -16,3 +16,5 @@ public/bundle.js.tmp-browserify-*
 
 public/idml-viewer/
 src/imported-idml/viewer.js
+
+public/model3d-runtime/

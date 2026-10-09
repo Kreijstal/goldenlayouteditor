@@ -106,6 +106,7 @@
     "exc",
     "exr",
     "fb2",
+    "fbx",
     "fff",
     "fig",
     "fit",
@@ -411,6 +412,7 @@
     "pcap.gz",
     "pcapng",
     "pcapng.gz",
+    "pcd",
     "pce",
     "pct",
     "pcx",
@@ -517,6 +519,10 @@
     "tzst",
     "unf",
     "unif",
+    "usd",
+    "usda",
+    "usdc",
+    "usdz",
     "v64",
     "vb",
     "vboy",
@@ -534,6 +540,8 @@
     "vsdx",
     "vsix",
     "vst",
+    "vtk",
+    "vtp",
     "war",
     "wasm",
     "wav",
@@ -574,6 +582,7 @@
     "xpm",
     "xps",
     "xwd",
+    "xyz",
     "xyze",
     "z64",
     "zgl",
@@ -1186,7 +1195,6 @@
     "faa",
     "fasta",
     "fastq",
-    "fbx",
     "feather",
     "ffn",
     "flv",
@@ -1315,7 +1323,6 @@
     "parquet",
     "pat",
     "patch",
-    "pcd",
     "pdb",
     "pdd",
     "pem",
@@ -1395,14 +1402,8 @@
     "udeb",
     "umd",
     "url",
-    "usd",
-    "usda",
-    "usdc",
-    "usdz",
     "vhd",
     "vob",
-    "vtk",
-    "vtp",
     "vtt",
     "wad",
     "weba",
@@ -1428,7 +1429,6 @@
     "xsd",
     "xsl",
     "xslt",
-    "xyz",
     "xz",
     "yaml",
     "yml",
@@ -1478,6 +1478,7 @@
     "epub",
     "exr",
     "fb2",
+    "fbx",
     "fit",
     "fits",
     "fla",
@@ -1553,6 +1554,7 @@
     "p21",
     "pcap",
     "pcapng",
+    "pcd",
     "pdf",
     "pgp",
     "ply",
@@ -1588,11 +1590,17 @@
     "ttf",
     "typ",
     "tzst",
+    "usd",
+    "usda",
+    "usdc",
+    "usdz",
     "v64",
     "vcard",
     "vcf",
     "vrml",
     "vsix",
+    "vtk",
+    "vtp",
     "war",
     "wasm",
     "wav",
@@ -1612,6 +1620,7 @@
     "xmind",
     "xml",
     "xps",
+    "xyz",
     "z64",
     "zip",
     "zst"
@@ -2153,7 +2162,6 @@
       "ers",
       "excalidraw",
       "exe",
-      "fbx",
       "fods",
       "gds",
       "geojson",
@@ -2195,7 +2203,6 @@
       "pages",
       "parquet",
       "pat",
-      "pcd",
       "pdd",
       "pkcs7",
       "plantuml",
@@ -2220,12 +2227,6 @@
       "txz",
       "typst",
       "umd",
-      "usd",
-      "usda",
-      "usdc",
-      "usdz",
-      "vtk",
-      "vtp",
       "weba",
       "webarchive",
       "wp",
@@ -2239,7 +2240,6 @@
       "xlt",
       "xltm",
       "xltx",
-      "xyz",
       "xz",
       "zipx"
     ],
@@ -2300,7 +2300,6 @@
       "faa",
       "fasta",
       "fastq",
-      "fbx",
       "feather",
       "ffn",
       "flv",
@@ -2459,7 +2458,6 @@
       "xsd",
       "xsl",
       "xslt",
-      "xyz",
       "xz",
       "yaml",
       "yml"
@@ -2484,7 +2482,6 @@
       "eot",
       "et",
       "excalidraw",
-      "fbx",
       "flv",
       "fodp",
       "fods",
@@ -2526,10 +2523,6 @@
       "snd",
       "tldraw",
       "topojson",
-      "usd",
-      "usda",
-      "usdc",
-      "usdz",
       "weba",
       "webarchive",
       "wma",
@@ -3539,32 +3532,6 @@
         "owner": "text/bio",
         "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
         "line": 12
-      }
-    ],
-    "fbx": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/fbx",
-        "source": "../jdeworks-file-viewer/docs/types/binary/fbx/detect.js",
-        "line": 13
-      },
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/model3d.ts",
-        "line": 5
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
       }
     ],
     "feather": [
@@ -5185,14 +5152,6 @@
         "line": 6
       }
     ],
-    "pcd": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "pdb": [
       {
         "project": "jdeworks",
@@ -6029,86 +5988,6 @@
         "line": 15
       }
     ],
-    "usd": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/model3d.ts",
-        "line": 5
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "usda": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/model3d.ts",
-        "line": 5
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "usdc": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/model3d.ts",
-        "line": 5
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "usdz": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/model3d.ts",
-        "line": 5
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "model3d",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
     "vhd": [
       {
         "project": "jdeworks",
@@ -6123,22 +6002,6 @@
         "owner": "VIDEO",
         "source": "../jdeworks-file-viewer/docs/types/media/medialib.js",
         "line": 4
-      }
-    ],
-    "vtk": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "vtp": [
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
       }
     ],
     "vtt": [
@@ -6435,20 +6298,6 @@
         "owner": "text/xml",
         "source": "../jdeworks-file-viewer/docs/types/text/xml/detect.js",
         "line": 7
-      }
-    ],
-    "xyz": [
-      {
-        "project": "jdeworks",
-        "owner": "text/xyz",
-        "source": "../jdeworks-file-viewer/docs/types/text/xyz/detect.js",
-        "line": 5
-      },
-      {
-        "project": "flyfish",
-        "owner": "model",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
       }
     ],
     "xz": [
@@ -6977,11 +6826,20 @@
       "extensions": [
         "cd5",
         "fb2",
+        "fbx",
         "idml",
-        "xmind"
+        "pcd",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
+        "vtk",
+        "vtp",
+        "xmind",
+        "xyz"
       ],
       "filenames": [],
-      "pattern": "\\.(cd5|xmind|fb2|idml)$",
+      "pattern": "\\.(cd5|xmind|fb2|idml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -6993,11 +6851,20 @@
       "extensions": [
         "cd5",
         "fb2",
+        "fbx",
         "idml",
-        "xmind"
+        "pcd",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
+        "vtk",
+        "vtp",
+        "xmind",
+        "xyz"
       ],
       "filenames": [],
-      "pattern": "\\.(cd5|xmind|fb2|idml)$",
+      "pattern": "\\.(cd5|xmind|fb2|idml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -7009,11 +6876,20 @@
       "extensions": [
         "cd5",
         "fb2",
+        "fbx",
         "idml",
-        "xmind"
+        "pcd",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
+        "vtk",
+        "vtp",
+        "xmind",
+        "xyz"
       ],
       "filenames": [],
-      "pattern": "\\.(cd5|xmind|fb2|idml)$",
+      "pattern": "\\.(cd5|xmind|fb2|idml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -7776,6 +7652,7 @@
         "brep",
         "csg",
         "dae",
+        "fbx",
         "gco",
         "gcode",
         "glb",
@@ -7785,16 +7662,24 @@
         "obj",
         "ogex",
         "p21",
+        "pcd",
         "scad",
         "skp",
         "step",
         "stl",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
         "vrml",
+        "vtk",
+        "vtp",
         "wrl",
+        "xyz",
         "zgl"
       ],
       "filenames": [],
-      "pattern": "\\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl|3dxml)$",
+      "pattern": "\\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|dae|wrl|vrml|3ds|3dm|step|p21|iges|igs|brep|ogex|skp|zgl|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -9228,7 +9113,7 @@
       "owner": "model3d-plugin",
       "kind": "viewer",
       "source": "src/model3d-plugin.js",
-      "line": 792,
+      "line": 800,
       "extensions": [
         "3dm",
         "3ds",
@@ -9238,6 +9123,7 @@
         "brep",
         "csg",
         "dae",
+        "fbx",
         "gco",
         "gcode",
         "glb",
@@ -9247,6 +9133,7 @@
         "obj",
         "ogex",
         "p21",
+        "pcd",
         "ply",
         "prc",
         "scad",
@@ -9254,9 +9141,16 @@
         "step",
         "stl",
         "stp",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
         "vrml",
+        "vtk",
+        "vtp",
         "wrl",
         "xgl",
+        "xyz",
         "zgl"
       ],
       "filenames": []
@@ -9266,7 +9160,7 @@
       "owner": "model3d-plugin",
       "kind": "viewer",
       "source": "src/model3d-plugin.js",
-      "line": 60,
+      "line": 62,
       "extensions": [
         "3dm",
         "3ds",
@@ -9274,6 +9168,7 @@
         "amf",
         "brep",
         "dae",
+        "fbx",
         "glb",
         "gltf",
         "iges",
@@ -9281,19 +9176,27 @@
         "obj",
         "ogex",
         "p21",
+        "pcd",
         "ply",
         "prc",
         "skp",
         "step",
         "stl",
         "stp",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
         "vrml",
+        "vtk",
+        "vtp",
         "wrl",
         "xgl",
+        "xyz",
         "zgl"
       ],
       "filenames": [],
-      "pattern": "\\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml)$",
+      "pattern": "\\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -9301,7 +9204,7 @@
       "owner": "model3d-plugin",
       "kind": "viewer",
       "source": "src/model3d-plugin.js",
-      "line": 63,
+      "line": 65,
       "extensions": [
         "amf",
         "ply",
@@ -9318,7 +9221,7 @@
       "owner": "model3d-plugin",
       "kind": "viewer",
       "source": "src/model3d-plugin.js",
-      "line": 58,
+      "line": 60,
       "extensions": [
         "3dm",
         "3ds",
@@ -9328,6 +9231,7 @@
         "brep",
         "csg",
         "dae",
+        "fbx",
         "gco",
         "gcode",
         "glb",
@@ -9337,6 +9241,7 @@
         "obj",
         "ogex",
         "p21",
+        "pcd",
         "ply",
         "prc",
         "scad",
@@ -9344,13 +9249,20 @@
         "step",
         "stl",
         "stp",
+        "usd",
+        "usda",
+        "usdc",
+        "usdz",
         "vrml",
+        "vtk",
+        "vtp",
         "wrl",
         "xgl",
+        "xyz",
         "zgl"
       ],
       "filenames": [],
-      "pattern": "\\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml)$",
+      "pattern": "\\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {

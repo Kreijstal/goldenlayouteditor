@@ -2,10 +2,12 @@
 // Lazy-loads Three.js and loaders when a 3D model is opened.
 const { registerPlugin } = require('./plugins');
 const { createLogger } = require('./debug');
+const { readBytes } = require('./imported-viewer-panel');
 const { parseGcode } = require('./gcode-parse');
 
 const log = createLogger('Model3D');
-const THREE_VERSION = '0.164.1';
+const { resolveAssetUrl } = require('./lazy-viewers');
+const THREE_VERSION = '0.184.0';
 const THREE_URL = `https://esm.sh/three@${THREE_VERSION}`;
 const GLTF_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/GLTFLoader.js`;
 const STL_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/STLLoader.js`;
@@ -55,9 +57,9 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i;
 // Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert, openskp or xeokit): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml)$/i;
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i;
 // Names other files have too: a .ply, .amf, .stp, .prc or .xgl only when it starts as a PLY, AMF, STEP, PRC or
 // XGL file (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs; .xgl: other programs' XML)
 const SHARED_NAME_RE = /\.(ply|amf|stp|prc|xgl)$/i;
@@ -69,18 +71,7 @@ let _threePromise = null;
 async function ensureThreeLoaded() {
     if (!_threePromise) {
         _threePromise = (async () => {
-            const [THREE, gltfMod, stlMod, objMod] = await Promise.all([
-                import(THREE_URL),
-                import(GLTF_LOADER_URL),
-                import(STL_LOADER_URL),
-                import(OBJ_LOADER_URL),
-            ]);
-            return {
-                THREE,
-                GLTFLoader: gltfMod.GLTFLoader,
-                STLLoader: stlMod.STLLoader,
-                OBJLoader: objMod.OBJLoader,
-            };
+            return import(resolveAssetUrl('model3d-runtime/loaders.js'));
         })();
     }
     return _threePromise;
@@ -539,6 +530,21 @@ async function parseModel(libs, ext, buffer, manager) {
         object = await parseGltf(new libs.GLTFLoader(manager), await prcToGlb(buffer), '', true);
     } else if (ext === 'skp') {
         object = await parseGltf(new libs.GLTFLoader(manager), await skpToGlb(buffer), '', true);
+    } else if (['usd', 'usda', 'usdc', 'usdz'].includes(ext)) {
+        const header = new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(16, buffer.byteLength)));
+        if (!header.startsWith('PXR-USDC') && !header.startsWith('#usda ') && !header.startsWith('PK')) throw new Error('Not a USD layer or USDZ archive');
+        object = new libs.USDLoader(manager).parse(buffer);
+    } else if (ext === 'fbx') {
+        object = new libs.FBXLoader(manager).parse(buffer, '');
+    } else if (ext === 'pcd') {
+        object = new libs.PCDLoader(manager).parse(buffer);
+    } else if (ext === 'xyz') {
+        const geometry = new libs.XYZLoader(manager).parse(new TextDecoder().decode(buffer));
+        object = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xffffff, vertexColors: !!geometry.getAttribute('color'), size: 2, sizeAttenuation: false }));
+    } else if (ext === 'vtk' || ext === 'vtp') {
+        const geometry = new libs.VTKLoader(manager).parse(buffer);
+        if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+        object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color:0x9ad0ff, side:THREE.DoubleSide}));
     } else if (ext === '3dxml') {
         object = await read3dxml(THREE, buffer);
     } else {
@@ -697,7 +703,9 @@ class Model3dComponent {
             container.on('resize', () => this._resize());
             container.on('destroy', () => this._destroy());
         }
-        this._init();
+        this.loadSequence = 0;
+        this.destroyed = false;
+        this.ready = this._init();
     }
 
     static _styleInstalled = false;
@@ -789,7 +797,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml,.usd,.usda,.usdc,.usdz,.fbx,.pcd,.vtk,.vtp,.xyz';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -899,20 +907,11 @@ class Model3dComponent {
     }
 
     async _loadProjectFile() {
-        try {
-            if (!this.ctx || !this.fileData || !this.ctx.currentWorkspacePath) {
-                this._showMessage('Workspace-backed model loading requires the server workspace.');
-                return;
-            }
-            const relPath = this.ctx.getRelativePath(this.fileId);
-            this.sourcePath = this.ctx.currentWorkspacePath + '/' + relPath;
-            const url = '/workspace-file?path=' + encodeURIComponent(this.sourcePath);
-            const resp = await fetch(url);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            await this._loadBuffer(await resp.arrayBuffer(), this.fileData.name, '');
-        } catch (err) {
-            this._showError(err.message);
+        const bytes = await readBytes(this.fileData, this.ctx);
+        if (this.ctx.currentWorkspacePath && this.ctx.getRelativePath) {
+            this.sourcePath = this.ctx.currentWorkspacePath + '/' + this.ctx.getRelativePath(this.fileId);
         }
+        await this._loadBuffer(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), this.fileData.name, '');
     }
 
     async _loadFileObject(file) {
@@ -926,8 +925,10 @@ class Model3dComponent {
         this.titleEl.textContent = this.fileName;
         this.statusEl.textContent = 'Loading Three.js...';
         const ext = (this.fileName.split('.').pop() || '').toLowerCase();
+        const sequence = ++this.loadSequence;
         try {
             const libs = await ensureThreeLoaded();
+            if (this.destroyed || sequence !== this.loadSequence) return;
             this.THREE = libs.THREE;
             this._ensureScene();
             this.statusEl.textContent = 'Parsing model...';
@@ -967,11 +968,14 @@ class Model3dComponent {
                 if (ext === 'skp') this.extraStats = { format: 'SketchUp', reader: 'openskp 1.3.0' };
                 if (ext === '3dxml') this.extraStats = { format: '3DXML', reader: 'xeokit-sdk 2.6.114 (XML3DLoaderPlugin)' };
             }
+            if (this.destroyed || sequence !== this.loadSequence) { disposeObject(libs.THREE, object); return; }
             this._setModel(object);
         } catch (err) {
             if (err.cancelled) return; // a parameter change started a newer render
             log.error('Failed to open 3D model:', err);
+            if (this.destroyed || sequence !== this.loadSequence) return;
             this._showError(ext === 'scad' || ext === 'csg' ? err.message : `Failed to open 3D model: ${err.message}`);
+            throw err;
         }
     }
 
@@ -1798,6 +1802,8 @@ class Model3dComponent {
     }
 
     _destroy() {
+        this.destroyed = true;
+        this.loadSequence++;
         this._stopPlay();
         for (const worker of this.scadWorkers || []) worker.terminate();
         window.removeEventListener('mousemove', this._moveHandler);

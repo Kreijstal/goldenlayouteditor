@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **574** suffixes. Upstream non-generic claims: **515**. Shared: **180**. Missing suffixes: **335**.
+Our explicit viewer/native/archive handling: **583** suffixes. Upstream non-generic claims: **515**. Shared: **189**. Missing suffixes: **326**.
 
 ## Missing extensions
 
@@ -96,7 +96,6 @@ Our explicit viewer/native/archive handling: **574** suffixes. Upstream non-gene
 | `.faa` | jdeworks: text/bio |
 | `.fasta` | jdeworks: text/bio |
 | `.fastq` | jdeworks: text/bio |
-| `.fbx` | flyfish: model, jdeworks: binary/fbx, open-file-viewer: model3d |
 | `.feather` | jdeworks: binary/arrow |
 | `.ffn` | jdeworks: text/bio |
 | `.flv` | jdeworks: VIDEO, open-file-viewer: video |
@@ -225,7 +224,6 @@ Our explicit viewer/native/archive handling: **574** suffixes. Upstream non-gene
 | `.parquet` | flyfish: data-asset, jdeworks: binary/parquet, open-file-viewer: asset |
 | `.pat` | flyfish: photoshop-resource-design |
 | `.patch` | jdeworks: text/patch |
-| `.pcd` | flyfish: model |
 | `.pdb` | jdeworks: text/pdb |
 | `.pdd` | flyfish: photoshop-design |
 | `.pem` | jdeworks: text/pem |
@@ -305,14 +303,8 @@ Our explicit viewer/native/archive handling: **574** suffixes. Upstream non-gene
 | `.udeb` | jdeworks: binary/deb |
 | `.umd` | flyfish: umd |
 | `.url` | jdeworks: text/url |
-| `.usd` | flyfish: model, open-file-viewer: model3d |
-| `.usda` | flyfish: model, open-file-viewer: model3d |
-| `.usdc` | flyfish: model, open-file-viewer: model3d |
-| `.usdz` | flyfish: model, open-file-viewer: model3d |
 | `.vhd` | jdeworks: emulator/v86 |
 | `.vob` | jdeworks: VIDEO |
-| `.vtk` | flyfish: model |
-| `.vtp` | flyfish: model |
 | `.vtt` | jdeworks: text/subtitle |
 | `.wad` | jdeworks: binary/wad |
 | `.weba` | flyfish: audio, jdeworks: AUDIO, open-file-viewer: audio |
@@ -338,7 +330,6 @@ Our explicit viewer/native/archive handling: **574** suffixes. Upstream non-gene
 | `.xsd` | jdeworks: text/xml |
 | `.xsl` | jdeworks: text/xml |
 | `.xslt` | jdeworks: text/xml |
-| `.xyz` | flyfish: model, jdeworks: text/xyz |
 | `.xz` | flyfish: archive, jdeworks: archive, open-file-viewer: archive |
 | `.yaml` | jdeworks: text/yaml |
 | `.yml` | jdeworks: text/yaml |
