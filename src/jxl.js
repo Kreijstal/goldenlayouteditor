@@ -34,7 +34,8 @@
 // ImageMagick (src/mng.js), a JPEG-LS image's PNG, by CharLS (src/jls.js), a MIFF
 // file's first image's PNG (src/miff.js) and a WBMP's PNG (src/wbmp.js), by
 // ImageMagick, and an X Window dump's PNG (src/xwd.js) and a PICtor picture's
-// PNG (src/pictor.js), by FFmpeg.
+// PNG (src/pictor.js), by FFmpeg, and a camera raw file's half-size PNG, by
+// LibRaw (src/raw.js).
 const { createLogger } = require('./debug');
 const { tvgToSvg } = require('./tvg');
 const { isTiffName, tiffPage } = require('./tiff');
@@ -80,6 +81,7 @@ const { isMiffName, miffPage } = require('./miff');
 const { isWbmpName, wbmpImage } = require('./wbmp');
 const { isXwdName, xwdImage } = require('./xwd');
 const { isPictorUrl, pictorImage } = require('./pictor');
+const { isRawName, rawImage } = require('./raw');
 
 const log = createLogger('JXL');
 // A 1×1 JPEG XL (Modernizr's test)
@@ -167,6 +169,7 @@ function jxlDecode(bytes) {
 // frame's PNG (MNG: a .mng only once known to be one) or the PNG (JNG: .jng) or the
 // PNG, more than 8 bits windowed to their range (JPEG-LS: .jls) or the first image's PNG
 // (MIFF: .miff) or the PNG (WBMP: .wbmp; X Window dump: .xwd; PICtor: a .pic only once known to be one)
+// or the half-size PNG, demosaiced (camera raw: .dng, .crw, .cr2, .cr3, .nef, .arw...)
 async function displayableImageUrl(url, name) {
     if (isTiffName(name)) return (await tiffPage(url, 0)).url;
     if (isHeifName(name)) return (await heifPage(url, 0)).url;
@@ -216,6 +219,7 @@ async function displayableImageUrl(url, name) {
     if (isMiffName(name)) return (await miffPage(url, 0)).url;
     if (isWbmpName(name)) return (await wbmpImage(url)).url;
     if (isXwdName(name)) return (await xwdImage(url)).url;
+    if (isRawName(name)) return (await rawImage(url)).url;
     const tvg = TVG_RE.test(name || '');
     const jp2 = isJp2Name(name);
     if (!tvg && !jp2 && (!JXL_RE.test(name || '') || await jxlNative())) return url;

@@ -69,6 +69,8 @@ const SERVED_EXTENSIONS = new Set([
   'xisf', 'xish', // an .xish is text, but the picture is what one wants of it
   'ecw',
   'ximg', 'timg', // not .img: disk images and VICAR's too (GEM_MAYBE_RE)
+  // camera raws (LibRaw's); not .raw: raw dumps of anything far more often, nor Kodak's .dcr (Shockwave's too)
+  'dng', 'crw', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'raf', 'pef', 'srw', '3fr', 'fff', 'erf', 'kdc', 'mrw', 'mos', 'iiq', 'rwl', 'mef',
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
   'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',

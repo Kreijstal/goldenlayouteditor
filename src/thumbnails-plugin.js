@@ -15,12 +15,13 @@ const { isPictorUrl } = require('./pictor');
 const { isCalsUrl } = require('./cals');
 const { isCineonUrl } = require('./dpx');
 const { isMngUrl } = require('./mng');
+const { isRawName, rawThumbnail } = require('./raw');
 
 let _ctx = null;
 let _pdfLib = null;
 let _pdfLibPromise = null;
 
-const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'jls', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'iff', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'odg', 'otg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'pic', 'cals', 'ct1', 'cal', 'dpx', 'cin', 'mng', 'jng', 'miff', 'wbmp', 'xwd', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg']);
+const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'jls', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'iff', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'odg', 'otg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'pic', 'cals', 'ct1', 'cal', 'dpx', 'cin', 'mng', 'jng', 'miff', 'wbmp', 'xwd', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg', 'dng', 'crw', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'raf', 'pef', 'srw', '3fr', 'fff', 'erf', 'kdc', 'mrw', 'mos', 'iiq', 'rwl', 'mef']);
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mov']);
 const PDF_EXTS = new Set(['pdf', 'ai']);
 
@@ -145,8 +146,10 @@ async function renderImageClient(file, container) {
     }
     try {
         // a PGF image from its first levels only, the smallest big enough; an ECW image the same
+        // ...a camera raw file from the camera's preview, not demosaiced
         url = isPgfName(file.name) ? (await pgfImage(url, 'thumb')).url
-            : isEcwName(file.name) ? (await ecwImage(url, 'thumb')).url : await displayableImageUrl(url, file.name);
+            : isEcwName(file.name) ? (await ecwImage(url, 'thumb')).url
+            : isRawName(file.name) ? (await rawThumbnail(url)).url : await displayableImageUrl(url, file.name);
     } catch (_) {
         container.textContent = '\uD83D\uDDBC';
         return;
