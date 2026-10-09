@@ -88,6 +88,7 @@ require('./calendar-plugin');
 require('./fb2-plugin');
 require('./xmind-plugin');
 require('./idml-plugin');
+require('./bundle-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
 require('./photometry-plugin');
@@ -2949,7 +2950,7 @@ class ProjectFilesComponent {
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fileContent = /\.(cd5|xmind|fb2|idml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name) ? '' : e.target.result;
+                    const fileContent = /\.(cd5|xmind|fb2|idml|bundle|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name) ? '' : e.target.result;
                     const fileName = file.name;
                     const fileType = getFileTypeFromExtension(fileName);
                     const newFileId = generateUniqueId('file');
@@ -2959,7 +2960,7 @@ class ProjectFilesComponent {
                         name: fileName,
                         type: fileType,
                         content: fileContent,
-                        ...(/\.(cd5|xmind|fb2|idml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), viewType: 'binary' } : {}),
+                        ...(/\.(cd5|xmind|fb2|idml|bundle|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), viewType: 'binary' } : {}),
                         cursor: { row: 0, column: 0 },
                         selection: null
                     };
@@ -2975,7 +2976,7 @@ class ProjectFilesComponent {
                 reader.onerror = (err) => {
                     log.error(`ProjectFiles: Error reading file ${file.name}:`, err);
                 };
-                if (/\.(cd5|xmind|fb2|idml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name)) reader.readAsArrayBuffer(file);
+                if (/\.(cd5|xmind|fb2|idml|bundle|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name)) reader.readAsArrayBuffer(file);
                 else reader.readAsText(file);
             });
         }
@@ -3017,6 +3018,7 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
+    { re: /\.bundle$/i, componentType: 'bundleViewer', tag: 'Git bundle', prefix: 'bundle-' },
     { re: /\.idml$/i, componentType: 'idmlViewer', tag: 'InDesign IDML', prefix: 'idml-' },
     { re: /\.(vcf|vcard)$/i, sniff: /BEGIN:VCARD/i, componentType: 'vcardViewer', tag: 'contacts', prefix: 'vcard-' },
     { re: /\.(ics|ical)$/i, sniff: /BEGIN:VCALENDAR/i, componentType: 'calendarViewer', tag: 'calendar', prefix: 'calendar-' },

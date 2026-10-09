@@ -13,7 +13,7 @@ const fileWatchers = new Map();
 
 // Files served via HTTP with specialized viewers (not loaded into memory as text)
 const SERVED_EXTENSIONS = new Set([
-  'usd', 'usda', 'usdc', 'usdz', 'fbx', 'pcd', 'vtk', 'vtp', 'xyz',
+  'bundle', 'usd', 'usda', 'usdc', 'usdz', 'fbx', 'pcd', 'vtk', 'vtp', 'xyz',
   'idml', 'xmind', 'fb2',
   'pdf', 'ai',
   'djvu', 'djv',

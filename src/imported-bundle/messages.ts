@@ -1,0 +1,20 @@
+// English messages copied from Flyfish, Apache-2.0.
+export const messages = {
+  "gitBundle.error.invalid": 'This file is not a valid Git bundle.',
+  "gitBundle.error.missingPack": 'No PACK data was found after the Git bundle header.',
+  "gitBundle.notice.delta": 'This bundle contains delta-compressed objects. The viewer resolves common OFS_DELTA / REF_DELTA objects in the browser. Missing files usually indicate a very large bundle, too many objects, or an external prerequisite.',
+  "gitBundle.title.history": 'History',
+  "gitBundle.title.fileTree": 'File tree',
+  "gitBundle.file.choose": 'Select a file to inspect',
+  "gitBundle.file.noTree": 'The tree/blob objects in this bundle may be delta-compressed, and no expandable files were parsed.',
+  "gitBundle.file.none": 'No files parsed',
+  "gitBundle.history.empty": 'No commit objects were parsed. Showing refs and pack summary only.',
+  "gitBundle.toolbar.summary": '{commits} commits · {files} files',
+  "gitBundle.meta.bundle": 'Bundle',
+  "gitBundle.meta.refs": 'Refs',
+  "gitBundle.meta.commits": 'Commits',
+  "gitBundle.meta.objects": 'Objects',
+  "gitBundle.meta.deltas": 'Deltas',
+  "gitBundle.meta.objectFormat": 'Object format',
+  "gitBundle.meta.objectTypes": 'Object types',
+};

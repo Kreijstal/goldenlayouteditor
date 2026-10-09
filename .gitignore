@@ -18,3 +18,4 @@ public/idml-viewer/
 src/imported-idml/viewer.js
 
 public/model3d-runtime/
+src/imported-bundle/viewer.js

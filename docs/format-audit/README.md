@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **583** suffixes. Upstream non-generic claims: **515**. Shared: **189**. Missing suffixes: **326**.
+Our explicit viewer/native/archive handling: **584** suffixes. Upstream non-generic claims: **515**. Shared: **190**. Missing suffixes: **325**.
 
 ## Missing extensions
 
@@ -40,7 +40,6 @@ Our explicit viewer/native/archive handling: **583** suffixes. Upstream non-gene
 | `.blend2` | jdeworks: binary/blend |
 | `.bson` | jdeworks: binary/bson |
 | `.bsp` | jdeworks: binary/bsp |
-| `.bundle` | flyfish: code |
 | `.bz2` | flyfish: archive, jdeworks: archive, open-file-viewer: archive |
 | `.bzip2` | flyfish: archive |
 | `.cab` | flyfish: archive |
