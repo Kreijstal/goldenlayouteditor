@@ -54,3 +54,6 @@ public/typst-viewer/
 /public/psdalias-viewer/
 
 /public/diagram-viewer/
+
+/public/parasolid-viewer/
+/src/imported-parasolid/wasm/target/
