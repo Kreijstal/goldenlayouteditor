@@ -70,6 +70,7 @@
     "chd",
     "chm",
     "cin",
+    "class",
     "clip",
     "cmp",
     "cmx",
@@ -90,6 +91,7 @@
     "cur",
     "dae",
     "db",
+    "dbf",
     "dcm",
     "dcx",
     "dds",
@@ -100,6 +102,7 @@
     "dicom",
     "djv",
     "djvu",
+    "dll",
     "dls",
     "dng",
     "doc",
@@ -116,6 +119,7 @@
     "dwfx",
     "dwg",
     "dxf",
+    "dylib",
     "ear",
     "ecw",
     "elf",
@@ -127,7 +131,10 @@
     "epub",
     "erf",
     "exc",
+    "exe",
     "exr",
+    "f3d",
+    "f3z",
     "fb2",
     "fbx",
     "feather",
@@ -384,6 +391,7 @@
     "lbm",
     "ldt",
     "lha",
+    "lnk",
     "lnx",
     "lottie",
     "ltx",
@@ -392,6 +400,8 @@
     "m2ts",
     "m4a",
     "m4v",
+    "macho",
+    "mat",
     "mathml",
     "mcpack",
     "mctemplate",
@@ -499,6 +509,7 @@
     "pptm",
     "pptx",
     "prc",
+    "procreate",
     "ps",
     "psb",
     "psd",
@@ -512,6 +523,8 @@
     "psptube",
     "pst",
     "ptb",
+    "pyc",
+    "pyo",
     "qcow",
     "qcow2",
     "qoi",
@@ -535,6 +548,7 @@
     "sfogg",
     "sg",
     "sgi",
+    "sketch",
     "skp",
     "smc",
     "smd",
@@ -573,6 +587,7 @@
     "timg",
     "tm",
     "tmu",
+    "torrent",
     "tpic",
     "ts",
     "tsv",
@@ -1204,7 +1219,6 @@
     "cfg",
     "cif",
     "cif2",
-    "class",
     "cms",
     "cmsc",
     "conf",
@@ -1212,20 +1226,17 @@
     "crt",
     "csproj",
     "db3",
-    "dbf",
     "der",
     "diff",
     "dio",
     "divx",
     "diz",
-    "dll",
     "dmp",
     "dockerfile",
     "dockerignore",
     "dps",
     "dra",
     "drawio",
-    "dylib",
     "eml",
     "ent",
     "env",
@@ -1234,9 +1245,6 @@
     "eslintignore",
     "et",
     "excalidraw",
-    "exe",
-    "f3d",
-    "f3z",
     "f4v",
     "fa",
     "faa",
@@ -1286,7 +1294,6 @@
     "kube",
     "kubeconfig",
     "ldjson",
-    "lnk",
     "lot",
     "lrc",
     "lrf",
@@ -1294,9 +1301,7 @@
     "m2v",
     "m3u8",
     "m4b",
-    "macho",
     "markdown",
-    "mat",
     "mbox",
     "mbtiles",
     "mdmp",
@@ -1351,15 +1356,12 @@
     "ppsm",
     "ppt",
     "prettierignore",
-    "procreate",
     "properties",
     "props",
     "proto",
     "prproj",
     "psdt",
     "puml",
-    "pyc",
-    "pyo",
     "qfx",
     "qif",
     "rdp",
@@ -1379,7 +1381,6 @@
     "sdf",
     "shp",
     "sig",
-    "sketch",
     "sl3",
     "sldasm",
     "sldprt",
@@ -1397,7 +1398,6 @@
     "tldraw",
     "toml",
     "topojson",
-    "torrent",
     "tsd",
     "tsq",
     "tsr",
@@ -1473,6 +1473,7 @@
     "cbt",
     "cbz",
     "chm",
+    "class",
     "clip",
     "cpio",
     "csh",
@@ -1480,11 +1481,13 @@
     "cur",
     "dae",
     "db",
+    "dbf",
     "dcm",
     "deb",
     "dicom",
     "djv",
     "djvu",
+    "dll",
     "doc",
     "docm",
     "docx",
@@ -1495,11 +1498,15 @@
     "dwfx",
     "dwg",
     "dxf",
+    "dylib",
     "ear",
     "elf",
     "eps",
     "epub",
+    "exe",
     "exr",
+    "f3d",
+    "f3z",
     "fb2",
     "fbx",
     "feather",
@@ -1566,11 +1573,14 @@
     "kmz",
     "kra",
     "lha",
+    "lnk",
     "lzh",
     "lzma",
     "m2ts",
     "m4a",
     "m4v",
+    "macho",
+    "mat",
     "mcpack",
     "mctemplate",
     "mcworld",
@@ -1621,13 +1631,17 @@
     "pptm",
     "pptx",
     "prc",
+    "procreate",
     "ps",
     "psb",
     "psd",
+    "pyc",
+    "pyo",
     "qcow2",
     "rar",
     "rpm",
     "sfc",
+    "sketch",
     "skp",
     "smc",
     "so",
@@ -1649,6 +1663,7 @@
     "tgz",
     "tif",
     "tiff",
+    "torrent",
     "ts",
     "tsv",
     "ttf",
@@ -2204,18 +2219,14 @@
       "ait",
       "asice",
       "asics",
-      "class",
       "cms",
       "cmsc",
-      "dbf",
       "dio",
-      "dll",
       "dra",
       "drawio",
       "eml",
       "ers",
       "excalidraw",
-      "exe",
       "fods",
       "geojson",
       "hex",
@@ -2223,7 +2234,6 @@
       "kml",
       "lrc",
       "m3u8",
-      "macho",
       "markdown",
       "mbox",
       "mermaid",
@@ -2290,29 +2300,22 @@
       "cfg",
       "cif",
       "cif2",
-      "class",
       "conf",
       "crash",
       "crt",
       "csproj",
       "db3",
-      "dbf",
       "der",
       "diff",
       "divx",
       "diz",
-      "dll",
       "dmp",
       "dockerfile",
       "dockerignore",
-      "dylib",
       "eml",
       "ent",
       "env",
       "eslintignore",
-      "exe",
-      "f3d",
-      "f3z",
       "f4v",
       "fa",
       "faa",
@@ -2358,14 +2361,12 @@
       "kube",
       "kubeconfig",
       "ldjson",
-      "lnk",
       "lot",
       "lrf",
       "lrx",
       "m2v",
       "m4b",
       "markdown",
-      "mat",
       "mbox",
       "mbtiles",
       "mdmp",
@@ -2400,13 +2401,10 @@
       "plist",
       "pom",
       "prettierignore",
-      "procreate",
       "properties",
       "props",
       "proto",
       "prproj",
-      "pyc",
-      "pyo",
       "qfx",
       "qif",
       "rdp",
@@ -2421,7 +2419,6 @@
       "sd",
       "sdf",
       "shp",
-      "sketch",
       "sl3",
       "srt",
       "ssh-config",
@@ -2435,7 +2432,6 @@
       "thrift",
       "toml",
       "topojson",
-      "torrent",
       "txt",
       "url",
       "vhd",
@@ -2796,20 +2792,6 @@
         "line": 15
       }
     ],
-    "class": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/class",
-        "source": "../jdeworks-file-viewer/docs/types/binary/class/detect.js",
-        "line": 9
-      },
-      {
-        "project": "flyfish",
-        "owner": "binary-inspector",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "cms": [
       {
         "project": "flyfish",
@@ -2866,20 +2848,6 @@
         "line": 5
       }
     ],
-    "dbf": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/dbf",
-        "source": "../jdeworks-file-viewer/docs/types/binary/dbf/detect.js",
-        "line": 6
-      },
-      {
-        "project": "flyfish",
-        "owner": "spreadsheet-dbf",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "der": [
       {
         "project": "jdeworks",
@@ -2930,20 +2898,6 @@
         "owner": "text/asciiart",
         "source": "../jdeworks-file-viewer/docs/types/text/asciiart/detect.js",
         "line": 13
-      }
-    ],
-    "dll": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/exe",
-        "source": "../jdeworks-file-viewer/docs/types/binary/exe/detect.js",
-        "line": 10
-      },
-      {
-        "project": "flyfish",
-        "owner": "binary-inspector",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
       }
     ],
     "dmp": [
@@ -3010,14 +2964,6 @@
         "owner": "drawing",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
         "line": 1
-      }
-    ],
-    "dylib": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/exe",
-        "source": "../jdeworks-file-viewer/docs/types/binary/exe/detect.js",
-        "line": 10
       }
     ],
     "eml": [
@@ -3130,36 +3076,6 @@
         "owner": "drawing",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
         "line": 1
-      }
-    ],
-    "exe": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/exe",
-        "source": "../jdeworks-file-viewer/docs/types/binary/exe/detect.js",
-        "line": 10
-      },
-      {
-        "project": "flyfish",
-        "owner": "binary-inspector",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "f3d": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/f3d",
-        "source": "../jdeworks-file-viewer/docs/types/binary/f3d/detect.js",
-        "line": 8
-      }
-    ],
-    "f3z": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/f3d",
-        "source": "../jdeworks-file-viewer/docs/types/binary/f3d/detect.js",
-        "line": 8
       }
     ],
     "f4v": [
@@ -3782,20 +3698,6 @@
         "line": 5
       }
     ],
-    "lnk": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/lnk",
-        "source": "../jdeworks-file-viewer/docs/types/binary/lnk/detect.js",
-        "line": 7
-      },
-      {
-        "project": "jdeworks",
-        "owner": "binary/lnk",
-        "source": "../jdeworks-file-viewer/docs/types/binary/lnk/detect.js",
-        "line": 16
-      }
-    ],
     "lot": [
       {
         "project": "jdeworks",
@@ -3864,14 +3766,6 @@
         "line": 13
       }
     ],
-    "macho": [
-      {
-        "project": "flyfish",
-        "owner": "binary-inspector",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
     "markdown": [
       {
         "project": "jdeworks",
@@ -3884,14 +3778,6 @@
         "owner": "markdown",
         "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
-      }
-    ],
-    "mat": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/mat",
-        "source": "../jdeworks-file-viewer/docs/types/binary/mat/detect.js",
-        "line": 10
       }
     ],
     "mbox": [
@@ -4548,14 +4434,6 @@
         "line": 4
       }
     ],
-    "procreate": [
-      {
-        "project": "jdeworks",
-        "owner": "image/procreate",
-        "source": "../jdeworks-file-viewer/docs/types/image/procreate/detect.js",
-        "line": 4
-      }
-    ],
     "properties": [
       {
         "project": "jdeworks",
@@ -4602,22 +4480,6 @@
         "owner": "drawing",
         "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
-      }
-    ],
-    "pyc": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/pyc",
-        "source": "../jdeworks-file-viewer/docs/types/binary/pyc/detect.js",
-        "line": 7
-      }
-    ],
-    "pyo": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/pyc",
-        "source": "../jdeworks-file-viewer/docs/types/binary/pyc/detect.js",
-        "line": 7
       }
     ],
     "qfx": [
@@ -4832,20 +4694,6 @@
         "line": 1
       }
     ],
-    "sketch": [
-      {
-        "project": "jdeworks",
-        "owner": "image/sketch",
-        "source": "../jdeworks-file-viewer/docs/types/image/sketch/detect.js",
-        "line": 7
-      },
-      {
-        "project": "jdeworks",
-        "owner": "image/sketch",
-        "source": "../jdeworks-file-viewer/docs/types/image/sketch/detect.js",
-        "line": 8
-      }
-    ],
     "sl3": [
       {
         "project": "jdeworks",
@@ -5028,14 +4876,6 @@
         "owner": "gis",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
         "line": 1
-      }
-    ],
-    "torrent": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/torrent",
-        "source": "../jdeworks-file-viewer/docs/types/binary/torrent/detect.js",
-        "line": 5
       }
     ],
     "tsd": [
@@ -5954,11 +5794,18 @@
         "cbr",
         "cbt",
         "cd5",
+        "class",
         "cpio",
         "csh",
+        "dbf",
         "deb",
+        "dll",
         "doc",
         "dot",
+        "dylib",
+        "exe",
+        "f3d",
+        "f3z",
         "fb2",
         "fbx",
         "feather",
@@ -5980,8 +5827,11 @@
         "ipc",
         "key",
         "lha",
+        "lnk",
         "lzh",
         "lzma",
+        "macho",
+        "mat",
         "mcpack",
         "mctemplate",
         "mcworld",
@@ -5997,13 +5847,18 @@
         "parquet",
         "pat",
         "pcd",
+        "procreate",
+        "pyc",
+        "pyo",
         "rar",
         "rpm",
+        "sketch",
         "srpm",
         "tar.bz2",
         "tar.xz",
         "tbz",
         "tbz2",
+        "torrent",
         "txz",
         "udeb",
         "usd",
@@ -6020,7 +5875,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(bson|cbor|msgpack|mpk|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -6049,11 +5904,18 @@
         "cbr",
         "cbt",
         "cd5",
+        "class",
         "cpio",
         "csh",
+        "dbf",
         "deb",
+        "dll",
         "doc",
         "dot",
+        "dylib",
+        "exe",
+        "f3d",
+        "f3z",
         "fb2",
         "fbx",
         "feather",
@@ -6075,8 +5937,11 @@
         "ipc",
         "key",
         "lha",
+        "lnk",
         "lzh",
         "lzma",
+        "macho",
+        "mat",
         "mcpack",
         "mctemplate",
         "mcworld",
@@ -6092,13 +5957,18 @@
         "parquet",
         "pat",
         "pcd",
+        "procreate",
+        "pyc",
+        "pyo",
         "rar",
         "rpm",
+        "sketch",
         "srpm",
         "tar.bz2",
         "tar.xz",
         "tbz",
         "tbz2",
+        "torrent",
         "txz",
         "udeb",
         "usd",
@@ -6115,7 +5985,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(bson|cbor|msgpack|mpk|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -6144,11 +6014,18 @@
         "cbr",
         "cbt",
         "cd5",
+        "class",
         "cpio",
         "csh",
+        "dbf",
         "deb",
+        "dll",
         "doc",
         "dot",
+        "dylib",
+        "exe",
+        "f3d",
+        "f3z",
         "fb2",
         "fbx",
         "feather",
@@ -6170,8 +6047,11 @@
         "ipc",
         "key",
         "lha",
+        "lnk",
         "lzh",
         "lzma",
+        "macho",
+        "mat",
         "mcpack",
         "mctemplate",
         "mcworld",
@@ -6187,13 +6067,18 @@
         "parquet",
         "pat",
         "pcd",
+        "procreate",
+        "pyc",
+        "pyo",
         "rar",
         "rpm",
+        "sketch",
         "srpm",
         "tar.bz2",
         "tar.xz",
         "tbz",
         "tbz2",
+        "torrent",
         "txz",
         "udeb",
         "usd",
@@ -6210,7 +6095,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(bson|cbor|msgpack|mpk|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -6235,11 +6120,26 @@
       "extensions": [
         "bson",
         "cbor",
+        "class",
+        "dbf",
+        "dll",
+        "dylib",
+        "exe",
+        "f3d",
+        "f3z",
+        "lnk",
+        "macho",
+        "mat",
         "mpk",
-        "msgpack"
+        "msgpack",
+        "procreate",
+        "pyc",
+        "pyo",
+        "sketch",
+        "torrent"
       ],
       "filenames": [],
-      "pattern": "\\.(bson|cbor|msgpack|mpk)$",
+      "pattern": "\\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
       "flags": "i"
     },
     {
@@ -9651,8 +9551,23 @@
       "extensions": [
         "bson",
         "cbor",
+        "class",
+        "dbf",
+        "dll",
+        "dylib",
+        "exe",
+        "f3d",
+        "f3z",
+        "lnk",
+        "macho",
+        "mat",
         "mpk",
-        "msgpack"
+        "msgpack",
+        "procreate",
+        "pyc",
+        "pyo",
+        "sketch",
+        "torrent"
       ],
       "filenames": []
     },
