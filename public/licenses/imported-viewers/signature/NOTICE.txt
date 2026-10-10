@@ -1,1 +1,13 @@
 Parser source from flyfish-dev/file-viewer, commit e03662c883cdd089814d2d21e4c805b9d7320e0f, packages/renderers/signature/src. Copyright Flyfish Viewer contributors. Apache-2.0. Parser files retained unmodified; GoldenLayout adds its worker and inspection UI. JSZip 3.10.1 uses its retained MIT license. No source signature fixtures or private keys are copied.
+
+OpenPGP.js 6.3.2 is distributed under LGPL-3.0-or-later.
+Source: https://github.com/openpgpjs/openpgpjs/tree/5f33328a3b601fb9c9dce310d1ecc137db0dbc75
+The exact source, tests, package-lock and upstream Rollup build files are
+provided as signature-viewer/source/openpgp-6.3.2.tar.gz during builds.
+Unpack, run npm ci and npm run build per the upstream package scripts to
+rebuild the library, then replace this repository's openpgp dependency and
+run npm run build:signature to relink the viewer. This repository supplies
+the worker, integration and esbuild scripts needed to rebuild that linkage.
+Library modification/replacement and debugging are permitted under LGPL.
+OpenPGP's full LGPL text, incorporated GPLv3 text and bundled dependency
+attributions are retained here and in the generated JavaScript comments.

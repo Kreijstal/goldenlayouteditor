@@ -5,3 +5,7 @@ Apache-2.0; Yu Wang. UMD adaptation adds strict block, decompression and
 text length validation; text-only profile with explicit limits and errors.
 Mermaid 12.1.0, MIT: https://github.com/mermaid-js/mermaid
 Bundled dependency licenses are retained in bundle-NOTICES.txt.
+ODF ZIP preflight imports the retained Apache-2.0 Flyfish signature/structured/
+zipPreflight.ts at the same revision. Original ODF worker/namespace renderer
+adds bounded selected-member inflation and CRC validation; no upstream office
+shell, conversion service or regex text approximation is included.

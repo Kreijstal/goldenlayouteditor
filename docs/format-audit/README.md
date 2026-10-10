@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **856** suffixes. Upstream non-generic claims: **515**. Shared: **462**. Missing suffixes: **53**.
+Our explicit viewer/native/archive handling: **862** suffixes. Upstream non-generic claims: **515**. Shared: **468**. Missing suffixes: **47**.
 
 ## Missing extensions
 
@@ -19,9 +19,6 @@ Our explicit viewer/native/archive handling: **856** suffixes. Upstream non-gene
 | `.eot` | open-file-viewer: asset |
 | `.et` | open-file-viewer: office |
 | `.excalidraw` | flyfish: drawing, open-file-viewer: drawing |
-| `.fodp` | jdeworks: office/odf, open-file-viewer: office |
-| `.fods` | flyfish: spreadsheet-openxml, open-file-viewer: office |
-| `.fodt` | jdeworks: office/odf, open-file-viewer: office |
 | `.hex` | flyfish: binary-inspector |
 | `.icalendar` | jdeworks: ics |
 | `.ifb` | jdeworks: ics |
@@ -30,8 +27,6 @@ Our explicit viewer/native/archive handling: **856** suffixes. Upstream non-gene
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
 | `.m3u8` | flyfish: video, open-file-viewer: video |
-| `.odp` | flyfish: open-document, jdeworks: office/odf, open-file-viewer: office |
-| `.odt` | flyfish: open-document, jdeworks: office/odf, open-file-viewer: office |
 | `.ofc` | jdeworks: text/ofx |
 | `.ofd` | flyfish: ofd, open-file-viewer: ofd |
 | `.ogv` | jdeworks: VIDEO, open-file-viewer: video |
@@ -46,7 +41,6 @@ Our explicit viewer/native/archive handling: **856** suffixes. Upstream non-gene
 | `.puml` | flyfish: drawing |
 | `.sab` | open-file-viewer: cad |
 | `.sat` | open-file-viewer: cad |
-| `.sig` | flyfish: signature |
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
 | `.tldraw` | open-file-viewer: drawing |
