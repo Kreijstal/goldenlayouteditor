@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **862** suffixes. Upstream non-generic claims: **515**. Shared: **468**. Missing suffixes: **47**.
+Our explicit viewer/native/archive handling: **876** suffixes. Upstream non-generic claims: **515**. Shared: **482**. Missing suffixes: **33**.
 
 ## Missing extensions
 
@@ -16,17 +16,11 @@ Our explicit viewer/native/archive handling: **862** suffixes. Upstream non-gene
 | `.dps` | open-file-viewer: office |
 | `.dra` | flyfish: eda |
 | `.drawio` | flyfish: drawing, open-file-viewer: drawing |
-| `.eot` | open-file-viewer: asset |
 | `.et` | open-file-viewer: office |
 | `.excalidraw` | flyfish: drawing, open-file-viewer: drawing |
-| `.hex` | flyfish: binary-inspector |
-| `.icalendar` | jdeworks: ics |
-| `.ifb` | jdeworks: ics |
 | `.jfif` | open-file-viewer: image |
-| `.lrc` | flyfish: code |
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
-| `.m3u8` | flyfish: video, open-file-viewer: video |
 | `.ofc` | jdeworks: text/ofx |
 | `.ofd` | flyfish: ofd, open-file-viewer: ofd |
 | `.ogv` | jdeworks: VIDEO, open-file-viewer: video |
@@ -44,17 +38,9 @@ Our explicit viewer/native/archive handling: **862** suffixes. Upstream non-gene
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
 | `.tldraw` | open-file-viewer: drawing |
-| `.vhd` | jdeworks: emulator/v86 |
-| `.webarchive` | flyfish: data-asset, open-file-viewer: asset |
 | `.wps` | open-file-viewer: office |
 | `.x_b` | open-file-viewer: cad |
 | `.x_t` | open-file-viewer: cad |
-| `.xhtml` | jdeworks: html |
-| `.xla` | flyfish: spreadsheet-openxml |
-| `.xlam` | flyfish: spreadsheet-openxml |
-| `.xlt` | flyfish: spreadsheet-openxml, open-file-viewer: office |
-| `.xltm` | flyfish: spreadsheet-openxml, open-file-viewer: office |
-| `.xltx` | flyfish: spreadsheet-openxml, open-file-viewer: office |
 
 ## Shared suffixes with missing capabilities
 

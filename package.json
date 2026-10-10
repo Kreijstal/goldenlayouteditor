@@ -8,8 +8,13 @@
     "test:povray": "node scripts/test-povray.js",
     "fetch:povray": "node scripts/fetch-povray.js",
     "test:legacy-art": "node scripts/test-legacy-art.js",
-    "build": "npm run build:cd5 && npm run build:idml && npm run build:models && npm run build:bundle && npm run build:scientific && npm run build:ifc && npm run build:archive && npm run build:adobe && npm run build:iwork && npm run build:doc && npm run build:columnar && npm run build:layout && npm run build:upstream && npm run build:signature && npm run build:wordperfect && npm run build:media && npm run build:typst && npm run build:docextras && node scripts/build-viewers.js",
+    "build": "npm run build:cd5 && npm run build:idml && npm run build:models && npm run build:bundle && npm run build:scientific && npm run build:ifc && npm run build:archive && npm run build:adobe && npm run build:iwork && npm run build:doc && npm run build:columnar && npm run build:layout && npm run build:upstream && npm run build:signature && npm run build:wordperfect && npm run build:media && npm run build:typst && npm run build:docextras && npm run build:sheetaliases && node scripts/build-viewers.js",
     "build:signature": "node scripts/build-signature.js",
+    "build:sheetaliases": "node scripts/build-sheetaliases.js",
+    "test:sheetaliases": "node scripts/test-sheetaliases.js",
+    "test:calendar-extra": "node scripts/test-calendar-extra.js",
+    "test:binary-extras": "node scripts/test-binary-extras.js",
+    "test:browser-text": "node scripts/test-browser-text.js",
     "test:openpgp": "node scripts/test-openpgp.js",
     "test:signatures": "node scripts/test-signatures.js",
     "build:docextras": "node scripts/build-docextras.js",
@@ -120,6 +125,7 @@
     "util": "0.12.5",
     "web-ifc": "0.0.77",
     "ws": "^8.20.0",
+    "xlsx": "0.18.5",
     "xz-decompress": "0.2.3"
   },
   "devDependencies": {

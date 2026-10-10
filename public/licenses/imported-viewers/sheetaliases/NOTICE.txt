@@ -1,0 +1,5 @@
+Native SheetJS Community Edition 0.18.5, Apache-2.0.
+https://github.com/SheetJS/sheetjs/tree/0400a87e622887ec83f6bcde9d0ad3ce99ee13f8
+Bundled xlsx/CFB/CRC/codepage/XML dependency licenses are retained in
+bundle-NOTICES.txt. Native ZIP preflight is retained from Apache-2.0 Flyfish
+signature/structured/zipPreflight.ts at e03662c883cdd089814d2d21e4c805b9d7320e0f.

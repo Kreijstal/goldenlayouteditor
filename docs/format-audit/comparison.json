@@ -165,6 +165,7 @@
     "emz",
     "ent",
     "env",
+    "eot",
     "eps",
     "epsf",
     "epsi",
@@ -378,6 +379,7 @@
     "he5",
     "heic",
     "heif",
+    "hex",
     "hfa",
     "hgignore",
     "hgl",
@@ -393,6 +395,7 @@
     "hwp",
     "hwpx",
     "ical",
+    "icalendar",
     "icb",
     "icml",
     "icns",
@@ -401,6 +404,7 @@
     "idml",
     "idms",
     "ies",
+    "ifb",
     "ifc",
     "iff",
     "iges",
@@ -482,11 +486,13 @@
     "lnx",
     "lot",
     "lottie",
+    "lrc",
     "ltx",
     "lzh",
     "lzma",
     "m2ts",
     "m2v",
+    "m3u8",
     "m4a",
     "m4b",
     "m4v",
@@ -791,6 +797,7 @@
     "vcut",
     "vda",
     "vfd",
+    "vhd",
     "vic",
     "vicar",
     "vob",
@@ -810,6 +817,7 @@
     "wbmp",
     "wdp",
     "weba",
+    "webarchive",
     "webloc",
     "webm",
     "webp",
@@ -840,14 +848,20 @@
     "xd",
     "xfl",
     "xgl",
+    "xhtml",
     "ximg",
     "xisf",
     "xish",
+    "xla",
+    "xlam",
     "xln",
     "xls",
     "xlsb",
     "xlsm",
     "xlsx",
+    "xlt",
+    "xltm",
+    "xltx",
     "xmind",
     "xml",
     "xpi",
@@ -1394,17 +1408,11 @@
     "dps",
     "dra",
     "drawio",
-    "eot",
     "et",
     "excalidraw",
-    "hex",
-    "icalendar",
-    "ifb",
     "jfif",
-    "lrc",
     "lrf",
     "lrx",
-    "m3u8",
     "ofc",
     "ofd",
     "ogv",
@@ -1422,17 +1430,9 @@
     "sldasm",
     "sldprt",
     "tldraw",
-    "vhd",
-    "webarchive",
     "wps",
     "x_b",
-    "x_t",
-    "xhtml",
-    "xla",
-    "xlam",
-    "xlt",
-    "xltm",
-    "xltx"
+    "x_t"
   ],
   "shared": [
     "3dm",
@@ -1541,6 +1541,7 @@
     "eml",
     "ent",
     "env",
+    "eot",
     "eps",
     "epub",
     "ers",
@@ -1607,6 +1608,7 @@
     "he5",
     "heic",
     "heif",
+    "hex",
     "hgignore",
     "hif",
     "hl7",
@@ -1616,11 +1618,13 @@
     "hwp",
     "hwpx",
     "ical",
+    "icalendar",
     "icml",
     "ico",
     "ics",
     "idml",
     "idms",
+    "ifb",
     "ifc",
     "iges",
     "igs",
@@ -1662,10 +1666,12 @@
     "lha",
     "lnk",
     "lot",
+    "lrc",
     "lzh",
     "lzma",
     "m2ts",
     "m2v",
+    "m3u8",
     "m4a",
     "m4b",
     "m4v",
@@ -1856,6 +1862,7 @@
     "v64",
     "vcard",
     "vcf",
+    "vhd",
     "vob",
     "vrml",
     "vsix",
@@ -1867,6 +1874,7 @@
     "wasm",
     "wav",
     "weba",
+    "webarchive",
     "webloc",
     "webm",
     "webp",
@@ -1885,10 +1893,16 @@
     "xar",
     "xd",
     "xfl",
+    "xhtml",
+    "xla",
+    "xlam",
     "xls",
     "xlsb",
     "xlsm",
     "xlsx",
+    "xlt",
+    "xltm",
+    "xltx",
     "xmind",
     "xml",
     "xps",
@@ -2350,7 +2364,6 @@
     "lhs",
     "lock",
     "log",
-    "lrc",
     "lua",
     "m",
     "makefile",
@@ -2389,9 +2402,6 @@
       "dra",
       "drawio",
       "excalidraw",
-      "hex",
-      "lrc",
-      "m3u8",
       "ofd",
       "olb",
       "pdd",
@@ -2399,36 +2409,24 @@
       "potm",
       "ppsm",
       "psdt",
-      "puml",
-      "webarchive",
-      "xla",
-      "xlam",
-      "xlt",
-      "xltm",
-      "xltx"
+      "puml"
     ],
     "jdeworks": [
       "azw3",
       "blend1",
       "blend2",
-      "icalendar",
-      "ifb",
       "lrf",
       "lrx",
       "ofc",
-      "ogv",
-      "vhd",
-      "xhtml"
+      "ogv"
     ],
     "open-file-viewer": [
       "dio",
       "dps",
       "drawio",
-      "eot",
       "et",
       "excalidraw",
       "jfif",
-      "m3u8",
       "ofd",
       "ogv",
       "pjpe",
@@ -2440,13 +2438,9 @@
       "sldasm",
       "sldprt",
       "tldraw",
-      "webarchive",
       "wps",
       "x_b",
-      "x_t",
-      "xlt",
-      "xltm",
-      "xltx"
+      "x_t"
     ]
   },
   "missing_evidence": {
@@ -2544,20 +2538,6 @@
         "line": 1
       }
     ],
-    "eot": [
-      {
-        "project": "open-file-viewer",
-        "owner": "asset",
-        "source": "../open-file-viewer/packages/core/src/plugins/asset.ts",
-        "line": 7
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "asset",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
     "et": [
       {
         "project": "open-file-viewer",
@@ -2592,30 +2572,6 @@
         "line": 1
       }
     ],
-    "hex": [
-      {
-        "project": "flyfish",
-        "owner": "binary-inspector",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "icalendar": [
-      {
-        "project": "jdeworks",
-        "owner": "ics",
-        "source": "../jdeworks-file-viewer/docs/types/ics/detect.js",
-        "line": 5
-      }
-    ],
-    "ifb": [
-      {
-        "project": "jdeworks",
-        "owner": "ics",
-        "source": "../jdeworks-file-viewer/docs/types/ics/detect.js",
-        "line": 5
-      }
-    ],
     "jfif": [
       {
         "project": "open-file-viewer",
@@ -2627,14 +2583,6 @@
         "project": "open-file-viewer",
         "owner": "image",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "lrc": [
-      {
-        "project": "flyfish",
-        "owner": "code",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
       }
     ],
@@ -2652,26 +2600,6 @@
         "owner": "ebook/lrf",
         "source": "../jdeworks-file-viewer/docs/types/ebook/lrf/detect.js",
         "line": 8
-      }
-    ],
-    "m3u8": [
-      {
-        "project": "flyfish",
-        "owner": "video",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "video",
-        "source": "../open-file-viewer/packages/core/src/plugins/video.ts",
-        "line": 26
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "video",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
       }
     ],
     "ofc": [
@@ -2894,34 +2822,6 @@
         "line": 1
       }
     ],
-    "vhd": [
-      {
-        "project": "jdeworks",
-        "owner": "emulator/v86",
-        "source": "../jdeworks-file-viewer/docs/types/emulator/v86/detect.js",
-        "line": 9
-      }
-    ],
-    "webarchive": [
-      {
-        "project": "flyfish",
-        "owner": "data-asset",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "asset",
-        "source": "../open-file-viewer/packages/core/src/plugins/asset.ts",
-        "line": 7
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "asset",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
     "wps": [
       {
         "project": "open-file-viewer",
@@ -2960,90 +2860,6 @@
       {
         "project": "open-file-viewer",
         "owner": "cad",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "xhtml": [
-      {
-        "project": "jdeworks",
-        "owner": "html",
-        "source": "../jdeworks-file-viewer/docs/types/html/detect.js",
-        "line": 5
-      }
-    ],
-    "xla": [
-      {
-        "project": "flyfish",
-        "owner": "spreadsheet-openxml",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "xlam": [
-      {
-        "project": "flyfish",
-        "owner": "spreadsheet-openxml",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "xlt": [
-      {
-        "project": "flyfish",
-        "owner": "spreadsheet-openxml",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "office",
-        "source": "../open-file-viewer/packages/core/src/plugins/office.ts",
-        "line": 29
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "office",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "xltm": [
-      {
-        "project": "flyfish",
-        "owner": "spreadsheet-openxml",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "office",
-        "source": "../open-file-viewer/packages/core/src/plugins/office.ts",
-        "line": 29
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "office",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "xltx": [
-      {
-        "project": "flyfish",
-        "owner": "spreadsheet-openxml",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "office",
-        "source": "../open-file-viewer/packages/core/src/plugins/office.ts",
-        "line": 29
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "office",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
         "line": 1
       }
@@ -3631,6 +3447,7 @@
         "eml",
         "ent",
         "env",
+        "eot",
         "ers",
         "eslintignore",
         "exe",
@@ -3673,12 +3490,15 @@
         "hdf",
         "hdf5",
         "he5",
+        "hex",
         "hgignore",
         "hl7",
         "hl7v2",
+        "icalendar",
         "icml",
         "idml",
         "idms",
+        "ifb",
         "ifc",
         "indd",
         "indt",
@@ -3704,9 +3524,11 @@
         "lha",
         "lnk",
         "lot",
+        "lrc",
         "lzh",
         "lzma",
         "m2v",
+        "m3u8",
         "m4b",
         "macho",
         "markdown",
@@ -3831,12 +3653,14 @@
         "usda",
         "usdc",
         "usdz",
+        "vhd",
         "vob",
         "vtk",
         "vtp",
         "vtt",
         "wad",
         "weba",
+        "webarchive",
         "webloc",
         "wma",
         "wp",
@@ -3846,6 +3670,12 @@
         "wsdl",
         "xar",
         "xd",
+        "xhtml",
+        "xla",
+        "xlam",
+        "xlt",
+        "xltm",
+        "xltx",
         "xmind",
         "xsd",
         "xsl",
@@ -3857,7 +3687,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(icalendar|ifb|xla|xlam|xlt|xltm|xltx|eot|vhd|hex|webarchive|xhtml|lrc|m3u8|sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -3935,6 +3765,7 @@
         "eml",
         "ent",
         "env",
+        "eot",
         "ers",
         "eslintignore",
         "exe",
@@ -3977,12 +3808,15 @@
         "hdf",
         "hdf5",
         "he5",
+        "hex",
         "hgignore",
         "hl7",
         "hl7v2",
+        "icalendar",
         "icml",
         "idml",
         "idms",
+        "ifb",
         "ifc",
         "indd",
         "indt",
@@ -4008,9 +3842,11 @@
         "lha",
         "lnk",
         "lot",
+        "lrc",
         "lzh",
         "lzma",
         "m2v",
+        "m3u8",
         "m4b",
         "macho",
         "markdown",
@@ -4135,12 +3971,14 @@
         "usda",
         "usdc",
         "usdz",
+        "vhd",
         "vob",
         "vtk",
         "vtp",
         "vtt",
         "wad",
         "weba",
+        "webarchive",
         "webloc",
         "wma",
         "wp",
@@ -4150,6 +3988,12 @@
         "wsdl",
         "xar",
         "xd",
+        "xhtml",
+        "xla",
+        "xlam",
+        "xlt",
+        "xltm",
+        "xltx",
         "xmind",
         "xsd",
         "xsl",
@@ -4161,7 +4005,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(icalendar|ifb|xla|xlam|xlt|xltm|xltx|eot|vhd|hex|webarchive|xhtml|lrc|m3u8|sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -4239,6 +4083,7 @@
         "eml",
         "ent",
         "env",
+        "eot",
         "ers",
         "eslintignore",
         "exe",
@@ -4281,12 +4126,15 @@
         "hdf",
         "hdf5",
         "he5",
+        "hex",
         "hgignore",
         "hl7",
         "hl7v2",
+        "icalendar",
         "icml",
         "idml",
         "idms",
+        "ifb",
         "ifc",
         "indd",
         "indt",
@@ -4312,9 +4160,11 @@
         "lha",
         "lnk",
         "lot",
+        "lrc",
         "lzh",
         "lzma",
         "m2v",
+        "m3u8",
         "m4b",
         "macho",
         "markdown",
@@ -4439,12 +4289,14 @@
         "usda",
         "usdc",
         "usdz",
+        "vhd",
         "vob",
         "vtk",
         "vtp",
         "vtt",
         "wad",
         "weba",
+        "webarchive",
         "webloc",
         "wma",
         "wp",
@@ -4454,6 +4306,12 @@
         "wsdl",
         "xar",
         "xd",
+        "xhtml",
+        "xla",
+        "xlam",
+        "xlt",
+        "xltm",
+        "xltx",
         "xmind",
         "xsd",
         "xsl",
@@ -4465,7 +4323,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(icalendar|ifb|xla|xlam|xlt|xltm|xltx|eot|vhd|hex|webarchive|xhtml|lrc|m3u8|sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -4575,6 +4433,7 @@
         "eml",
         "ent",
         "env",
+        "eot",
         "ers",
         "eslintignore",
         "exe",
@@ -4604,6 +4463,7 @@
         "h2pattern",
         "h2song",
         "har",
+        "hex",
         "hgignore",
         "hl7",
         "hl7v2",
@@ -4625,6 +4485,8 @@
         "ldjson",
         "lnk",
         "lot",
+        "lrc",
+        "m3u8",
         "macho",
         "markdown",
         "mat",
@@ -4714,10 +4576,18 @@
         "typst",
         "umd",
         "url",
+        "vhd",
         "vtt",
         "wad",
+        "webarchive",
         "webloc",
         "wsdl",
+        "xhtml",
+        "xla",
+        "xlam",
+        "xlt",
+        "xltm",
+        "xltx",
         "xsd",
         "xsl",
         "xslt",
@@ -4725,7 +4595,7 @@
         "yml"
       ],
       "filenames": [],
-      "pattern": "\\.(sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
+      "pattern": "\\.(xla|xlam|xlt|xltm|xltx|eot|vhd|hex|webarchive|xhtml|lrc|m3u8|sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
       "flags": "i"
     },
     {
@@ -4938,10 +4808,12 @@
       "line": 3046,
       "extensions": [
         "ical",
-        "ics"
+        "icalendar",
+        "ics",
+        "ifb"
       ],
       "filenames": [],
-      "pattern": "\\.(ics|ical)$",
+      "pattern": "\\.(ics|ical|icalendar|ifb)$",
       "flags": "i"
     },
     {
@@ -7945,10 +7817,12 @@
       "owner": "calendar-plugin",
       "kind": "viewer",
       "source": "src/calendar-plugin.js",
-      "line": 8,
+      "line": 9,
       "extensions": [
         "ical",
-        "ics"
+        "icalendar",
+        "ics",
+        "ifb"
       ],
       "filenames": []
     },
@@ -8176,6 +8050,7 @@
         "eml",
         "ent",
         "env",
+        "eot",
         "ers",
         "eslintignore",
         "exe",
@@ -8205,6 +8080,7 @@
         "h2pattern",
         "h2song",
         "har",
+        "hex",
         "hgignore",
         "hl7",
         "hl7v2",
@@ -8226,6 +8102,8 @@
         "ldjson",
         "lnk",
         "lot",
+        "lrc",
+        "m3u8",
         "macho",
         "markdown",
         "mat",
@@ -8315,10 +8193,18 @@
         "typst",
         "umd",
         "url",
+        "vhd",
         "vtt",
         "wad",
+        "webarchive",
         "webloc",
         "wsdl",
+        "xhtml",
+        "xla",
+        "xlam",
+        "xlt",
+        "xltm",
+        "xltx",
         "xsd",
         "xsl",
         "xslt",
