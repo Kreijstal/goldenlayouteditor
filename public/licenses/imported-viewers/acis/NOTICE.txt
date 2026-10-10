@@ -1,0 +1,1 @@
+SAB tag decoder adapted from ezdxf 1.4.4 acis/sab.py. Copyright (c) 2022–2024 Manfred Moitzi. MIT license retained in ezdxf-MIT.txt. Source: https://github.com/mozman/ezdxf/tree/v1.4.4/src/ezdxf/acis . SAT framing and limited coordinate/edge preview are locally implemented, with native ezdxf-written independent round-trip fixtures.
