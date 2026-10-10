@@ -1,0 +1,2 @@
+const fs=require('node:fs'),path=require('node:path'),{build}=require('esbuild');const root=path.resolve(__dirname,'..');
+async function main(){await build({entryPoints:[path.join(root,'src/imported-azw3/worker.js')],outfile:path.join(root,'public/azw3-viewer/worker.js'),bundle:true,format:'esm',platform:'browser',target:'es2022',legalComments:'eof'});fs.cpSync(path.join(root,'public/licenses/imported-viewers/azw3'),path.join(root,'public/azw3-viewer/licenses'),{recursive:true});}main().catch(e=>{console.error(e);process.exitCode=1;});

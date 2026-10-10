@@ -2,19 +2,12 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **902** suffixes. Upstream non-generic claims: **515**. Shared: **508**. Missing suffixes: **7**.
+Our explicit viewer/native/archive handling: **909** suffixes. Upstream non-generic claims: **515**. Shared: **515**. Missing suffixes: **0**.
 
 ## Missing extensions
 
 | Extension | Upstream handlers |
 | --- | --- |
-| `.azw3` | jdeworks: ebook/mobi |
-| `.dra` | flyfish: eda |
-| `.lrf` | jdeworks: ebook/lrf |
-| `.lrx` | jdeworks: ebook/lrf |
-| `.olb` | flyfish: eda |
-| `.sldasm` | open-file-viewer: cad |
-| `.sldprt` | open-file-viewer: cad |
 
 ## Shared suffixes with missing capabilities
 

@@ -57,3 +57,20 @@ public/typst-viewer/
 
 /public/parasolid-viewer/
 /src/imported-parasolid/wasm/target/
+
+/src/imported-solidworks/wasm/target/
+/public/solidworks-viewer/
+
+/public/lrf-viewer/
+
+/scripts/native-lrf-writer/__pycache__/
+
+/public/olb-viewer/
+
+/public/dra-viewer/
+
+/public/azw3-viewer/
+
+/public/lrx-viewer/
+/scripts/native-lrx-oracle/__pycache__/
+/scripts/__pycache__/

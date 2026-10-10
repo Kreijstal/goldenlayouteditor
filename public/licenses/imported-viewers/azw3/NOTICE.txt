@@ -1,0 +1,3 @@
+Native KF8 index/fragment reconstruction and PalmDOC rules follow Foliate mobi.js, MIT, copyright 2023 John Factotum:
+https://github.com/johnfactotum/foliate-js/tree/78914aef4466eb960965702401634c2cb348e9b1
+Local reader is a bounded pure-KF8 text profile; raw/PalmDOC compression, native PDB/MOBI/EXTH/FDST/INDX/TAGX/IDXT/CNCX/skeleton/fragment validation. No resource fetch, recovery or alternate-format fallback.

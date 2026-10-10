@@ -1,0 +1,6 @@
+LRX2 metadata worker, GPL-3.0-only. Corresponding preferred JS source and the bundled MIT pako dependency source are served at lrx-viewer/source.
+Native atom/embedded-BBeB metadata profile follows calibre:
+Copyright 2008 Kovid Goyal, GPLv3
+https://github.com/kovidgoyal/calibre/blob/19bd4cbd4e3be8de87360e835498db6d56b15bd9/src/calibre/ebooks/metadata/lrx.py
+Local changes: bounded atom traversal (32/64-bit sizes), strict brand and unique bbeb payload, bounded zlib metadata, no recovery/catch-ignore, structured worker protocol, literal DOM metadata output. No book-content decryption or signature validation.
+The original native metadata oracle is retained unchanged under scripts/native-lrx-oracle/metadata.py for tests, with its copyright/license.

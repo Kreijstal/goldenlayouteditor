@@ -1,0 +1,494 @@
+{
+  "0xf500": [
+    "ObjectStart",
+    6
+  ],
+  "0xf501": [
+    "ObjectEnd",
+    0
+  ],
+  "0xf503": [
+    "Link",
+    4
+  ],
+  "0xf504": [
+    "StreamSize",
+    4
+  ],
+  "0xf505": [
+    "StreamData",
+    "stream"
+  ],
+  "0xf506": [
+    "StreamEnd",
+    0
+  ],
+  "0xf507": [
+    "oddheaderid",
+    4
+  ],
+  "0xf508": [
+    "evenheaderid",
+    4
+  ],
+  "0xf509": [
+    "oddfooterid",
+    4
+  ],
+  "0xf50a": [
+    "evenfooterid",
+    4
+  ],
+  "0xf50b": [
+    "ObjectList",
+    "ids"
+  ],
+  "0xf511": [
+    "fontsize",
+    2
+  ],
+  "0xf512": [
+    "fontwidth",
+    2
+  ],
+  "0xf513": [
+    "fontescapement",
+    2
+  ],
+  "0xf514": [
+    "fontorientation",
+    2
+  ],
+  "0xf515": [
+    "fontweight",
+    2
+  ],
+  "0xf516": [
+    "fontfacename",
+    "unicode"
+  ],
+  "0xf517": [
+    "textcolor",
+    4
+  ],
+  "0xf518": [
+    "textbgcolor",
+    4
+  ],
+  "0xf519": [
+    "wordspace",
+    2
+  ],
+  "0xf51a": [
+    "letterspace",
+    2
+  ],
+  "0xf51b": [
+    "baselineskip",
+    2
+  ],
+  "0xf51c": [
+    "linespace",
+    2
+  ],
+  "0xf51d": [
+    "parindent",
+    2
+  ],
+  "0xf51e": [
+    "parskip",
+    2
+  ],
+  "0xf521": [
+    "topmargin",
+    2
+  ],
+  "0xf522": [
+    "headheight",
+    2
+  ],
+  "0xf523": [
+    "headsep",
+    2
+  ],
+  "0xf524": [
+    "oddsidemargin",
+    2
+  ],
+  "0xf525": [
+    "textheight",
+    2
+  ],
+  "0xf526": [
+    "textwidth",
+    2
+  ],
+  "0xf551": [
+    "canvaswidth",
+    2
+  ],
+  "0xf552": [
+    "canvasheight",
+    2
+  ],
+  "0xf527": [
+    "footspace",
+    2
+  ],
+  "0xf528": [
+    "footheight",
+    2
+  ],
+  "0xf529": [
+    "bgimage",
+    6
+  ],
+  "0xf52a": [
+    "setemptyview",
+    2
+  ],
+  "0xf52b": [
+    "pageposition",
+    2
+  ],
+  "0xf52c": [
+    "evensidemargin",
+    2
+  ],
+  "0xf52e": [
+    "framemode",
+    2
+  ],
+  "0xf531": [
+    "blockwidth",
+    2
+  ],
+  "0xf532": [
+    "blockheight",
+    2
+  ],
+  "0xf533": [
+    "blockrule",
+    2
+  ],
+  "0xf534": [
+    "bgcolor",
+    4
+  ],
+  "0xf535": [
+    "layout",
+    2
+  ],
+  "0xf536": [
+    "framewidth",
+    2
+  ],
+  "0xf537": [
+    "framecolor",
+    4
+  ],
+  "0xf538": [
+    "topskip",
+    2
+  ],
+  "0xf539": [
+    "sidemargin",
+    2
+  ],
+  "0xf53a": [
+    "footskip",
+    2
+  ],
+  "0xf53c": [
+    "align",
+    2
+  ],
+  "0xf53d": [
+    "column",
+    2
+  ],
+  "0xf53e": [
+    "columnsep",
+    2
+  ],
+  "0xf541": [
+    "minipagewidth",
+    2
+  ],
+  "0xf542": [
+    "minipageheight",
+    2
+  ],
+  "0xf546": [
+    "yspace",
+    2
+  ],
+  "0xf547": [
+    "xspace",
+    2
+  ],
+  "0xf549": [
+    "PutObj",
+    8
+  ],
+  "0xf54a": [
+    "ImageRect",
+    8
+  ],
+  "0xf54b": [
+    "ImageSize",
+    4
+  ],
+  "0xf54c": [
+    "RefObjId",
+    4
+  ],
+  "0xf54e": [
+    "PageDiv",
+    12
+  ],
+  "0xf554": [
+    "StreamFlags",
+    2
+  ],
+  "0xf555": [
+    "Comment",
+    "unicode"
+  ],
+  "0xf559": [
+    "FontFilename",
+    "unicode"
+  ],
+  "0xf55c": [
+    "PageList",
+    "ids"
+  ],
+  "0xf55d": [
+    "FontFacename",
+    "unicode"
+  ],
+  "0xf561": [
+    "buttonflags",
+    2
+  ],
+  "0xf566": [
+    "PushButtonStart",
+    0
+  ],
+  "0xf567": [
+    "PushButtonEnd",
+    0
+  ],
+  "0xf56a": [
+    "buttonactions",
+    0
+  ],
+  "0xf56b": [
+    "endbuttonactions",
+    0
+  ],
+  "0xf56c": [
+    "jumpto",
+    8
+  ],
+  "0xf573": [
+    "RuledLine",
+    10
+  ],
+  "0xf575": [
+    "rubyaa",
+    2
+  ],
+  "0xf576": [
+    "rubyoverhang",
+    2
+  ],
+  "0xf577": [
+    "empdotsposition",
+    2
+  ],
+  "0xf578": [
+    "empdots",
+    "unsupported"
+  ],
+  "0xf579": [
+    "emplineposition",
+    2
+  ],
+  "0xf57a": [
+    "emplinetype",
+    2
+  ],
+  "0xf57b": [
+    "ChildPageTree",
+    4
+  ],
+  "0xf57c": [
+    "ParentPageTree",
+    4
+  ],
+  "0xf581": [
+    "Italic",
+    0
+  ],
+  "0xf582": [
+    "ItalicEnd",
+    0
+  ],
+  "0xf5a1": [
+    "pstart",
+    4
+  ],
+  "0xf5a2": [
+    "pend",
+    0
+  ],
+  "0xf5a7": [
+    "CharButton",
+    4
+  ],
+  "0xf5a8": [
+    "CharButtonEnd",
+    0
+  ],
+  "0xf5a9": [
+    "Rubi",
+    0
+  ],
+  "0xf5aa": [
+    "RubiEnd",
+    0
+  ],
+  "0xf5ab": [
+    "Oyamoji",
+    0
+  ],
+  "0xf5ac": [
+    "OyamojiEnd",
+    0
+  ],
+  "0xf5ad": [
+    "Rubimoji",
+    0
+  ],
+  "0xf5ae": [
+    "RubimojiEnd",
+    0
+  ],
+  "0xf5b1": [
+    "Yoko",
+    0
+  ],
+  "0xf5b2": [
+    "YokoEnd",
+    0
+  ],
+  "0xf5b3": [
+    "Tate",
+    0
+  ],
+  "0xf5b4": [
+    "TateEnd",
+    0
+  ],
+  "0xf5b5": [
+    "Nekase",
+    0
+  ],
+  "0xf5b6": [
+    "NekaseEnd",
+    0
+  ],
+  "0xf5b7": [
+    "Sup",
+    0
+  ],
+  "0xf5b8": [
+    "SupEnd",
+    0
+  ],
+  "0xf5b9": [
+    "Sub",
+    0
+  ],
+  "0xf5ba": [
+    "SubEnd",
+    0
+  ],
+  "0xf5bb": [
+    "NoBR",
+    0
+  ],
+  "0xf5bc": [
+    "NoBREnd",
+    0
+  ],
+  "0xf5bd": [
+    "EmpDots",
+    0
+  ],
+  "0xf5be": [
+    "EmpDotsEnd",
+    0
+  ],
+  "0xf5c1": [
+    "EmpLine",
+    0
+  ],
+  "0xf5c2": [
+    "EmpLineEnd",
+    0
+  ],
+  "0xf5c3": [
+    "DrawChar",
+    2
+  ],
+  "0xf5c4": [
+    "DrawCharEnd",
+    0
+  ],
+  "0xf5c6": [
+    "Box",
+    2
+  ],
+  "0xf5c7": [
+    "BoxEnd",
+    0
+  ],
+  "0xf5ca": [
+    "Space",
+    2
+  ],
+  "0xf5cc": [
+    "textstring",
+    "unicode"
+  ],
+  "0xf5d1": [
+    "Plot",
+    12
+  ],
+  "0xf5d2": [
+    "CR",
+    0
+  ],
+  "0xf5d8": [
+    "RegisterFont",
+    4
+  ],
+  "0xf5da": [
+    "setwaitprop",
+    2
+  ],
+  "0xf5dd": [
+    "charspace",
+    2
+  ],
+  "0xf5f1": [
+    "textlinewidth",
+    2
+  ],
+  "0xf5f2": [
+    "linecolor",
+    4
+  ]
+}

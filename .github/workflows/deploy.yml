@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,6 +31,15 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Setup pinned Rust and WASM target
+        run: rustup toolchain install 1.88.0 --profile minimal --component rust-docs --target wasm32-unknown-unknown
+
+      - name: Install pinned WASM glue generator
+        run: cargo +1.88.0 install wasm-bindgen-cli --version 0.2.129 --locked
+
+      - name: Check WASM C compiler
+        run: clang --version
 
       - name: Build site (bundle.js)
         run: npm run build

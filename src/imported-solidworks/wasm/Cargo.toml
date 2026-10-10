@@ -1,0 +1,13 @@
+[package]
+name="gle-solidworks"
+version="0.1.0"
+edition="2024"
+[lib]
+crate-type=["cdylib"]
+[dependencies]
+sldkit-parser={path="../../../.cache/solidworks-source/crates/sldkit-parser"}
+sldkit-core={path="../../../.cache/solidworks-source/crates/sldkit-core"}
+serde_json="=1.0.151"
+[profile.release]
+opt-level="s"
+lto=true

@@ -1,0 +1,10 @@
+DRA worker, GPL-3.0-only. Bounded JavaScript port, retained as a separate worker program with corresponding source in public/dra-viewer/source.
+Native Allegro 16.4 record layouts and length rules:
+bernayigit/brd_parser (Jeff Wheeler and contributors)
+https://github.com/bernayigit/brd_parser/tree/f38fb8f48031eb78d654a78a79453e580b634f93
+src/lib/parser/parser.cpp, src/lib/structure/types.h
+Local changes: strict bounds and subtype validation; no recovery or resynchronization; no mmap; native string/layer/line/pin summaries; worker message protocol.
+Pin instance record (0x29) fields follow KiCad 10.0.7:
+https://github.com/KiCad/kicad-source-mirror/blob/10.0.7/pcbnew/pcb_io/allegro/convert/allegro_parser.cpp
+Copyright Quilter; Copyright The KiCad Developers, see AUTHORS.txt for contributors, GPL-3.0-or-later.
+No vendor CAD binaries are redistributed.
