@@ -21,4 +21,4 @@ async function fixtures(){
  const torrent=Buffer.from('d4:infod6:lengthi42e4:name8:Original12:piece lengthi16384e6:pieces20:01234567890123456789ee');
  return {f3d,f3z:f3d,sketch,procreate,mat,dbf,exe:pe(false),dll:pe(true),dylib:macho,macho,class:klass,pyc,pyo:pyc,lnk,torrent};
 }
-module.exports={fixtures};
+module.exports={fixtures,png};

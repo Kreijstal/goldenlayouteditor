@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-generic claims: **515**. Shared: **337**. Missing suffixes: **178**.
+Our explicit viewer/native/archive handling: **755** suffixes. Upstream non-generic claims: **515**. Shared: **361**. Missing suffixes: **154**.
 
 ## Missing extensions
 
@@ -16,8 +16,6 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.asice` | flyfish: signature |
 | `.asics` | flyfish: signature |
 | `.azw3` | jdeworks: ebook/mobi |
-| `.bcf` | jdeworks: text/bio |
-| `.bed` | jdeworks: text/bio |
 | `.blend1` | jdeworks: binary/blend |
 | `.blend2` | jdeworks: binary/blend |
 | `.bsp` | jdeworks: binary/bsp |
@@ -28,7 +26,6 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.cmsc` | flyfish: signature |
 | `.crash` | jdeworks: text/crash |
 | `.crt` | jdeworks: text/pem |
-| `.db3` | jdeworks: sqlite |
 | `.der` | jdeworks: text/pem |
 | `.diff` | jdeworks: text/patch |
 | `.dio` | flyfish: drawing, open-file-viewer: drawing |
@@ -45,34 +42,18 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.eslintignore` | jdeworks: text/gitignore |
 | `.et` | open-file-viewer: office |
 | `.excalidraw` | flyfish: drawing, open-file-viewer: drawing |
-| `.fa` | jdeworks: text/bio |
-| `.faa` | jdeworks: text/bio |
-| `.fasta` | jdeworks: text/bio |
-| `.fastq` | jdeworks: text/bio |
-| `.ffn` | jdeworks: text/bio |
-| `.fna` | jdeworks: text/bio |
 | `.fodp` | jdeworks: office/odf, open-file-viewer: office |
 | `.fods` | flyfish: spreadsheet-openxml, open-file-viewer: office |
 | `.fodt` | jdeworks: office/odf, open-file-viewer: office |
-| `.fq` | jdeworks: text/bio |
-| `.frn` | jdeworks: text/bio |
-| `.fsa` | jdeworks: text/bio |
 | `.gc` | jdeworks: text/gcode |
 | `.geojson` | flyfish: geo, jdeworks: geo, jdeworks: text/geojson, jdeworks: text/json, open-file-viewer: gis |
-| `.gff` | jdeworks: text/bio, jdeworks: text/gff |
-| `.gff2` | jdeworks: text/gff |
-| `.gff3` | jdeworks: text/bio, jdeworks: text/gff |
 | `.gitignore` | jdeworks: text/gitignore |
-| `.gpkg` | jdeworks: sqlite |
-| `.gtf` | jdeworks: text/bio, jdeworks: text/gff |
 | `.h2drumkit` | jdeworks: text/hydrogen |
 | `.h2pattern` | jdeworks: text/hydrogen |
 | `.h2song` | jdeworks: text/hydrogen |
 | `.har` | jdeworks: text/har |
 | `.hex` | flyfish: binary-inspector |
 | `.hgignore` | jdeworks: text/gitignore |
-| `.hl7` | jdeworks: text/hl7 |
-| `.hl7v2` | jdeworks: text/hl7 |
 | `.icalendar` | jdeworks: ics |
 | `.ifb` | jdeworks: ics |
 | `.ips` | jdeworks: text/crash |
@@ -93,7 +74,6 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.lrx` | jdeworks: ebook/lrf |
 | `.m3u8` | flyfish: video, open-file-viewer: video |
 | `.markdown` | flyfish: markdown, jdeworks: markdown |
-| `.mbtiles` | jdeworks: binary/mbtiles |
 | `.mdmp` | jdeworks: binary/dmp |
 | `.mdown` | jdeworks: markdown |
 | `.mermaid` | flyfish: drawing |
@@ -101,8 +81,6 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.mmcif` | jdeworks: text/cif |
 | `.mmd` | flyfish: drawing |
 | `.mol` | jdeworks: text/sdf |
-| `.mpfa` | jdeworks: text/bio |
-| `.msh` | jdeworks: text/hl7 |
 | `.mt` | jdeworks: text/mt940 |
 | `.mt940` | jdeworks: text/mt940 |
 | `.mt942` | jdeworks: text/mt940 |
@@ -142,7 +120,6 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.rdp` | jdeworks: text/rdp |
 | `.reg` | jdeworks: text/reg |
 | `.rtf` | flyfish: open-document, jdeworks: text/rtf, open-file-viewer: office |
-| `.s3db` | jdeworks: sqlite |
 | `.sab` | open-file-viewer: cad |
 | `.sarif` | jdeworks: text/sarif |
 | `.sat` | open-file-viewer: cad |
@@ -152,7 +129,6 @@ Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-gene
 | `.sdf` | jdeworks: text/sdf |
 | `.shp` | flyfish: geo, jdeworks: binary/shapefile, open-file-viewer: gis |
 | `.sig` | flyfish: signature |
-| `.sl3` | jdeworks: sqlite |
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
 | `.srt` | jdeworks: text/subtitle |

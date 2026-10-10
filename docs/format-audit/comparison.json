@@ -52,6 +52,8 @@
     "avro",
     "axf",
     "azw",
+    "bcf",
+    "bed",
     "bin",
     "blend",
     "bmp",
@@ -104,6 +106,7 @@
     "cur",
     "dae",
     "db",
+    "db3",
     "dbf",
     "dcm",
     "dcx",
@@ -152,10 +155,15 @@
     "f3d",
     "f3z",
     "f4v",
+    "fa",
+    "faa",
+    "fasta",
+    "fastq",
     "fb2",
     "fbx",
     "feather",
     "fff",
+    "ffn",
     "fig",
     "fit",
     "fits",
@@ -167,7 +175,11 @@
     "flp",
     "flv",
     "flx",
+    "fna",
     "fodg",
+    "fq",
+    "frn",
+    "fsa",
     "fst",
     "fts",
     "fxg",
@@ -286,6 +298,9 @@
     "gdsii",
     "gen",
     "ger",
+    "gff",
+    "gff2",
+    "gff3",
     "gg",
     "ghw",
     "gif",
@@ -307,11 +322,13 @@
     "gp9",
     "gpb",
     "gpg",
+    "gpkg",
     "gpt",
     "gpx",
     "graphml",
     "grd",
     "gta",
+    "gtf",
     "gtl",
     "gto",
     "gtp",
@@ -331,6 +348,8 @@
     "hfa",
     "hgl",
     "hif",
+    "hl7",
+    "hl7v2",
     "hlp",
     "hpg",
     "hpgl",
@@ -429,6 +448,7 @@
     "mat",
     "mathml",
     "mbox",
+    "mbtiles",
     "mcpack",
     "mctemplate",
     "mcworld",
@@ -454,6 +474,7 @@
     "mp4",
     "mpe",
     "mpeg",
+    "mpfa",
     "mpg",
     "mpk",
     "mpo",
@@ -464,6 +485,7 @@
     "mscz",
     "msg",
     "msgpack",
+    "msh",
     "musicxml",
     "mxl",
     "n64",
@@ -584,6 +606,7 @@
     "rss",
     "rw2",
     "rwl",
+    "s3db",
     "sai",
     "sai2",
     "scad",
@@ -595,6 +618,7 @@
     "sgi",
     "sketch",
     "skp",
+    "sl3",
     "smc",
     "smd",
     "smf",
@@ -1263,8 +1287,6 @@
     "asice",
     "asics",
     "azw3",
-    "bcf",
-    "bed",
     "blend1",
     "blend2",
     "bsp",
@@ -1275,7 +1297,6 @@
     "cmsc",
     "crash",
     "crt",
-    "db3",
     "der",
     "diff",
     "dio",
@@ -1292,34 +1313,18 @@
     "eslintignore",
     "et",
     "excalidraw",
-    "fa",
-    "faa",
-    "fasta",
-    "fastq",
-    "ffn",
-    "fna",
     "fodp",
     "fods",
     "fodt",
-    "fq",
-    "frn",
-    "fsa",
     "gc",
     "geojson",
-    "gff",
-    "gff2",
-    "gff3",
     "gitignore",
-    "gpkg",
-    "gtf",
     "h2drumkit",
     "h2pattern",
     "h2song",
     "har",
     "hex",
     "hgignore",
-    "hl7",
-    "hl7v2",
     "icalendar",
     "ifb",
     "ips",
@@ -1340,7 +1345,6 @@
     "lrx",
     "m3u8",
     "markdown",
-    "mbtiles",
     "mdmp",
     "mdown",
     "mermaid",
@@ -1348,8 +1352,6 @@
     "mmcif",
     "mmd",
     "mol",
-    "mpfa",
-    "msh",
     "mt",
     "mt940",
     "mt942",
@@ -1389,7 +1391,6 @@
     "rdp",
     "reg",
     "rtf",
-    "s3db",
     "sab",
     "sarif",
     "sat",
@@ -1399,7 +1400,6 @@
     "sdf",
     "shp",
     "sig",
-    "sl3",
     "sldasm",
     "sldprt",
     "srt",
@@ -1465,6 +1465,8 @@
     "avif",
     "avro",
     "azw",
+    "bcf",
+    "bed",
     "bin",
     "blend",
     "bmp",
@@ -1494,6 +1496,7 @@
     "cur",
     "dae",
     "db",
+    "db3",
     "dbf",
     "dcm",
     "deb",
@@ -1524,20 +1527,32 @@
     "f3d",
     "f3z",
     "f4v",
+    "fa",
+    "faa",
+    "fasta",
+    "fastq",
     "fb2",
     "fbx",
     "feather",
+    "ffn",
     "fit",
     "fits",
     "fla",
     "flac",
     "flv",
+    "fna",
+    "fq",
+    "frn",
+    "fsa",
     "fts",
     "gb",
     "gbc",
     "gcode",
     "gds",
     "gdsii",
+    "gff",
+    "gff2",
+    "gff3",
     "gif",
     "glb",
     "gltf",
@@ -1546,8 +1561,10 @@
     "gp4",
     "gp5",
     "gpg",
+    "gpkg",
     "gpx",
     "grd",
+    "gtf",
     "gz",
     "gzip",
     "h5",
@@ -1558,6 +1575,8 @@
     "heic",
     "heif",
     "hif",
+    "hl7",
+    "hl7v2",
     "htm",
     "html",
     "hwp",
@@ -1607,6 +1626,7 @@
     "macho",
     "mat",
     "mbox",
+    "mbtiles",
     "mcpack",
     "mctemplate",
     "mcworld",
@@ -1622,11 +1642,13 @@
     "mp4",
     "mpe",
     "mpeg",
+    "mpfa",
     "mpg",
     "mpk",
     "mpv",
     "msg",
     "msgpack",
+    "msh",
     "musicxml",
     "mxl",
     "n64",
@@ -1685,9 +1707,11 @@
     "rmvb",
     "rpm",
     "rss",
+    "s3db",
     "sfc",
     "sketch",
     "skp",
+    "sl3",
     "smc",
     "snd",
     "so",
@@ -2328,8 +2352,6 @@
       "als",
       "ans",
       "azw3",
-      "bcf",
-      "bed",
       "blend1",
       "blend2",
       "bsp",
@@ -2338,7 +2360,6 @@
       "cif2",
       "crash",
       "crt",
-      "db3",
       "der",
       "diff",
       "diz",
@@ -2347,32 +2368,16 @@
       "dockerignore",
       "ent",
       "eslintignore",
-      "fa",
-      "faa",
-      "fasta",
-      "fastq",
-      "ffn",
-      "fna",
       "fodp",
       "fodt",
-      "fq",
-      "frn",
-      "fsa",
       "gc",
       "geojson",
-      "gff",
-      "gff2",
-      "gff3",
       "gitignore",
-      "gpkg",
-      "gtf",
       "h2drumkit",
       "h2pattern",
       "h2song",
       "har",
       "hgignore",
-      "hl7",
-      "hl7v2",
       "icalendar",
       "ifb",
       "ips",
@@ -2389,14 +2394,11 @@
       "lrf",
       "lrx",
       "markdown",
-      "mbtiles",
       "mdmp",
       "mdown",
       "mkd",
       "mmcif",
       "mol",
-      "mpfa",
-      "msh",
       "mt",
       "mt940",
       "mt942",
@@ -2421,12 +2423,10 @@
       "rdp",
       "reg",
       "rtf",
-      "s3db",
       "sarif",
       "sd",
       "sdf",
       "shp",
-      "sl3",
       "srt",
       "ssh-config",
       "sta",
@@ -2549,34 +2549,6 @@
         "line": 6
       }
     ],
-    "bcf": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 5
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 13
-      }
-    ],
-    "bed": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 7
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 15
-      }
-    ],
     "blend1": [
       {
         "project": "jdeworks",
@@ -2667,14 +2639,6 @@
         "owner": "text/pem",
         "source": "../jdeworks-file-viewer/docs/types/text/pem/detect.js",
         "line": 3
-      }
-    ],
-    "db3": [
-      {
-        "project": "jdeworks",
-        "owner": "sqlite",
-        "source": "../jdeworks-file-viewer/docs/types/sqlite/detect.js",
-        "line": 5
       }
     ],
     "der": [
@@ -2859,90 +2823,6 @@
         "line": 1
       }
     ],
-    "fa": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
-    "faa": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
-    "fasta": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
-    "fastq": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 4
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 12
-      }
-    ],
-    "ffn": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
-    "fna": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
     "fodp": [
       {
         "project": "jdeworks",
@@ -3003,48 +2883,6 @@
         "line": 1
       }
     ],
-    "fq": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 4
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 12
-      }
-    ],
-    "frn": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
-    "fsa": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
     "gc": [
       {
         "project": "jdeworks",
@@ -3091,88 +2929,12 @@
         "line": 1
       }
     ],
-    "gff": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 6
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 14
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/gff",
-        "source": "../jdeworks-file-viewer/docs/types/text/gff/detect.js",
-        "line": 7
-      }
-    ],
-    "gff2": [
-      {
-        "project": "jdeworks",
-        "owner": "text/gff",
-        "source": "../jdeworks-file-viewer/docs/types/text/gff/detect.js",
-        "line": 7
-      }
-    ],
-    "gff3": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 6
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 14
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/gff",
-        "source": "../jdeworks-file-viewer/docs/types/text/gff/detect.js",
-        "line": 7
-      }
-    ],
     "gitignore": [
       {
         "project": "jdeworks",
         "owner": "text/gitignore",
         "source": "../jdeworks-file-viewer/docs/types/text/gitignore/detect.js",
         "line": 4
-      }
-    ],
-    "gpkg": [
-      {
-        "project": "jdeworks",
-        "owner": "sqlite",
-        "source": "../jdeworks-file-viewer/docs/types/sqlite/detect.js",
-        "line": 5
-      }
-    ],
-    "gtf": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 6
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 14
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/gff",
-        "source": "../jdeworks-file-viewer/docs/types/text/gff/detect.js",
-        "line": 7
       }
     ],
     "h2drumkit": [
@@ -3221,22 +2983,6 @@
         "owner": "text/gitignore",
         "source": "../jdeworks-file-viewer/docs/types/text/gitignore/detect.js",
         "line": 4
-      }
-    ],
-    "hl7": [
-      {
-        "project": "jdeworks",
-        "owner": "text/hl7",
-        "source": "../jdeworks-file-viewer/docs/types/text/hl7/detect.js",
-        "line": 12
-      }
-    ],
-    "hl7v2": [
-      {
-        "project": "jdeworks",
-        "owner": "text/hl7",
-        "source": "../jdeworks-file-viewer/docs/types/text/hl7/detect.js",
-        "line": 12
       }
     ],
     "icalendar": [
@@ -3477,14 +3223,6 @@
         "line": 1
       }
     ],
-    "mbtiles": [
-      {
-        "project": "jdeworks",
-        "owner": "binary/mbtiles",
-        "source": "../jdeworks-file-viewer/docs/types/binary/mbtiles/detect.js",
-        "line": 12
-      }
-    ],
     "mdmp": [
       {
         "project": "jdeworks",
@@ -3539,28 +3277,6 @@
         "owner": "text/sdf",
         "source": "../jdeworks-file-viewer/docs/types/text/sdf/detect.js",
         "line": 26
-      }
-    ],
-    "mpfa": [
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 3
-      },
-      {
-        "project": "jdeworks",
-        "owner": "text/bio",
-        "source": "../jdeworks-file-viewer/docs/types/text/bio/detect.js",
-        "line": 11
-      }
-    ],
-    "msh": [
-      {
-        "project": "jdeworks",
-        "owner": "text/hl7",
-        "source": "../jdeworks-file-viewer/docs/types/text/hl7/detect.js",
-        "line": 12
       }
     ],
     "mt": [
@@ -4025,14 +3741,6 @@
         "line": 1
       }
     ],
-    "s3db": [
-      {
-        "project": "jdeworks",
-        "owner": "sqlite",
-        "source": "../jdeworks-file-viewer/docs/types/sqlite/detect.js",
-        "line": 5
-      }
-    ],
     "sab": [
       {
         "project": "open-file-viewer",
@@ -4139,14 +3847,6 @@
         "owner": "signature",
         "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
-      }
-    ],
-    "sl3": [
-      {
-        "project": "jdeworks",
-        "owner": "sqlite",
-        "source": "../jdeworks-file-viewer/docs/types/sqlite/detect.js",
-        "line": 5
       }
     ],
     "sldasm": [
@@ -5054,6 +4754,8 @@
         "au",
         "avro",
         "azw",
+        "bcf",
+        "bed",
         "bson",
         "bundle",
         "bz2",
@@ -5071,6 +4773,7 @@
         "cpio",
         "csh",
         "csproj",
+        "db3",
         "dbf",
         "deb",
         "divx",
@@ -5084,18 +4787,34 @@
         "f3d",
         "f3z",
         "f4v",
+        "fa",
+        "faa",
+        "fasta",
+        "fastq",
         "fb2",
         "fbx",
         "feather",
+        "ffn",
         "flv",
+        "fna",
+        "fq",
+        "frn",
+        "fsa",
         "gds",
         "gdsii",
+        "gff",
+        "gff2",
+        "gff3",
+        "gpkg",
         "grd",
+        "gtf",
         "gzip",
         "h5",
         "hdf",
         "hdf5",
         "he5",
+        "hl7",
+        "hl7v2",
         "icml",
         "idml",
         "idms",
@@ -5119,6 +4838,7 @@
         "macho",
         "mat",
         "mbox",
+        "mbtiles",
         "mcpack",
         "mctemplate",
         "mcworld",
@@ -5126,10 +4846,12 @@
         "mmpz",
         "mobi",
         "mpe",
+        "mpfa",
         "mpk",
         "mpv",
         "msg",
         "msgpack",
+        "msh",
         "nc",
         "nc4",
         "ndjson",
@@ -5158,7 +4880,9 @@
         "rmvb",
         "rpm",
         "rss",
+        "s3db",
         "sketch",
+        "sl3",
         "snd",
         "srpm",
         "strings",
@@ -5199,7 +4923,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -5227,6 +4951,8 @@
         "au",
         "avro",
         "azw",
+        "bcf",
+        "bed",
         "bson",
         "bundle",
         "bz2",
@@ -5244,6 +4970,7 @@
         "cpio",
         "csh",
         "csproj",
+        "db3",
         "dbf",
         "deb",
         "divx",
@@ -5257,18 +4984,34 @@
         "f3d",
         "f3z",
         "f4v",
+        "fa",
+        "faa",
+        "fasta",
+        "fastq",
         "fb2",
         "fbx",
         "feather",
+        "ffn",
         "flv",
+        "fna",
+        "fq",
+        "frn",
+        "fsa",
         "gds",
         "gdsii",
+        "gff",
+        "gff2",
+        "gff3",
+        "gpkg",
         "grd",
+        "gtf",
         "gzip",
         "h5",
         "hdf",
         "hdf5",
         "he5",
+        "hl7",
+        "hl7v2",
         "icml",
         "idml",
         "idms",
@@ -5292,6 +5035,7 @@
         "macho",
         "mat",
         "mbox",
+        "mbtiles",
         "mcpack",
         "mctemplate",
         "mcworld",
@@ -5299,10 +5043,12 @@
         "mmpz",
         "mobi",
         "mpe",
+        "mpfa",
         "mpk",
         "mpv",
         "msg",
         "msgpack",
+        "msh",
         "nc",
         "nc4",
         "ndjson",
@@ -5331,7 +5077,9 @@
         "rmvb",
         "rpm",
         "rss",
+        "s3db",
         "sketch",
+        "sl3",
         "snd",
         "srpm",
         "strings",
@@ -5372,7 +5120,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -5400,6 +5148,8 @@
         "au",
         "avro",
         "azw",
+        "bcf",
+        "bed",
         "bson",
         "bundle",
         "bz2",
@@ -5417,6 +5167,7 @@
         "cpio",
         "csh",
         "csproj",
+        "db3",
         "dbf",
         "deb",
         "divx",
@@ -5430,18 +5181,34 @@
         "f3d",
         "f3z",
         "f4v",
+        "fa",
+        "faa",
+        "fasta",
+        "fastq",
         "fb2",
         "fbx",
         "feather",
+        "ffn",
         "flv",
+        "fna",
+        "fq",
+        "frn",
+        "fsa",
         "gds",
         "gdsii",
+        "gff",
+        "gff2",
+        "gff3",
+        "gpkg",
         "grd",
+        "gtf",
         "gzip",
         "h5",
         "hdf",
         "hdf5",
         "he5",
+        "hl7",
+        "hl7v2",
         "icml",
         "idml",
         "idms",
@@ -5465,6 +5232,7 @@
         "macho",
         "mat",
         "mbox",
+        "mbtiles",
         "mcpack",
         "mctemplate",
         "mcworld",
@@ -5472,10 +5240,12 @@
         "mmpz",
         "mobi",
         "mpe",
+        "mpfa",
         "mpk",
         "mpv",
         "msg",
         "msgpack",
+        "msh",
         "nc",
         "nc4",
         "ndjson",
@@ -5504,7 +5274,9 @@
         "rmvb",
         "rpm",
         "rss",
+        "s3db",
         "sketch",
+        "sl3",
         "snd",
         "srpm",
         "strings",
@@ -5545,7 +5317,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -5620,12 +5392,15 @@
       "extensions": [
         "atom",
         "azw",
+        "bcf",
+        "bed",
         "bson",
         "cbor",
         "cfg",
         "class",
         "conf",
         "csproj",
+        "db3",
         "dbf",
         "dll",
         "dylib",
@@ -5634,6 +5409,22 @@
         "exe",
         "f3d",
         "f3z",
+        "fa",
+        "faa",
+        "fasta",
+        "fastq",
+        "ffn",
+        "fna",
+        "fq",
+        "frn",
+        "fsa",
+        "gff",
+        "gff2",
+        "gff3",
+        "gpkg",
+        "gtf",
+        "hl7",
+        "hl7v2",
         "ini",
         "json5",
         "jsonc",
@@ -5643,12 +5434,15 @@
         "macho",
         "mat",
         "mbox",
+        "mbtiles",
         "mmp",
         "mmpz",
         "mobi",
+        "mpfa",
         "mpk",
         "msg",
         "msgpack",
+        "msh",
         "ndjson",
         "plist",
         "pom",
@@ -5662,7 +5456,9 @@
         "pyo",
         "resx",
         "rss",
+        "s3db",
         "sketch",
+        "sl3",
         "strings",
         "stringsdict",
         "targets",
@@ -5676,7 +5472,7 @@
         "yml"
       ],
       "filenames": [],
-      "pattern": "\\.(ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
+      "pattern": "\\.(bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
       "flags": "i"
     },
     {
@@ -9088,12 +8884,14 @@
       "extensions": [
         "atom",
         "azw",
+        "bed",
         "bson",
         "cbor",
         "cfg",
         "class",
         "conf",
         "csproj",
+        "db3",
         "dbf",
         "dll",
         "dylib",
@@ -9102,6 +8900,22 @@
         "exe",
         "f3d",
         "f3z",
+        "fa",
+        "faa",
+        "fasta",
+        "fastq",
+        "ffn",
+        "fna",
+        "fq",
+        "frn",
+        "fsa",
+        "gff",
+        "gff2",
+        "gff3",
+        "gpkg",
+        "gtf",
+        "hl7",
+        "hl7v2",
         "ini",
         "json5",
         "jsonc",
@@ -9111,12 +8925,15 @@
         "macho",
         "mat",
         "mbox",
+        "mbtiles",
         "mmp",
         "mmpz",
         "mobi",
+        "mpfa",
         "mpk",
         "msg",
         "msgpack",
+        "msh",
         "ndjson",
         "plist",
         "pom",
@@ -9130,7 +8947,9 @@
         "pyo",
         "resx",
         "rss",
+        "s3db",
         "sketch",
+        "sl3",
         "strings",
         "stringsdict",
         "targets",

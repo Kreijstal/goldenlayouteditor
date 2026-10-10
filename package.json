@@ -10,6 +10,7 @@
     "test:legacy-art": "node scripts/test-legacy-art.js",
     "build": "npm run build:cd5 && npm run build:idml && npm run build:models && npm run build:bundle && npm run build:scientific && npm run build:ifc && npm run build:archive && npm run build:adobe && npm run build:iwork && npm run build:doc && npm run build:columnar && npm run build:layout && npm run build:upstream && npm run build:wordperfect && npm run build:media && node scripts/build-viewers.js",
     "build:upstream": "node scripts/build-upstream.js",
+    "test:upstream-data": "node scripts/test-upstream-data.js",
     "test:upstream-text": "node scripts/test-upstream-text.js",
     "test:upstream": "node scripts/test-upstream.js",
     "build:wordperfect": "node scripts/build-wordperfect.js",
