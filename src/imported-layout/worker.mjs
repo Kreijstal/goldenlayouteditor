@@ -1,6 +1,14 @@
 import {parseGdsLayout} from './parser.ts';
-self.onmessage=({data:{bytes}})=>{
+self.onmessage=async({data:{bytes,name}})=>{
  try{
+  if(/\.(oas|oasis)$/i.test(name||'')){
+   if(bytes.length>64*1024*1024)throw Error('OASIS input exceeds 64 MiB');
+   const {parseBinaryOasis}=await import('./oasis.ts');const layout=parseBinaryOasis(bytes);if(!layout)throw Error('Invalid OASIS START header');
+   const elements=[...layout.shapes.map(s=>({kind:s.kind==='box'?'boundary':s.kind,structure:s.cell,layer:Number(s.layer),width:s.width,xy:s.points.map(([x,y])=>({x,y}))})),...layout.labels.map(s=>({kind:'text',structure:s.cell,layer:Number(s.layer),text:s.text,xy:[{x:s.x,y:s.y}]})),...layout.references.map(s=>({kind:'reference',structure:s.ownerCell,reference:s.cell,xy:[{x:s.x,y:s.y}]}))];
+   const coordinates=elements.flatMap(e=>e.xy);if(coordinates.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))throw Error('Invalid OASIS coordinates');
+   const bounds=coordinates.reduce((b,p)=>({minX:Math.min(b.minX,p.x),maxX:Math.max(b.maxX,p.x),minY:Math.min(b.minY,p.y),maxY:Math.max(b.maxY,p.y)}),{minX:Infinity,maxX:-Infinity,minY:Infinity,maxY:-Infinity});
+   self.postMessage({model:{libraryName:'OASIS '+layout.version,structures:layout.cells,databaseUnit:layout.unit?1e-6/layout.unit:undefined,elements,bounds,warnings:[...layout.warnings,'Partial OASIS geometry: rectangles, polygons, paths, labels and placement markers. References are not expanded; placement transforms are not rendered. Circles and trapezoids are unsupported. END validation signatures are not verified.'],summary:layout.cells.length+' cells · '+elements.length+' elements'}});return;
+  }
   if(bytes.length>128*1024*1024)throw Error('GDSII input exceeds 128 MiB');
   if(bytes.length<6||bytes[0]!==0||bytes[1]!==6||bytes[2]!==0||bytes[3]!==2)throw Error('Invalid GDSII HEADER record');
   let offset=0,count=0,end=false;const unsupported=new Set();

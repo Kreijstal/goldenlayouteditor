@@ -1,0 +1,5 @@
+OASIS binary parser adapted from open-file-viewer, MIT, copyright (c) 2026 xushanpei.
+Source: https://github.com/xushanpei/open-file-viewer/tree/6d85f230f0cf62320ffea146c2de6f15feb6cecb
+Retained license: open-file-viewer-MIT.txt.
+Changes: sequential record parsing, bounded inflation, strict errors, native header/END checks and limits.
+Pako license: pako-MIT.txt.

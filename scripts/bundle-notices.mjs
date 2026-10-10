@@ -15,7 +15,7 @@ export async function resolveBundleLicense(directory, metadata) {
   throw new Error(`Missing reviewed license declaration for bundled ${metadata.name}@${metadata.version}`)
 }
 
-export async function writeBundleNotices(metafile, output, { readmeLicensePackages = [] } = {}) {
+export async function writeBundleNotices(metafile, output, { readmeLicensePackages = [], licenseTextFiles = {} } = {}) {
   const packages = new Map()
   for (const input of Object.keys(metafile.inputs)) {
     if (!input.includes('node_modules/')) continue
@@ -46,7 +46,9 @@ export async function writeBundleNotices(metafile, output, { readmeLicensePackag
     for (const filename of filenames) {
       sections.push(`--- ${filename} ---\n${await readFile(join(directory, filename), 'utf8')}`)
     }
-    if (!filenames.length) {
+    if (!filenames.length && licenseTextFiles[id]) {
+      sections.push(`--- Reviewed upstream license ---\n${await readFile(licenseTextFiles[id], 'utf8')}`)
+    } else if (!filenames.length) {
       if (!readmeLicensePackages.includes(metadata.name))
         throw new Error(`Missing license text for bundled ${id}`)
       // This published package declares MIT only in its metadata and README.

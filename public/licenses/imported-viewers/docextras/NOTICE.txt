@@ -1,0 +1,7 @@
+UMD parser adapted from Flyfish file-viewer ebook/src/umd/parser.ts;
+Mermaid resource guard copied unmodified from core/src/security/svgResources.ts.
+Source: https://github.com/flyfish-dev/file-viewer/tree/e03662c883cdd089814d2d21e4c805b9d7320e0f
+Apache-2.0; Yu Wang. UMD adaptation adds strict block, decompression and
+text length validation; text-only profile with explicit limits and errors.
+Mermaid 12.1.0, MIT: https://github.com/mermaid-js/mermaid
+Bundled dependency licenses are retained in bundle-NOTICES.txt.

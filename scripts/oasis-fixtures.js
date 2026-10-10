@@ -1,0 +1,4 @@
+// Original native OASIS record writer; no upstream sample data.
+const zlib=require('node:zlib');const u=n=>{const b=[];do{let v=n%128;n=Math.floor(n/128);b.push(v|(n?128:0));}while(n);return Buffer.from(b);};const text=s=>Buffer.concat([u(Buffer.byteLength(s)),Buffer.from(s)]);
+function fixture(compressed=true){const body=Buffer.concat([Buffer.from([14]),text('Original42'),Buffer.from([20,0x7b]),u(1),u(0),u(100),u(100),u(0),u(0),Buffer.from([19,0x5b]),text('<script>safe42</script>'),u(3),u(0),u(40),u(40)]),packed=zlib.deflateRawSync(body);const end=Buffer.concat([Buffer.from([2]),Buffer.alloc(12),u(240),Buffer.alloc(240),Buffer.from([0])]);return Buffer.concat([Buffer.from('%SEMI-OASIS\r\n'),Buffer.from([1]),text('1.0'),Buffer.from([0]),u(1000),u(1),compressed?Buffer.concat([Buffer.from([34,0]),u(body.length),u(packed.length),packed]):body,end]);}
+module.exports={fixture};

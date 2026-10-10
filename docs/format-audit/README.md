@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **850** suffixes. Upstream non-generic claims: **515**. Shared: **456**. Missing suffixes: **59**.
+Our explicit viewer/native/archive handling: **856** suffixes. Upstream non-generic claims: **515**. Shared: **462**. Missing suffixes: **53**.
 
 ## Missing extensions
 
@@ -30,10 +30,6 @@ Our explicit viewer/native/archive handling: **850** suffixes. Upstream non-gene
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
 | `.m3u8` | flyfish: video, open-file-viewer: video |
-| `.mermaid` | flyfish: drawing |
-| `.mmd` | flyfish: drawing |
-| `.oas` | flyfish: eda, open-file-viewer: cad |
-| `.oasis` | flyfish: eda, open-file-viewer: cad |
 | `.odp` | flyfish: open-document, jdeworks: office/odf, open-file-viewer: office |
 | `.odt` | flyfish: open-document, jdeworks: office/odf, open-file-viewer: office |
 | `.ofc` | jdeworks: text/ofx |
@@ -54,8 +50,6 @@ Our explicit viewer/native/archive handling: **850** suffixes. Upstream non-gene
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
 | `.tldraw` | open-file-viewer: drawing |
-| `.typst` | flyfish: typst |
-| `.umd` | flyfish: umd |
 | `.vhd` | jdeworks: emulator/v86 |
 | `.webarchive` | flyfish: data-asset, open-file-viewer: asset |
 | `.wps` | open-file-viewer: office |

@@ -501,6 +501,7 @@
     "mdown",
     "mdp",
     "mef",
+    "mermaid",
     "mf",
     "mht",
     "mhtml",
@@ -510,6 +511,7 @@
     "mkd",
     "mkv",
     "mmcif",
+    "mmd",
     "mml",
     "mmp",
     "mmpz",
@@ -565,6 +567,8 @@
     "numbers",
     "nupkg",
     "o",
+    "oas",
+    "oasis",
     "obj",
     "odg",
     "ods",
@@ -761,8 +765,10 @@
     "txt",
     "txz",
     "typ",
+    "typst",
     "tzst",
     "udeb",
+    "umd",
     "unf",
     "unif",
     "url",
@@ -1396,10 +1402,6 @@
     "lrf",
     "lrx",
     "m3u8",
-    "mermaid",
-    "mmd",
-    "oas",
-    "oasis",
     "odp",
     "odt",
     "ofc",
@@ -1420,8 +1422,6 @@
     "sldasm",
     "sldprt",
     "tldraw",
-    "typst",
-    "umd",
     "vhd",
     "webarchive",
     "wps",
@@ -1677,11 +1677,13 @@
     "md",
     "mdmp",
     "mdown",
+    "mermaid",
     "mid",
     "midi",
     "mkd",
     "mkv",
     "mmcif",
+    "mmd",
     "mmp",
     "mmpz",
     "mobi",
@@ -1717,6 +1719,8 @@
     "npz",
     "numbers",
     "nupkg",
+    "oas",
+    "oasis",
     "obj",
     "ods",
     "ofx",
@@ -1834,8 +1838,10 @@
     "txt",
     "txz",
     "typ",
+    "typst",
     "tzst",
     "udeb",
+    "umd",
     "url",
     "usd",
     "usda",
@@ -2342,9 +2348,7 @@
     "lua",
     "m",
     "makefile",
-    "mermaid",
     "mjs",
-    "mmd",
     "nginxconf",
     "ninja",
     "npmrc",
@@ -2383,10 +2387,6 @@
       "hex",
       "lrc",
       "m3u8",
-      "mermaid",
-      "mmd",
-      "oas",
-      "oasis",
       "odp",
       "odt",
       "ofd",
@@ -2398,8 +2398,6 @@
       "psdt",
       "puml",
       "sig",
-      "typst",
-      "umd",
       "webarchive",
       "xla",
       "xlam",
@@ -2436,8 +2434,6 @@
       "fodt",
       "jfif",
       "m3u8",
-      "oas",
-      "oasis",
       "odp",
       "odt",
       "ofd",
@@ -2745,62 +2741,6 @@
         "line": 1
       }
     ],
-    "mermaid": [
-      {
-        "project": "flyfish",
-        "owner": "drawing",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "mmd": [
-      {
-        "project": "flyfish",
-        "owner": "drawing",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "oas": [
-      {
-        "project": "flyfish",
-        "owner": "eda",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "cad",
-        "source": "../open-file-viewer/packages/core/src/plugins/cad.ts",
-        "line": 46
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "cad",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "oasis": [
-      {
-        "project": "flyfish",
-        "owner": "eda",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "cad",
-        "source": "../open-file-viewer/packages/core/src/plugins/cad.ts",
-        "line": 46
-      },
-      {
-        "project": "open-file-viewer",
-        "owner": "cad",
-        "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
     "odp": [
       {
         "project": "jdeworks",
@@ -3078,22 +3018,6 @@
         "project": "open-file-viewer",
         "owner": "drawing",
         "source": "../open-file-viewer/packages/core/src/plugins/format-matrix.test.ts",
-        "line": 1
-      }
-    ],
-    "typst": [
-      {
-        "project": "flyfish",
-        "owner": "typst",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
-        "line": 1
-      }
-    ],
-    "umd": [
-      {
-        "project": "flyfish",
-        "owner": "umd",
-        "source": "../flyfish-file-viewer/packages/core/src/registry/formats.generated.ts",
         "line": 1
       }
     ],
@@ -3918,8 +3842,10 @@
         "mcworld",
         "mdmp",
         "mdown",
+        "mermaid",
         "mkd",
         "mmcif",
+        "mmd",
         "mmp",
         "mmpz",
         "mobi",
@@ -3944,6 +3870,8 @@
         "npy",
         "npz",
         "numbers",
+        "oas",
+        "oasis",
         "ofx",
         "oga",
         "p7b",
@@ -4016,7 +3944,9 @@
         "tst",
         "txt",
         "txz",
+        "typst",
         "udeb",
+        "umd",
         "url",
         "usd",
         "usda",
@@ -4048,7 +3978,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -4210,8 +4140,10 @@
         "mcworld",
         "mdmp",
         "mdown",
+        "mermaid",
         "mkd",
         "mmcif",
+        "mmd",
         "mmp",
         "mmpz",
         "mobi",
@@ -4236,6 +4168,8 @@
         "npy",
         "npz",
         "numbers",
+        "oas",
+        "oasis",
         "ofx",
         "oga",
         "p7b",
@@ -4308,7 +4242,9 @@
         "tst",
         "txt",
         "txz",
+        "typst",
         "udeb",
+        "umd",
         "url",
         "usd",
         "usda",
@@ -4340,7 +4276,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -4502,8 +4438,10 @@
         "mcworld",
         "mdmp",
         "mdown",
+        "mermaid",
         "mkd",
         "mmcif",
+        "mmd",
         "mmp",
         "mmpz",
         "mobi",
@@ -4528,6 +4466,8 @@
         "npy",
         "npz",
         "numbers",
+        "oas",
+        "oasis",
         "ofx",
         "oga",
         "p7b",
@@ -4600,7 +4540,9 @@
         "tst",
         "txt",
         "txz",
+        "typst",
         "udeb",
+        "umd",
         "url",
         "usd",
         "usda",
@@ -4632,7 +4574,7 @@
         "zipx"
       ],
       "filenames": [],
-      "pattern": "\\.(markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
+      "pattern": "\\.(umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|oas|oasis|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$",
       "flags": "i"
     },
     {
@@ -4796,8 +4738,10 @@
         "mbtiles",
         "mdmp",
         "mdown",
+        "mermaid",
         "mkd",
         "mmcif",
+        "mmd",
         "mmp",
         "mmpz",
         "mobi",
@@ -4870,6 +4814,8 @@
         "tsr",
         "tst",
         "txt",
+        "typst",
+        "umd",
         "url",
         "vtt",
         "wad",
@@ -4882,7 +4828,7 @@
         "yml"
       ],
       "filenames": [],
-      "pattern": "\\.(markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
+      "pattern": "\\.(umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$",
       "flags": "i"
     },
     {
@@ -4893,10 +4839,12 @@
       "line": 3035,
       "extensions": [
         "gds",
-        "gdsii"
+        "gdsii",
+        "oas",
+        "oasis"
       ],
       "filenames": [],
-      "pattern": "\\.(gds|gdsii)$",
+      "pattern": "\\.(oas|oasis|gds|gdsii)$",
       "flags": "i"
     },
     {
@@ -8281,7 +8229,9 @@
       "line": 3,
       "extensions": [
         "gds",
-        "gdsii"
+        "gdsii",
+        "oas",
+        "oasis"
       ],
       "filenames": []
     },
@@ -8383,8 +8333,10 @@
         "mbtiles",
         "mdmp",
         "mdown",
+        "mermaid",
         "mkd",
         "mmcif",
+        "mmd",
         "mmp",
         "mmpz",
         "mobi",
@@ -8457,6 +8409,8 @@
         "tsr",
         "tst",
         "txt",
+        "typst",
+        "umd",
         "url",
         "vtt",
         "wad",

@@ -1,6 +1,6 @@
 const {registerPlugin}=require('./plugins');const {ImportedViewerPanel,element,details,card}=require('./imported-viewer-panel');const {readWorker}=require('./worker-reader');let ctx;
 class LayoutPanel extends ImportedViewerPanel{
- constructor(container,state){const active={controller:new AbortController()};container.on('destroy',()=>active.controller.abort());super(container,state,ctx,{accept:'.gds,.gdsii',parse:bytes=>readWorker('layout-viewer/worker.js',{bytes},active.controller.signal),render(model,host,bar){
+ constructor(container,state){const active={controller:new AbortController()};container.on('destroy',()=>active.controller.abort());super(container,state,ctx,{accept:'.oas,.oasis,.gds,.gdsii',parse:bytes=>readWorker('layout-viewer/worker.js',{bytes},active.controller.signal),render(model,host,bar){
   const notes=card(host,model.libraryName||'GDSII layout');details(notes,'Cells',model.structures.join(', '));details(notes,'Database unit',String(model.databaseUnit||'Unspecified'));for(const note of model.warnings)details(notes,'Reader note',note);
   const select=element('select',undefined,bar);select.setAttribute('aria-label','Layout cell');for(const name of ['All cells',...model.structures]){const option=element('option',name,select);option.value=name;}
   const canvas=document.createElementNS('http://www.w3.org/2000/svg','svg');canvas.classList.add('gds-layout');canvas.style.cssText='width:100%;height:550px;background:#111';canvas.setAttribute('role','img');canvas.setAttribute('aria-label','GDSII geometry');host.append(canvas);let scale=1;

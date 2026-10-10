@@ -1,0 +1,12 @@
+Typst browser compiler and renderer: @myriaddreamin/typst.ts,
+@myriaddreamin/typst-ts-web-compiler and @myriaddreamin/typst-ts-renderer
+version 0.7.0, Apache-2.0, Myriad-Dreamin.
+Source: https://github.com/Myriad-Dreamin/typst.ts/tree/61cd6bdf5c08f508ce63406f58a92b0971ee84b8
+The published native packages omit LICENSE. Apache-2.0.txt is the exact
+upstream LICENSE at that revision (SHA-256
+06292ffcdd7d313747999255a8411e14933df33e24427a46d169cc5ff845227c),
+identical to the license shipped by typst.ts 0.7.0.
+
+DejaVu Sans Mono is copied without modification from
+https://github.com/flyfish-dev/file-viewer/tree/e03662c883cdd089814d2d21e4c805b9d7320e0f/packages/renderers/typst/assets/fonts
+Retained Bitstream Vera/DejaVu notices are in DejaVu-license.txt.

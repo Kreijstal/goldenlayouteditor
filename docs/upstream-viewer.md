@@ -104,3 +104,15 @@ Twelve more extensions are `.markdown`, `.mdown`, `.mkd`, `.txt`, `.text`, `.lot
 `.gc` shows G-code metadata plus an original bounded XY linear toolpath for G0/G1, G20/G21 and G90/G91. Arcs and coordinate resets/offsets are rejected, and instructions are not executed. `.svgz` expands gzip with the same 64 MiB streaming limit, validates XML, then uses the upstream SVG visual renderer and external-resource/executable-markup sanitizer.
 
 `npm run test:upstream-textual` checks actual Markdown headings/tables, TSV cells, CP437 box glyphs and ANSI color spans, native G-code SVG paths, and red SVGZ pixels while rejecting script execution and remote SVG image fetches.
+
+## Typst documents
+
+`.typst` compiles native Typst source with the local Apache-2.0 Typst.ts 0.7.0 WASM compiler and renders its vector artifact as sanitized SVG pages. Compiler diagnostics are checked before rendering; an invalid source is rejected instead of producing an empty document. The compiler has a memory-only access model and no package registry; external files/packages are unavailable. Only the bundled DejaVu Sans Mono font is present. Source is limited to 2 MiB, SVG output to 32 MiB and the worker to 30 seconds; completion, cancellation and errors terminate the worker. These output limits do not constitute a strict native heap cap.
+
+`npm run build:typst` checks package versions and the pinned Flyfish font source. Retained licenses include the exact upstream Apache-2.0 text omitted by the native npm packages and the font notices. `npm run test:typst` compiles an original document with text and a colored rectangle, checks vector paths/pixels, invalid-source rejection, lazy loading, zero external requests and disposal.
+
+## UMD books and Mermaid diagrams
+
+`.umd` reads native text-book sections, UTF-16 metadata/chapter titles, zlib-compressed text and chapter offsets through an adapted Apache-2.0 Flyfish parser. This profile rejects raw-deflate guesses, failed decompression, invalid section lengths/markers, inconsistent declared text lengths and invalid offsets. Comics and mixed-image UMD are unsupported. Limits: 2 MiB input, 8 MiB expanded text and a 20-second worker. Chapter strings enter the DOM through textContent.
+
+`.mermaid` and `.mmd` render native diagrams using local MIT Mermaid 12.1.0, loaded only on request. The pinned Flyfish resource guard rejects image metadata and remote resources before rendering. Configuration directives are unavailable; Mermaid uses strict security, SVG text labels, a 64 KiB source cap and 250-edge cap. Generated SVG is sanitized, links removed and output limited to 8 MiB. Tests render actual two-node diagrams and original UMD chapters, verify literal malicious text, invalid-input errors, blocked external resources, zero startup requests and disposal.
