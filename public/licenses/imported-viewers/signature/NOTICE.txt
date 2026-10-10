@@ -1,0 +1,1 @@
+Parser source from flyfish-dev/file-viewer, commit e03662c883cdd089814d2d21e4c805b9d7320e0f, packages/renderers/signature/src. Copyright Flyfish Viewer contributors. Apache-2.0. Parser files retained unmodified; GoldenLayout adds its worker and inspection UI. JSZip 3.10.1 uses its retained MIT license. No source signature fixtures or private keys are copied.

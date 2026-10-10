@@ -2,71 +2,36 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **796** suffixes. Upstream non-generic claims: **515**. Shared: **402**. Missing suffixes: **113**.
+Our explicit viewer/native/archive handling: **850** suffixes. Upstream non-generic claims: **515**. Shared: **456**. Missing suffixes: **59**.
 
 ## Missing extensions
 
 | Extension | Upstream handlers |
 | --- | --- |
-| `.abc` | jdeworks: text/abc |
-| `.acf` | jdeworks: text/acf |
 | `.ait` | flyfish: illustrator-pdf-design |
-| `.als` | jdeworks: text/als |
-| `.ans` | jdeworks: text/asciiart |
-| `.asice` | flyfish: signature |
-| `.asics` | flyfish: signature |
 | `.azw3` | jdeworks: ebook/mobi |
 | `.blend1` | jdeworks: binary/blend |
 | `.blend2` | jdeworks: binary/blend |
-| `.bsp` | jdeworks: binary/bsp |
-| `.cer` | jdeworks: text/pem |
-| `.cms` | flyfish: signature |
-| `.cmsc` | flyfish: signature |
-| `.crash` | jdeworks: text/crash |
-| `.crt` | jdeworks: text/pem |
-| `.der` | jdeworks: text/pem |
 | `.dio` | flyfish: drawing, open-file-viewer: drawing |
-| `.diz` | jdeworks: text/asciiart |
-| `.dmp` | jdeworks: binary/dmp |
 | `.dps` | open-file-viewer: office |
 | `.dra` | flyfish: eda |
 | `.drawio` | flyfish: drawing, open-file-viewer: drawing |
 | `.eot` | open-file-viewer: asset |
-| `.ers` | flyfish: signature |
 | `.et` | open-file-viewer: office |
 | `.excalidraw` | flyfish: drawing, open-file-viewer: drawing |
 | `.fodp` | jdeworks: office/odf, open-file-viewer: office |
 | `.fods` | flyfish: spreadsheet-openxml, open-file-viewer: office |
 | `.fodt` | jdeworks: office/odf, open-file-viewer: office |
-| `.gc` | jdeworks: text/gcode |
-| `.h2drumkit` | jdeworks: text/hydrogen |
-| `.h2pattern` | jdeworks: text/hydrogen |
-| `.h2song` | jdeworks: text/hydrogen |
 | `.hex` | flyfish: binary-inspector |
 | `.icalendar` | jdeworks: ics |
 | `.ifb` | jdeworks: ics |
-| `.ips` | jdeworks: text/crash |
 | `.jfif` | open-file-viewer: image |
-| `.jws` | flyfish: signature |
-| `.kicad_dru` | jdeworks: text/kicad |
-| `.kicad_mod` | jdeworks: text/kicad |
-| `.kicad_prl` | jdeworks: text/kicad |
-| `.kicad_pro` | jdeworks: text/kicad |
-| `.kicad_sym` | jdeworks: text/kicad |
-| `.kicad_wks` | jdeworks: text/kicad |
-| `.lot` | jdeworks: text/json |
 | `.lrc` | flyfish: code |
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
 | `.m3u8` | flyfish: video, open-file-viewer: video |
-| `.markdown` | flyfish: markdown, jdeworks: markdown |
-| `.mdmp` | jdeworks: binary/dmp |
-| `.mdown` | jdeworks: markdown |
 | `.mermaid` | flyfish: drawing |
-| `.mkd` | jdeworks: markdown |
 | `.mmd` | flyfish: drawing |
-| `.nfo` | jdeworks: text/asciiart |
-| `.nii` | jdeworks: binary/nifti |
 | `.oas` | flyfish: eda, open-file-viewer: cad |
 | `.oasis` | flyfish: eda, open-file-viewer: cad |
 | `.odp` | flyfish: open-document, jdeworks: office/odf, open-file-viewer: office |
@@ -75,42 +40,23 @@ Our explicit viewer/native/archive handling: **796** suffixes. Upstream non-gene
 | `.ofd` | flyfish: ofd, open-file-viewer: ofd |
 | `.ogv` | jdeworks: VIDEO, open-file-viewer: video |
 | `.olb` | flyfish: eda |
-| `.p7b` | flyfish: signature, jdeworks: text/pem |
-| `.p7c` | flyfish: signature, jdeworks: text/pem |
-| `.p7m` | flyfish: signature |
-| `.p7s` | flyfish: signature |
 | `.pdd` | flyfish: photoshop-design |
-| `.pem` | jdeworks: text/pem |
 | `.pjpe` | open-file-viewer: image |
 | `.pjpeg` | open-file-viewer: image |
-| `.pkcs7` | flyfish: signature |
 | `.plantuml` | flyfish: drawing |
 | `.potm` | flyfish: office-presentation, open-file-viewer: office |
 | `.ppsm` | flyfish: office-presentation, open-file-viewer: office |
-| `.prproj` | jdeworks: text/prproj |
 | `.psdt` | flyfish: photoshop-design |
 | `.puml` | flyfish: drawing |
 | `.sab` | open-file-viewer: cad |
 | `.sat` | open-file-viewer: cad |
-| `.sce` | flyfish: signature |
-| `.scs` | flyfish: signature |
-| `.shp` | flyfish: geo, jdeworks: binary/shapefile, open-file-viewer: gis |
 | `.sig` | flyfish: signature |
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
-| `.svgz` | jdeworks: image/svg |
-| `.tab` | jdeworks: text/csv |
-| `.text` | jdeworks: text/yaml |
 | `.tldraw` | open-file-viewer: drawing |
-| `.tsd` | flyfish: signature |
-| `.tsq` | flyfish: signature |
-| `.tsr` | flyfish: signature |
-| `.tst` | flyfish: signature |
-| `.txt` | jdeworks: text/chat, jdeworks: text/yaml |
 | `.typst` | flyfish: typst |
 | `.umd` | flyfish: umd |
 | `.vhd` | jdeworks: emulator/v86 |
-| `.wad` | jdeworks: binary/wad |
 | `.webarchive` | flyfish: data-asset, open-file-viewer: asset |
 | `.wps` | open-file-viewer: office |
 | `.x_b` | open-file-viewer: cad |
