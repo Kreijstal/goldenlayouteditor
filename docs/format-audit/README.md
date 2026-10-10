@@ -2,13 +2,12 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **876** suffixes. Upstream non-generic claims: **515**. Shared: **482**. Missing suffixes: **33**.
+Our explicit viewer/native/archive handling: **882** suffixes. Upstream non-generic claims: **515**. Shared: **488**. Missing suffixes: **27**.
 
 ## Missing extensions
 
 | Extension | Upstream handlers |
 | --- | --- |
-| `.ait` | flyfish: illustrator-pdf-design |
 | `.azw3` | jdeworks: ebook/mobi |
 | `.blend1` | jdeworks: binary/blend |
 | `.blend2` | jdeworks: binary/blend |
@@ -18,20 +17,15 @@ Our explicit viewer/native/archive handling: **876** suffixes. Upstream non-gene
 | `.drawio` | flyfish: drawing, open-file-viewer: drawing |
 | `.et` | open-file-viewer: office |
 | `.excalidraw` | flyfish: drawing, open-file-viewer: drawing |
-| `.jfif` | open-file-viewer: image |
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
 | `.ofc` | jdeworks: text/ofx |
 | `.ofd` | flyfish: ofd, open-file-viewer: ofd |
 | `.ogv` | jdeworks: VIDEO, open-file-viewer: video |
 | `.olb` | flyfish: eda |
-| `.pdd` | flyfish: photoshop-design |
-| `.pjpe` | open-file-viewer: image |
-| `.pjpeg` | open-file-viewer: image |
 | `.plantuml` | flyfish: drawing |
 | `.potm` | flyfish: office-presentation, open-file-viewer: office |
 | `.ppsm` | flyfish: office-presentation, open-file-viewer: office |
-| `.psdt` | flyfish: photoshop-design |
 | `.puml` | flyfish: drawing |
 | `.sab` | open-file-viewer: cad |
 | `.sat` | open-file-viewer: cad |

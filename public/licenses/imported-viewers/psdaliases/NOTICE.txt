@@ -1,0 +1,6 @@
+Native PSD composite decoder uses ag-psd 30.2.0, MIT.
+https://github.com/Agamnentzar/ag-psd
+Dependency licenses are retained in bundle-NOTICES.txt.
+AIT PDF-compatible previews use the pinned jdeworks local PDF.js assets;
+Copyright 2024 Mozilla Foundation, Apache-2.0. Asset notices remain in
+upstream-viewer/vendor/pdfjs and full Apache text is retained here.
