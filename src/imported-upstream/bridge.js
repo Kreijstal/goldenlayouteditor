@@ -7,12 +7,23 @@ import {mountPreview} from './core/iframe.js';
 const nativeCreate=URL.createObjectURL.bind(URL),nativeRevoke=URL.revokeObjectURL.bind(URL);
 URL.createObjectURL=blob=>{const url=nativeCreate(blob);if(current)current.urls.add(url);return url;};
 URL.revokeObjectURL=url=>{current?.urls.delete(url);nativeRevoke(url);};
-const LIMITS={f3d:'Saved thumbnail, manifest and archive contents only; geometry is not reconstructed.',sketch:'Saved preview and document structure; vector layout is not reconstructed.',procreate:'Saved thumbnail only; layers and full canvas are not reconstructed.',mat:'MAT v5 uncompressed variable metadata only; array values are not decoded.',exe:'Executable header inspection only; code is not executed or disassembled.',pyc:'Python bytecode header inspection only; code is not executed or disassembled.'};
+const NativeWorker=Worker;window.Worker=class extends NativeWorker{constructor(...args){super(...args);const owner=current;if(owner)owner.cleanups.add(()=>this.terminate());}};
+const LIMITS={msg:'Message headers and bodies only; attachment content and RTF bodies are not decoded.',lmms:'Project metadata and tracks only; audio, plugins and samples are not played.',mobi:'MOBI/PalmDOC book text only; DRM, HUFF/CDIC and KF8/AZW3 are unsupported.',f3d:'Saved thumbnail, manifest and archive contents only; geometry is not reconstructed.',sketch:'Saved preview and document structure; vector layout is not reconstructed.',procreate:'Saved thumbnail only; layers and full canvas are not reconstructed.',mat:'MAT v5 uncompressed variable metadata only; array values are not decoded.',exe:'Executable header inspection only; code is not executed or disassembled.',pyc:'Python bytecode header inspection only; code is not executed or disassembled.'};
 const nonce=new URL(location.href).searchParams.get('nonce');const host=document.getElementById('host'),label=document.getElementById('label');let generation=0,current=null;
 function release(){if(!current)return;current.controller.abort();for(const fn of [...current.cleanups].reverse())fn();for(const url of current.urls)nativeRevoke(url);current=null;host.replaceChildren();}
 async function open(bytes,name,id){
  release();const seq=++generation,controller=new AbortController(),cleanups=new Set();current={controller,cleanups,urls:new Set()};const stale=()=>seq!==generation||controller.signal.aborted;
- const intake=intakeFromBytes(bytes,name);if(/\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$/i.test(name))intake.isBinary=true;
+ if(/\.(ppt|pot|pps)$/i.test(name)){
+  const {loadPptViewer}=await import('../ppt-viewer/index.mjs');if(stale())return;
+  label.textContent='PowerPoint 97–2003 · Flyfish Viewer watermark';
+  const runtime=await loadPptViewer({worker:true,cache:false});if(stale()){await runtime.close();return;}
+  const view=await runtime.mount(host,bytes,{scale:0.75,virtualize:false,replace:false});
+  if(stale()){await runtime.close();return;}
+  const note=document.createElement('p');note.textContent='Static slide preview. Animations, macros and embedded applications are not executed. The upstream Flyfish Viewer watermark is retained.';host.prepend(note);
+  parent.postMessage({readerBridge:true,nonce,id,model:{typeId:'ppt',summary:view.document.slideCount+' slides',slideCount:view.document.slideCount,width:view.document.width,height:view.document.height}},location.origin);return;
+ }
+ if(/\.mmpz$/i.test(name)){const {decodeMmpz}=await import('./lmms.js');bytes=await decodeMmpz(bytes,controller.signal);if(stale())return;}
+ const intake=intakeFromBytes(bytes,name);if(/\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|msg|mobi|azw)$/i.test(name))intake.isBinary=true;
  if(/\.bson$/i.test(name)&&(bytes.length<5||new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).getInt32(0,true)!==bytes.length||bytes[bytes.length-1]!==0))throw Error('Invalid BSON document length or terminator');const ranked=REGISTRY.map(type=>({type,score:type.detect(intake)||0})).sort((a,b)=>b.score-a.score),best=ranked[0];if(!best||!best.score)throw Error('No upstream reader recognized '+name);const type=best.type;label.textContent=type.label;const limitation=LIMITS[type.id];if(limitation){const notice=document.createElement('p');notice.textContent=limitation;host.append(notice);}
  const settings=Object.fromEntries(descriptorsFor(type).map(d=>[d.key,d.default]));if(type.settingsUrl){const response=await fetch(type.settingsUrl,{signal:controller.signal});if(!response.ok)throw Error('Reader settings: HTTP '+response.status);const config=await response.json();for(const [key,value] of Object.entries(config.values||{}))if(Object.hasOwn(settings,key))settings[key]=value;}
  if(stale())return;
@@ -20,6 +31,8 @@ async function open(bytes,name,id){
  if(type.loadRenderer){const reader=await type.loadRenderer();if(stale())return;rendered=await reader.render(intake,{settings,signal:controller.signal,onCleanup,allowScripts:false,openIntake:inner=>open(inner.bytes,inner.filename,id),toast:message=>{if(!stale())label.textContent=String(message);}});}
  else if(type.capabilities?.rawView){const pre=document.createElement('pre');pre.textContent=intake.text;rendered={parentNode:pre};}
  else throw Error('This reader has no preview or text view');
+ if(type.id==='lmms'&&/\.mmpz$/i.test(name))rendered.bodyHtml=rendered.bodyHtml.replace('Uncompressed (.mmp)','Qt qCompress (.mmpz)');
+ if(type.id==='msg'){const {loadGlobal,vendor}=await import('./core/script-loader.js');const purify=await loadGlobal(vendor('dompurify/purify.min.js'),'DOMPurify');for(const frame of rendered.parentNode.querySelectorAll('iframe'))frame.srcdoc="<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'\">"+purify.sanitize(frame.srcdoc,{FORBID_TAGS:['script','iframe','object','embed','form','meta','link','base']});}
  for(const key of ['archiveCleanup','revoke','destroy'])if(rendered[key])onCleanup(rendered[key]);if(stale())return;
  if(rendered.parentNode)host.append(rendered.parentNode);else{
  // Opaque preview frames cannot fetch a blob owned by the trusted shell's

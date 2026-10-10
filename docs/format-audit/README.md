@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-generic claims: **515**. Shared: **274**. Missing suffixes: **241**.
+Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-generic claims: **515**. Shared: **288**. Missing suffixes: **227**.
 
 ## Missing extensions
 
@@ -23,7 +23,6 @@ Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-gene
 | `.asics` | flyfish: signature |
 | `.atom` | jdeworks: text/xml |
 | `.au` | open-file-viewer: audio |
-| `.azw` | jdeworks: ebook/mobi |
 | `.azw3` | jdeworks: ebook/mobi |
 | `.bcf` | jdeworks: text/bio |
 | `.bed` | jdeworks: text/bio |
@@ -53,7 +52,6 @@ Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-gene
 | `.dps` | open-file-viewer: office |
 | `.dra` | flyfish: eda |
 | `.drawio` | flyfish: drawing, open-file-viewer: drawing |
-| `.eml` | flyfish: email, jdeworks: eml, open-file-viewer: email |
 | `.ent` | jdeworks: text/pdb |
 | `.env` | jdeworks: text/env, jdeworks: text/ini |
 | `.eot` | open-file-viewer: asset |
@@ -118,7 +116,6 @@ Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-gene
 | `.m3u8` | flyfish: video, open-file-viewer: video |
 | `.m4b` | jdeworks: AUDIO |
 | `.markdown` | flyfish: markdown, jdeworks: markdown |
-| `.mbox` | flyfish: email, jdeworks: mbox, open-file-viewer: email |
 | `.mbtiles` | jdeworks: binary/mbtiles |
 | `.mdmp` | jdeworks: binary/dmp |
 | `.mdown` | jdeworks: markdown |
@@ -126,14 +123,10 @@ Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-gene
 | `.mkd` | jdeworks: markdown |
 | `.mmcif` | jdeworks: text/cif |
 | `.mmd` | flyfish: drawing |
-| `.mmp` | jdeworks: binary/lmms |
-| `.mmpz` | jdeworks: binary/lmms |
-| `.mobi` | jdeworks: ebook/mobi |
 | `.mol` | jdeworks: text/sdf |
 | `.mpe` | open-file-viewer: video |
 | `.mpfa` | jdeworks: text/bio |
 | `.mpv` | open-file-viewer: video |
-| `.msg` | flyfish: email, jdeworks: binary/msg, open-file-viewer: email |
 | `.msh` | jdeworks: text/hl7 |
 | `.mt` | jdeworks: text/mt940 |
 | `.mt940` | jdeworks: text/mt940 |
@@ -166,11 +159,8 @@ Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-gene
 | `.plantuml` | flyfish: drawing |
 | `.plist` | jdeworks: text/plist |
 | `.pom` | jdeworks: text/xml |
-| `.pot` | flyfish: office-presentation-binary |
 | `.potm` | flyfish: office-presentation, open-file-viewer: office |
-| `.pps` | open-file-viewer: office |
 | `.ppsm` | flyfish: office-presentation, open-file-viewer: office |
-| `.ppt` | flyfish: office-presentation-binary, open-file-viewer: office |
 | `.prettierignore` | jdeworks: text/gitignore |
 | `.properties` | jdeworks: text/ini |
 | `.props` | jdeworks: text/xml |
@@ -230,10 +220,6 @@ Our explicit viewer/native/archive handling: **668** suffixes. Upstream non-gene
 | `.webarchive` | flyfish: data-asset, open-file-viewer: asset |
 | `.webloc` | jdeworks: text/url |
 | `.wma` | jdeworks: AUDIO, open-file-viewer: audio |
-| `.wp` | flyfish: office-wordperfect |
-| `.wp5` | flyfish: office-wordperfect |
-| `.wp6` | flyfish: office-wordperfect |
-| `.wpd` | flyfish: office-wordperfect |
 | `.wps` | open-file-viewer: office |
 | `.wsdl` | jdeworks: text/xml |
 | `.x_b` | open-file-viewer: cad |

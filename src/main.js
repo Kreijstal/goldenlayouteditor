@@ -97,6 +97,7 @@ const {isWordBinaryFile}=require('./doc-binary-plugin');
 require('./columnar-plugin');
 require('./layout-plugin');
 require('./upstream-plugin');
+require('./wordperfect-plugin');
 require('./hwp-plugin');
 require('./gldf-plugin');
 require('./photometry-plugin');
@@ -2959,7 +2960,7 @@ class ProjectFilesComponent {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const textResource = (/\.(doc|dot)$/i.test(file.name) && new Uint8Array(e.target.result)[0] !== 0xd0) || (/\.(csh|grd)$/i.test(file.name) && !/^(cush|8BGR)$/.test(new TextDecoder().decode(new Uint8Array(e.target.result).subarray(0,4)))) || (/\.key$/i.test(file.name) && new TextDecoder().decode(new Uint8Array(e.target.result).subarray(0,2)) !== 'PK');
-                    const fileContent = textResource ? new TextDecoder().decode(e.target.result) : /\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name) ? '' : e.target.result;
+                    const fileContent = textResource ? new TextDecoder().decode(e.target.result) : /\.(mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name) ? '' : e.target.result;
                     const fileName = file.name;
                     const fileType = getFileTypeFromExtension(fileName);
                     const newFileId = generateUniqueId('file');
@@ -2969,7 +2970,7 @@ class ProjectFilesComponent {
                         name: fileName,
                         type: fileType,
                         content: fileContent,
-                        ...(/\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), ...(textResource ? {} : {viewType:'binary'}) } : {}),
+                        ...(/\.(mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(fileName) ? { bytes: new Uint8Array(e.target.result), ...(textResource ? {} : {viewType:'binary'}) } : {}),
                         cursor: { row: 0, column: 0 },
                         selection: null
                     };
@@ -2985,7 +2986,7 @@ class ProjectFilesComponent {
                 reader.onerror = (err) => {
                     log.error(`ProjectFiles: Error reading file ${file.name}:`, err);
                 };
-                if (/\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name)) reader.readAsArrayBuffer(file);
+                if (/\.(mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|wp|wp5|wp6|wpd|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent|gds|gdsii|parquet|avro|arrow|feather|ipc|doc|dot|pages|numbers|key|abr|csh|pat|grd|asl|indd|indt|xd|icml|idms|inx|ase|aco|7z|ar|cpio|cab|rar|cbr|cb7|cbt|xar|zipx|bz2|bzip2|xz|lzma|lha|lzh|rpm|srpm|deb|udeb|tbz|tbz2|txz|gzip|aab|mcpack|mctemplate|mcworld|cd5|xmind|fb2|idml|bundle|h5|hdf|hdf5|he5|nc|nc4|netcdf|npy|npz|ifc|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz)$/i.test(file.name)) reader.readAsArrayBuffer(file);
                 else reader.readAsText(file);
             });
         }
@@ -3027,7 +3028,8 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
-    {re:/\.(bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$/i, componentType:'upstreamViewer', titlePrefix:'Data: ', tag:'data'},
+    {re:/\.(wp|wp5|wp6|wpd)$/i, componentType:'wordPerfectViewer', titlePrefix:'WordPerfect: ', tag:'document'},
+    {re:/\.(mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$/i, componentType:'upstreamViewer', titlePrefix:'Data: ', tag:'data'},
     {re:/\.(gds|gdsii)$/i, componentType:'layoutViewer', titlePrefix:'Layout: ', tag:'design'},
     {re:/\.(parquet|avro|arrow|feather|ipc)$/i, componentType:'columnarViewer', titlePrefix:'Data: ', tag:'data'},
     {re:/\.(doc|dot)$/i, test:isWordBinaryFile, componentType:'wordBinaryViewer', titlePrefix:'Word: ', tag:'document'},

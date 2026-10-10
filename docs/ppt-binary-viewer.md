@@ -1,0 +1,9 @@
+# PowerPoint 97–2003 viewer
+
+`.ppt`, `.pot` and `.pps` use the pinned @file-viewer/ppt 0.3.4 runtime as an integrated local dependency. Native slide canvases are rendered by its WebAssembly worker. The Flyfish Viewer watermark remains visible, and all runtime integrity checks remain enabled. This runtime is proprietary under the included Flyfish Public Watermarked Runtime License v2, rather than Apache-2.0. The license and font notices are retained unmodified alongside its assets. No watermark-removal feature is provided.
+
+The full upstream runtime directory is copied unchanged from flyfish-dev/file-viewer commit e03662c883cdd089814d2d21e4c805b9d7320e0f, apps/viewer-demo/public/vendor/ppt. `npm run build:wordperfect` fetches/validates that checkout and builds both legacy document dependencies. Generated PPT assets live at public/ppt-viewer and stay out of source control. The package checks its WASM/font checksums at runtime. No external CDN or licensing-server request is required by this public edition.
+
+The existing lazy reader panel hosts the runtime inside a trusted frame. It requires worker mode explicitly, preserves source bytes by copying its input, and displays complete canvases without watermark crops or overlays. Static slides are supported; macros, embedded applications and animations do not execute. Source input is capped at 64 MiB and rendering at 60 seconds. Frame-owned workers terminate on picker replacement, deadline and tab close.
+
+`npm run test:ppt-binary` checks all three aliases using the native public template at the pinned source checkout, verifies nonempty rendered canvases and public-watermarked edition, checks local-only requests, zero startup runtime requests, disposal, initialization cancellation and an invalid CFB signature. TEST_PPT_FIXTURE_PATH can select a separate native test document. The native external corpus payload is not committed here.

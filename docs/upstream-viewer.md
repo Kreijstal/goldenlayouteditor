@@ -28,3 +28,13 @@ The next batch enables `.f3d`, `.f3z`, `.sketch`, `.procreate`, `.mat`, `.dbf`, 
 | Torrent | Bencoded file metadata | No tracker contact or downloads |
 
 Original test generators in `scripts/upstream-native-fixtures.js` construct these native records. Tests check decoded fields and pixels, executable/class signature separation, lazy loading, picker changes and cancellation. Blob thumbnail bytes are embedded as data URLs before crossing into the opaque preview frame. The host revokes reader-created object URLs on replacement as well as tab close. Both virtual and server byte-routing tables are checked against all new viewer routes, with an Amiga IFF signature regression check.
+
+## Mail, books and LMMS
+
+`.eml` renders MIME headers and sanitized HTML/plain bodies; `.mbox` renders a message list with headers and text snippets. `.msg` reads Outlook compound-file properties and message bodies; attachment content and RTF bodies are explicitly unsupported. Its body additionally passes DOMPurify and a no-network CSP before display. Input scripts remain disabled.
+
+`.mobi` and `.azw` render native MOBI/PalmDOC book text, with uncompressed and PalmDOC compression tested separately. DRM, HUFF/CDIC and KF8/AZW3 are unsupported; `.azw3` remains in the audit remainder. Reader settings remain available. MOBI text is sanitized before mounting.
+
+`.mmp` and `.mmpz` inspect LMMS song metadata, tempo and track names without executing plugins or playing samples. Native MMPZ is Qt qCompress (a big-endian expanded-size prefix followed by zlib), as used in LMMS `src/core/DataFile.cpp`: https://github.com/LMMS/lmms/blob/master/src/core/DataFile.cpp. The host adapter decodes this exact wrapper with a 64 MiB expanded-size cap and verifies the declared size, then passes the native XML to the upstream renderer. The incorrect upstream gzip assumption is not used for native MMPZ.
+
+`upstream-document-fixtures.js` authors native PalmDB/MOBI records, Outlook CFB properties, RFC822/MIME messages, mbox envelopes and Qt-compressed LMMS XML. Tests assert actual book/message/project contents, compression paths and script removal. All additional readers and codecs remain lazy.
