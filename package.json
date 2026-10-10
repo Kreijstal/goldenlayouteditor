@@ -75,7 +75,7 @@
     "@myriaddreamin/typst-ts-renderer": "0.7.0",
     "@myriaddreamin/typst-ts-web-compiler": "0.7.0",
     "@myriaddreamin/typst.ts": "0.7.0",
-    "@paged-media/introspect-wasm": "0.63.0",
+    "@paged-media/introspect-wasm": "0.70.2",
     "@xmldom/xmldom": "0.9.12",
     "ag-psd": "30.2.0",
     "apache-arrow": "21.1.0",
