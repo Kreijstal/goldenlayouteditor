@@ -2,7 +2,7 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **649** suffixes. Upstream non-generic claims: **515**. Shared: **255**. Missing suffixes: **260**.
+Our explicit viewer/native/archive handling: **653** suffixes. Upstream non-generic claims: **515**. Shared: **259**. Missing suffixes: **256**.
 
 ## Missing extensions
 
@@ -29,10 +29,8 @@ Our explicit viewer/native/archive handling: **649** suffixes. Upstream non-gene
 | `.bed` | jdeworks: text/bio |
 | `.blend1` | jdeworks: binary/blend |
 | `.blend2` | jdeworks: binary/blend |
-| `.bson` | jdeworks: binary/bson |
 | `.bsp` | jdeworks: binary/bsp |
 | `.caf` | open-file-viewer: audio |
-| `.cbor` | jdeworks: binary/cbor |
 | `.cer` | jdeworks: text/pem |
 | `.cfg` | jdeworks: text/ini |
 | `.cif` | jdeworks: text/cif |
@@ -144,10 +142,8 @@ Our explicit viewer/native/archive handling: **649** suffixes. Upstream non-gene
 | `.mol` | jdeworks: text/sdf |
 | `.mpe` | open-file-viewer: video |
 | `.mpfa` | jdeworks: text/bio |
-| `.mpk` | jdeworks: binary/msgpack |
 | `.mpv` | open-file-viewer: video |
 | `.msg` | flyfish: email, jdeworks: binary/msg, open-file-viewer: email |
-| `.msgpack` | jdeworks: binary/msgpack |
 | `.msh` | jdeworks: text/hl7 |
 | `.mt` | jdeworks: text/mt940 |
 | `.mt940` | jdeworks: text/mt940 |
