@@ -2,49 +2,36 @@
 
 Generated from registered source claims, not README examples. This compares filename extensions; it does not prove renderer fidelity. A generic text/hex view does not count as a format-specific viewer. The upstream snapshots retain owners and source locations.
 
-Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-generic claims: **515**. Shared: **288**. Missing suffixes: **227**.
+Our explicit viewer/native/archive handling: **731** suffixes. Upstream non-generic claims: **515**. Shared: **337**. Missing suffixes: **178**.
 
 ## Missing extensions
 
 | Extension | Upstream handlers |
 | --- | --- |
-| `.3g2` | open-file-viewer: video |
 | `.abc` | jdeworks: text/abc |
 | `.acf` | jdeworks: text/acf |
-| `.aif` | open-file-viewer: audio |
-| `.aifc` | open-file-viewer: audio |
-| `.aiff` | open-file-viewer: audio |
 | `.ait` | flyfish: illustrator-pdf-design |
 | `.als` | jdeworks: text/als |
-| `.amr` | open-file-viewer: audio |
 | `.ans` | jdeworks: text/asciiart |
-| `.asf` | jdeworks: VIDEO |
 | `.asice` | flyfish: signature |
 | `.asics` | flyfish: signature |
-| `.atom` | jdeworks: text/xml |
-| `.au` | open-file-viewer: audio |
 | `.azw3` | jdeworks: ebook/mobi |
 | `.bcf` | jdeworks: text/bio |
 | `.bed` | jdeworks: text/bio |
 | `.blend1` | jdeworks: binary/blend |
 | `.blend2` | jdeworks: binary/blend |
 | `.bsp` | jdeworks: binary/bsp |
-| `.caf` | open-file-viewer: audio |
 | `.cer` | jdeworks: text/pem |
-| `.cfg` | jdeworks: text/ini |
 | `.cif` | jdeworks: text/cif |
 | `.cif2` | jdeworks: text/cif |
 | `.cms` | flyfish: signature |
 | `.cmsc` | flyfish: signature |
-| `.conf` | jdeworks: text/ini |
 | `.crash` | jdeworks: text/crash |
 | `.crt` | jdeworks: text/pem |
-| `.csproj` | jdeworks: text/xml |
 | `.db3` | jdeworks: sqlite |
 | `.der` | jdeworks: text/pem |
 | `.diff` | jdeworks: text/patch |
 | `.dio` | flyfish: drawing, open-file-viewer: drawing |
-| `.divx` | jdeworks: VIDEO |
 | `.diz` | jdeworks: text/asciiart |
 | `.dmp` | jdeworks: binary/dmp |
 | `.dockerfile` | jdeworks: text/dockerfile |
@@ -53,19 +40,16 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.dra` | flyfish: eda |
 | `.drawio` | flyfish: drawing, open-file-viewer: drawing |
 | `.ent` | jdeworks: text/pdb |
-| `.env` | jdeworks: text/env, jdeworks: text/ini |
 | `.eot` | open-file-viewer: asset |
 | `.ers` | flyfish: signature |
 | `.eslintignore` | jdeworks: text/gitignore |
 | `.et` | open-file-viewer: office |
 | `.excalidraw` | flyfish: drawing, open-file-viewer: drawing |
-| `.f4v` | jdeworks: VIDEO |
 | `.fa` | jdeworks: text/bio |
 | `.faa` | jdeworks: text/bio |
 | `.fasta` | jdeworks: text/bio |
 | `.fastq` | jdeworks: text/bio |
 | `.ffn` | jdeworks: text/bio |
-| `.flv` | jdeworks: VIDEO, open-file-viewer: video |
 | `.fna` | jdeworks: text/bio |
 | `.fodp` | jdeworks: office/odf, open-file-viewer: office |
 | `.fods` | flyfish: spreadsheet-openxml, open-file-viewer: office |
@@ -91,12 +75,8 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.hl7v2` | jdeworks: text/hl7 |
 | `.icalendar` | jdeworks: ics |
 | `.ifb` | jdeworks: ics |
-| `.ini` | jdeworks: text/ini |
 | `.ips` | jdeworks: text/crash |
 | `.jfif` | open-file-viewer: image |
-| `.json5` | jdeworks: text/json |
-| `.jsonc` | jdeworks: text/json |
-| `.jsonl` | jdeworks: text/jsonl |
 | `.jws` | flyfish: signature |
 | `.kicad_dru` | jdeworks: text/kicad |
 | `.kicad_mod` | jdeworks: text/kicad |
@@ -107,14 +87,11 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.kml` | flyfish: geo, jdeworks: text/kml, open-file-viewer: gis |
 | `.kube` | jdeworks: text/kubeconfig |
 | `.kubeconfig` | jdeworks: text/kubeconfig |
-| `.ldjson` | jdeworks: text/jsonl |
 | `.lot` | jdeworks: text/json |
 | `.lrc` | flyfish: code |
 | `.lrf` | jdeworks: ebook/lrf |
 | `.lrx` | jdeworks: ebook/lrf |
-| `.m2v` | jdeworks: VIDEO |
 | `.m3u8` | flyfish: video, open-file-viewer: video |
-| `.m4b` | jdeworks: AUDIO |
 | `.markdown` | flyfish: markdown, jdeworks: markdown |
 | `.mbtiles` | jdeworks: binary/mbtiles |
 | `.mdmp` | jdeworks: binary/dmp |
@@ -124,14 +101,11 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.mmcif` | jdeworks: text/cif |
 | `.mmd` | flyfish: drawing |
 | `.mol` | jdeworks: text/sdf |
-| `.mpe` | open-file-viewer: video |
 | `.mpfa` | jdeworks: text/bio |
-| `.mpv` | open-file-viewer: video |
 | `.msh` | jdeworks: text/hl7 |
 | `.mt` | jdeworks: text/mt940 |
 | `.mt940` | jdeworks: text/mt940 |
 | `.mt942` | jdeworks: text/mt940 |
-| `.ndjson` | jdeworks: text/jsonl |
 | `.nfo` | jdeworks: text/asciiart |
 | `.nii` | jdeworks: binary/nifti |
 | `.npmignore` | jdeworks: text/gitignore |
@@ -142,7 +116,6 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.ofc` | jdeworks: text/ofx |
 | `.ofd` | flyfish: ofd, open-file-viewer: ofd |
 | `.ofx` | jdeworks: text/ofx |
-| `.oga` | flyfish: audio, jdeworks: AUDIO, open-file-viewer: audio |
 | `.ogv` | jdeworks: VIDEO, open-file-viewer: video |
 | `.olb` | flyfish: eda |
 | `.p7b` | flyfish: signature, jdeworks: text/pem |
@@ -157,13 +130,9 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.pjpeg` | open-file-viewer: image |
 | `.pkcs7` | flyfish: signature |
 | `.plantuml` | flyfish: drawing |
-| `.plist` | jdeworks: text/plist |
-| `.pom` | jdeworks: text/xml |
 | `.potm` | flyfish: office-presentation, open-file-viewer: office |
 | `.ppsm` | flyfish: office-presentation, open-file-viewer: office |
 | `.prettierignore` | jdeworks: text/gitignore |
-| `.properties` | jdeworks: text/ini |
-| `.props` | jdeworks: text/xml |
 | `.proto` | jdeworks: text/proto |
 | `.prproj` | jdeworks: text/prproj |
 | `.psdt` | flyfish: photoshop-design |
@@ -172,10 +141,6 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.qif` | jdeworks: text/qif |
 | `.rdp` | jdeworks: text/rdp |
 | `.reg` | jdeworks: text/reg |
-| `.resx` | jdeworks: text/xml |
-| `.rm` | jdeworks: AUDIO |
-| `.rmvb` | jdeworks: AUDIO |
-| `.rss` | jdeworks: text/xml |
 | `.rtf` | flyfish: open-document, jdeworks: text/rtf, open-file-viewer: office |
 | `.s3db` | jdeworks: sqlite |
 | `.sab` | open-file-viewer: cad |
@@ -190,19 +155,14 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.sl3` | jdeworks: sqlite |
 | `.sldasm` | open-file-viewer: cad |
 | `.sldprt` | open-file-viewer: cad |
-| `.snd` | open-file-viewer: audio |
 | `.srt` | jdeworks: text/subtitle |
 | `.ssh-config` | jdeworks: text/ssh-config |
 | `.sta` | jdeworks: text/mt940 |
-| `.strings` | jdeworks: text/strings |
-| `.stringsdict` | jdeworks: text/strings |
 | `.svgz` | jdeworks: image/svg |
 | `.tab` | jdeworks: text/csv |
-| `.targets` | jdeworks: text/xml |
 | `.text` | jdeworks: text/yaml |
 | `.thrift` | jdeworks: text/thrift |
 | `.tldraw` | open-file-viewer: drawing |
-| `.toml` | jdeworks: text/toml |
 | `.topojson` | jdeworks: text/geojson, open-file-viewer: gis |
 | `.tsd` | flyfish: signature |
 | `.tsq` | flyfish: signature |
@@ -213,15 +173,11 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.umd` | flyfish: umd |
 | `.url` | jdeworks: text/url |
 | `.vhd` | jdeworks: emulator/v86 |
-| `.vob` | jdeworks: VIDEO |
 | `.vtt` | jdeworks: text/subtitle |
 | `.wad` | jdeworks: binary/wad |
-| `.weba` | flyfish: audio, jdeworks: AUDIO, open-file-viewer: audio |
 | `.webarchive` | flyfish: data-asset, open-file-viewer: asset |
 | `.webloc` | jdeworks: text/url |
-| `.wma` | jdeworks: AUDIO, open-file-viewer: audio |
 | `.wps` | open-file-viewer: office |
-| `.wsdl` | jdeworks: text/xml |
 | `.x_b` | open-file-viewer: cad |
 | `.x_t` | open-file-viewer: cad |
 | `.xhtml` | jdeworks: html |
@@ -230,11 +186,6 @@ Our explicit viewer/native/archive handling: **682** suffixes. Upstream non-gene
 | `.xlt` | flyfish: spreadsheet-openxml, open-file-viewer: office |
 | `.xltm` | flyfish: spreadsheet-openxml, open-file-viewer: office |
 | `.xltx` | flyfish: spreadsheet-openxml, open-file-viewer: office |
-| `.xsd` | jdeworks: text/xml |
-| `.xsl` | jdeworks: text/xml |
-| `.xslt` | jdeworks: text/xml |
-| `.yaml` | jdeworks: text/yaml |
-| `.yml` | jdeworks: text/yaml |
 
 ## Shared suffixes with missing capabilities
 
