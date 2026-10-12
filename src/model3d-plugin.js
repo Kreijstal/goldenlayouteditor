@@ -19,6 +19,8 @@ const SVG_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loade
 // three's loaders for the other formats, each imported when a file of its kind is opened
 const LOADERS_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/`;
 const EXTRA_LOADERS = {
+    '3mf': ['3MFLoader', 'ThreeMFLoader'],
+    kmz: ['KMZLoader', 'KMZLoader'],
     amf: ['AMFLoader', 'AMFLoader'],
     dae: ['ColladaLoader', 'ColladaLoader'],
     wrl: ['VRMLLoader', 'VRMLLoader'],
@@ -58,9 +60,9 @@ const PLAY_DEFAULT_STEP = 0.25;    // per frame, for a number without a range
 const FRAME_CACHE_SIZE = 80;       // rendered results kept, keyed by parameter values
 // OpenSCAD's default colour for parts without color()
 const OPENSCAD_DEFAULT_COLOR = [0xf9 / 255, 0xd7 / 255, 0x2c / 255];
-const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i;
+const MODEL_RE = /\.(glb|gltf|stl|obj|gcode|gco|blend|scad|csg|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc|3mf|kmz)$/i;
 // Formats read from the file alone (by a three.js loader, OpenCASCADE, Assimp, prc-convert, openskp or xeokit): these get thumbnails too
-const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc)$/i;
+const LOADER_MODEL_RE = /\.(glb|gltf|stl|obj|amf|dae|wrl|vrml|ply|3ds|3dm|step|stp|p21|iges|igs|brep|ogex|xgl|zgl|prc|skp|3dxml|usd|usda|usdc|usdz|fbx|pcd|vtk|vtp|xyz|ifc|3mf|kmz)$/i;
 // Names other files have too: a .ply, .amf, .stp, .prc or .xgl only when it starts as a PLY, AMF, STEP, PRC or
 // XGL file (.prc: Panda3D configs, PL/SQL procedures, Palm OS programs; .xgl: other programs' XML)
 const SHARED_NAME_RE = /\.(ply|amf|stp|prc|xgl)$/i;
@@ -489,6 +491,16 @@ async function parseModel(libs, ext, buffer, manager, signal) {
         const AMFLoader = await importLoader(ext);
         object = new AMFLoader(manager).parse(buffer);
         object.rotation.x = -Math.PI / 2; // AMF is Z-up (3D printing)
+    } else if (ext === '3mf') {
+        const ThreeMFLoader = await importLoader(ext);
+        object = new ThreeMFLoader(manager).parse(buffer);
+        object.rotation.x = -Math.PI / 2; // Manufacturing coordinates are Z-up.
+    } else if (ext === 'kmz') {
+        const KMZLoader = await importLoader(ext);
+        object = new KMZLoader(manager).parse(buffer).scene;
+        let meshes = 0;
+        object.traverse(child => { if (child.isMesh) meshes++; });
+        if (!meshes) throw new Error('No supported embedded COLLADA mesh found; use the KML map or ZIP browser.');
     } else if (ext === 'dae') {
         const ColladaLoader = await importLoader(ext);
         const collada = new ColladaLoader(manager).parse(new TextDecoder().decode(buffer), '');
@@ -801,7 +813,7 @@ class Model3dComponent {
 
         this.fileInput = document.createElement('input');
         this.fileInput.type = 'file';
-        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml,.usd,.usda,.usdc,.usdz,.fbx,.pcd,.vtk,.vtp,.xyz,.ifc';
+        this.fileInput.accept = '.glb,.gltf,.stl,.obj,.gcode,.gco,.blend,.scad,.csg,.amf,.dae,.wrl,.vrml,.ply,.3ds,.3dm,.step,.stp,.p21,.iges,.igs,.brep,.ogex,.xgl,.zgl,.prc,.skp,.3dxml,.usd,.usda,.usdc,.usdz,.fbx,.pcd,.vtk,.vtp,.xyz,.ifc,.3mf,.kmz';
         this.fileInput.style.display = 'none';
         this.fileInput.addEventListener('change', e => {
             if (e.target.files && e.target.files[0]) this._loadFileObject(e.target.files[0]);
@@ -809,6 +821,11 @@ class Model3dComponent {
         this.toolbar.appendChild(this.fileInput);
         this.toolbar.appendChild(makeButton('Open', 'Open local 3D model', () => this.fileInput.click()));
         this.toolbar.appendChild(makeButton('Reset', 'Reset camera', () => this._frameModel()));
+        if (/\.(3mf|kmz)$/i.test(this.fileName) && this.fileId && this.ctx.currentWorkspacePath) {
+            this.toolbar.appendChild(makeButton('Browse ZIP', 'Browse the container contents', () => {
+                window.location.href = '?browse=' + encodeURIComponent(this.ctx.currentWorkspacePath + '/' + this.ctx.getRelativePath(this.fileId));
+            }));
+        }
         this.wireframeBtn = makeButton('Wireframe', 'Show the edges of the triangles', () => {
             this.wireframe = !this.wireframe;
             this._applyWireframe();

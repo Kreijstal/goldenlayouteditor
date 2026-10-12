@@ -25,25 +25,44 @@ const { isPspMaybeName, isPsp } = require('./psp-plugin');
 const { isMdp } = require('./mdp-plugin');
 const { isSai } = require('./sai-plugin');
 const { isCpt } = require('./cpt-plugin');
+const { isVolumeHeader } = require('./volume-data');
+
+async function volumeHeaderAt(url, name) {
+    if (!/\.(hdr|img)$/i.test(name)) return null;
+    try {
+        const u = new URL(url, location.href);
+        const image = /\.img$/i.test(name);
+        const basePath = u.searchParams.get('path');
+        if (image) u.searchParams.set('path', basePath.replace(/\.img$/i, '.hdr'));
+        let response = await fetch(u.href, { headers: { Range: 'bytes=0-347' } });
+        if (!response.ok && image) {
+            u.searchParams.set('path', basePath.replace(/\.img$/i, '.HDR'));
+            response = await fetch(u.href, { headers: { Range: 'bytes=0-347' } });
+        }
+        if (!response.ok) return null;
+        const head = new Uint8Array(await response.arrayBuffer()).subarray(0, 348);
+        return isVolumeHeader(head) ? head : null;
+    } catch (_) { return null; }
+}
 
 const log = createLogger('Browse');
 
 // Whether the .img at url is a picture, VICAR's, ERDAS IMAGINE's or GEM's, rather than a disk image
 async function isImgPicture(url) {
-    return await isVicarUrl(url).catch(() => false) || await isHfaUrl(url).catch(() => false)
+    return !!await volumeHeaderAt(url, '.img') || await isVicarUrl(url).catch(() => false) || await isHfaUrl(url).catch(() => false)
         || await isGemUrl(url).catch(() => false);
 }
 
 // Extensions EditorComponent can play/show directly; these default to it
 // instead of the inspector plugins project mode prefers.
-const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|cur|ani|icns|dds|exr|jls|webp|avif|svg|hvif|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|deep|iff|anim|anm|fl[icx]|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|ecw|drw|cdr|cdt|cmx|f?odg|otg|o?xps|jb2|jbig2|pict|pct|cals|ct1|cal|dpx|cin|[mj]ng|miff|wbmp|xwd|[we]m[fz]|mpo|jps|pns|ximg|timg|dng|crw|cr[23]|nef|nrw|arw|sr[f2]|orf|rw[2l]|raf|pef|srw|3fr|fff|erf|kdc|mrw|mos|iiq|mef|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|fla)$/i;
+const PLAYABLE = /\.(a?png|jxl|jpe?g|gif|bmp|ico|cur|ani|icns|dds|exr|jls|webp|avif|svg|hvif|tiff?|jp2|j2[kc]|jpc|jp[fx]|jph|jhc|hei[cf]|hif|p[bgpn]m|pam|hdr|rgbe|xyze|tga|tpic|icb|vda|vst|qoi|[pd]cx|sgi|rgba?|bw|inta?|ras|sun|im(1|8|24|32)|rs|i?lbm|ham8?|deep|iff|anim|anm|fl[icx]|fits?|fts|jxr|wdp|hdp|bpg|flif|nrrd|nhdr|vic|vicar|xisf|xish|pgf|ecw|drw|cdr|cdt|cmx|f?odg|otg|o?xps|jb2|jbig2|pict|pct|cals|ct1|cal|dpx|cin|[mj]ng|miff|wbmp|xwd|[we]m[fz]|mpo|jps|pns|ximg|timg|dng|crw|cr[23]|nef|nrw|arw|sr[f2]|orf|rw[2l]|raf|pef|srw|3fr|fff|erf|kdc|mrw|mos|iiq|mef|mp4|m4v|mov|mkv|webm|mp3|m4a|aac|flac|wav|ogg|opus|pdf|ai|ait|fla)$/i;
 
 // Zip-format archives the browser opens as read-only folders. Listing and file
 // reads are answered by the service worker (public/zip-sw.js; without one, the
 // page runs it itself, see archive-fallback.js), keep in sync.
 const ZIP_EXTENSIONS = new Set(['zip', 'jar', 'war', 'ear', 'aar', 'apk', 'xapk', 'ipa', 'whl', 'nupkg', 'cbz', 'xpi', 'vsix', 'crx', 'kmz', '3mf']);
 // Extensions with a dedicated viewer (mirrors SERVED_EXTENSIONS in ws-handler.js)
-const SERVED_EXTENSIONS = new Set(('pdf ai djvu djv vsd vsdx swf epub psd psb kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods odg otg fodg xps oxps jb2 jbig2 sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp 3dxml zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
+const SERVED_EXTENSIONS = new Set(('pdf ai ait aab 7z aco abr 3g2 aif aifc aiff amr djvu djv vsd vsdx swf epub psd psb kra krz pdn pspimage psptube pspframe pspmask pspbrush pspshape pspselection clip sai2 xlsx xlsm xlsb xls ods numbers odt odp odg otg fodg xps oxps jb2 jbig2 sqlite sqlite3 db glb gltf stl obj gcode gco blend dae wrl vrml 3ds 3dm skp 3dxml 3mf kmz nii zgl x3dz x3dvz dwg dgn dwf dwfx fzz lottie fst ghw wasm fla xfl '
     + 'png apng jxl jpg jpeg gif bmp ico cur ani icns dds exr jls webp avif svg tvg hvif tif tiff jp2 j2k j2c jpc jpf jpx jph jhc heic heif hif pbm pgm ppm pnm pam hdr rgbe xyze pic tga tpic icb vda vst qoi pcx dcx sgi ras sun im1 im8 im24 im32 ilbm lbm ham ham8 deep anim anm fli flc flx fits fit fts jxr bpg flif nrrd nhdr vic vicar xisf xish ecw pict pct cals ct1 dpx jng miff wbmp xwd wmf emf wmz emz mpo jps pns ximg timg dng crw cr2 cr3 nef nrw arw srf sr2 orf rw2 raf pef srw 3fr fff erf kdc mrw mos iiq rwl mef mp4 m4v mov mkv webm avi wmv mpg mpeg m2ts 3gp mp3 m4a aac flac wav ogg opus').split(' '));
 const MAX_TEXT_SIZE = 5 * 1024 * 1024;
 
@@ -715,7 +734,8 @@ async function initBrowseMode(root, deps) {
             return false;
         }
         const name = p.slice(p.lastIndexOf('/') + 1);
-        if (kind === 'directory' || (isArchiveName(name) && !viewer)) {
+        const previewArchive = /\.(3mf|kmz)$/i.test(name) || (/\.img$/i.test(name) && await isImgPicture('/workspace-file?path=' + encodeURIComponent(p)));
+        if (kind === 'directory' || (isArchiveName(name) && !viewer && !previewArchive)) {
             closeViewer();
             await navigate(p);
             return true;
@@ -809,7 +829,7 @@ async function initBrowseMode(root, deps) {
         }
         for (const f of shown) {
             const row = el('div', 'bm-row');
-            const isDir = f.type === 'directory' || (isArchiveName(f.name) && f.type === 'file' && !f.encrypted && !isFlStudioProject(f));
+            const isDir = f.type === 'directory' || (isArchiveName(f.name) && !/\.(3mf|kmz)$/i.test(f.name) && f.type === 'file' && !f.encrypted && !isFlStudioProject(f));
             const ico = el('div', 'bm-ico', f.mount ? (f.mount === 'storage' ? '\uD83D\uDCBE' : f.mount === 'server' ? '\uD83D\uDDA5\uFE0F' : '\uD83D\uDDC2\uFE0F') : f.type === 'directory' ? ICONS.dir : (ICON_BY_EXT[extOf(f.name)] || ICONS.text));
             const txt = el('div', 'bm-txt');
             txt.appendChild(el('div', 'bm-name', f.name + (f.symlink ? ' →' : '')));
@@ -976,6 +996,20 @@ async function initBrowseMode(root, deps) {
     }
 
     async function ensureLoaded(file) {
+        // Reference-only entries still need their headers for shared-suffix routing.
+        if (!file.lazy && !file.head && /\.(abc|acf|als)$/i.test(file.name)) {
+            const response = await fetch('/workspace-file?path=' + encodeURIComponent(absPath(file.name)), {
+                headers: { Range: 'bytes=0-4095' },
+            });
+            if (response.ok) file.head = new Uint8Array(await response.arrayBuffer()).subarray(0, 4096);
+        }
+        if (/\.(hdr|img)$/i.test(file.name)) {
+            const header = await volumeHeaderAt('/workspace-file?path=' + encodeURIComponent(absPath(file.name)), file.name);
+            if (header) {
+                if (/\.hdr$/i.test(file.name)) file.head = header;
+                else file.volumeHeader = header;
+            }
+        }
         if (!file.lazy) return;
         // Raw bytes over HTTP (the service worker answers for files inside archives),
         // decoded here so the viewer can switch encodings
@@ -1010,7 +1044,7 @@ async function initBrowseMode(root, deps) {
 
     function candidateViewers(file) {
         const viewers = viewersForFile(file.id).filter(v => components[v.componentType]);
-        if (PLAYABLE.test(file.name)) {
+        if (PLAYABLE.test(file.name) && !(file.head && /\.hdr$/i.test(file.name) && isVolumeHeader(file.head))) {
             const i = viewers.findIndex(v => v.componentType === 'editor');
             if (i > 0) viewers.unshift(...viewers.splice(i, 1));
         }

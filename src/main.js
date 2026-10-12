@@ -112,6 +112,16 @@ require('./score-plugin');
 require('./chm-plugin');
 require('./hlp-plugin');
 require('./djvu-plugin');
+const { isMarkdownFile, isVariantFile } = require('./shared-preview-plugin');
+const { isVolumeFile } = require('./volume-plugin');
+require('./kml-plugin');
+require('./office-preview-plugin');
+require('./oasis-plugin');
+const { isOasisFile } = require('./oasis-layout');
+require('./extra-preview-plugin');
+require('./container-preview-plugin');
+require('./legacy-media-plugin');
+const { isExtraTextFile } = require('./extra-file-data');
 
 // Modes, workers and snippets load on demand from the same ace-builds on esm.sh, as
 // the files themselves (?raw)
@@ -657,6 +667,8 @@ function mapWorkspaceTree(items) {
             selection: null
         };
         if (item.viewType) file.viewType = item.viewType;
+        if (item.head) file.head = new Uint8Array(item.head);
+        if (item.volumeHeader) file.volumeHeader = new Uint8Array(item.volumeHeader);
         return file;
     });
 }
@@ -1240,7 +1252,7 @@ class EditorComponent {
             this._initFlaViewer(url, fileData.name);
         } else if (ext === 'binary') {
             this._initHexViewer(url);
-        } else if (ext === 'pdf' || ext === 'ai') {
+        } else if (ext === 'pdf' || ext === 'ai' || ext === 'ait') {
             this._initPdfViewer(url, fileData, fullPath);
         } else {
             // Other types: use iframe
@@ -1267,7 +1279,7 @@ class EditorComponent {
     async _initPdfViewer(url, fileData, fullPath) {
         // a decrypted file is only in memory: nothing to save it over
         // an Illustrator file is a PDF with Illustrator's own copy of the artwork beside it: never rewritten
-        const illustrator = /\.ai$/i.test(fileData.name || fullPath || '');
+        const illustrator = /\.(ai|ait)$/i.test(fileData.name || fullPath || '');
         this._pdfViewer = await mountPdfViewer(this.rootElement, { url, path: fileData.memoryOnly ? null : fullPath, illustrator });
     }
 
@@ -1573,7 +1585,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;}
 import { mountFLAViewer } from '/fla-viewer/fla-viewer.js';
 mountFLAViewer(document.getElementById('root'), { url: ${JSON.stringify(url)}, name: ${JSON.stringify(previewFile.name)} });
 </script></body></html>`;
-            } else if (ext === 'pdf' || ext === 'ai') {
+            } else if (ext === 'pdf' || ext === 'ai' || ext === 'ait') {
                 previewHtml = `<html><head><style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{overflow:auto;background:#525659;}
@@ -1947,7 +1959,7 @@ class ProjectFilesComponent {
         const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
-        if (ext === 'pdf' || ext === 'ai') return '\uD83D\uDCCA';
+        if (ext === 'pdf' || ext === 'ai' || ext === 'ait') return '\uD83D\uDCCA';
         if (imageExts.includes(ext)) return '\uD83D\uDDBC\uFE0F';
         if (audioExts.includes(ext)) return '\uD83C\uDFB5';
         if (videoExts.includes(ext)) return '\uD83C\uDFAC';
@@ -3030,6 +3042,21 @@ function removeMemoryFile(fileId) {
 
 // Specialised viewers, checked in order before falling back to the editor.
 const FILE_VIEWERS = [
+    { re: /\.(abc|acf|als)$/i, test: isExtraTextFile, componentType: 'extraPreview', tag: 'domain preview', prefix: 'extra-' },
+    { re: /\.(aco|abr)$/i, componentType: 'extraPreview', tag: 'Adobe resources', prefix: 'extra-' },
+    { re: /\.(7z|aab)$/i, componentType: 'containerViewer', tag: 'container', prefix: 'container-' },
+    { re: /\.(3g2|aif|aifc|aiff|amr)$/i, componentType: 'legacyMediaViewer', tag: 'player', prefix: 'media-player-' },
+    { re: /\.numbers$/i, componentType: 'numbersViewer', tag: 'tables', prefix: 'numbers-' },
+    { re: /\.(odt|odp)$/i, componentType: 'openDocumentViewer', tag: 'document', prefix: 'odf-' },
+    { re: /\.(oas|oasis)$/i, test: isOasisFile, componentType: 'oasisViewer', tag: 'IC layout', prefix: 'oasis-' },
+    { re: /\.(md|markdown|mdown)$/i, test: isMarkdownFile, componentType: 'sharedPreview', tag: 'markdown', prefix: 'markdown-' },
+    { re: /\.vcf$/i, test: isVariantFile, componentType: 'sharedPreview', tag: 'variants', prefix: 'variants-' },
+    { re: /\.(hdr|img|nii)$/i, test: isVolumeFile, componentType: 'volumeViewer', tag: 'volume', prefix: 'volume-' },
+    // An unexamined project reference can still be opened explicitly as a volume.
+    { re: /\.(hdr|img)$/i, test: f => !isVolumeFile(f) && !f.head, componentType: 'volumeViewer', tag: 'volume', prefix: 'volume-', afterEditor: true },
+    { re: /\.(kml|kmz)$/i, componentType: 'kmlViewer', tag: 'map', prefix: 'kml-' },
+    { re: /\.3mf$/i, componentType: 'model3dViewer', tag: '3d', prefix: 'model3d-' },
+    { re: /\.kmz$/i, componentType: 'model3dViewer', tag: 'embedded 3d', prefix: 'model3d-', afterEditor: true },
     {re:/\.(aif|aifc|aiff|amr|au|caf|snd|oga|weba|m4b|wma|asf|divx|f4v|flv|m2v|mpe|mpv|rm|rmvb|vob|3g2|ogv)$/i, componentType:'mediaCodecViewer', titlePrefix:'Media: ', tag:'media'},
     {re:/\.(wp|wp5|wp6|wpd)$/i, componentType:'wordPerfectViewer', titlePrefix:'WordPerfect: ', tag:'document'},
     {re:/\.(lrx|azw3|dra|olb|lrf|sldprt|sldasm|x_t|x_b|ofc|blend1|blend2|sat|sab|ofd|wps|et|dps|potm|ppsm|drawio|dio|excalidraw|tldraw|plantuml|puml|ait|psdt|pdd|jfif|pjpe|pjpeg|xla|xlam|xlt|xltm|xltx|eot|vhd|hex|webarchive|xhtml|lrc|m3u8|sig|odt|odp|fodt|fodp|fods|umd|mermaid|mmd|typst|markdown|mdown|mkd|txt|text|lot|tab|ans|nfo|diz|gc|svgz|abc|als|prproj|h2song|h2pattern|h2drumkit|kicad_pro|kicad_prl|kicad_mod|kicad_sym|kicad_wks|kicad_dru|pem|crt|cer|der|nii|shp|wad|bsp|dmp|mdmp|crash|ips|acf|p7m|p7s|p7b|p7c|pkcs7|cms|cmsc|tsd|tst|tsq|tsr|asics|scs|asice|sce|ers|jws|srt|vtt|diff|patch|gitignore|dockerignore|npmignore|eslintignore|prettierignore|hgignore|ssh-config|proto|thrift|reg|rdp|kube|kubeconfig|har|sarif|geojson|topojson|kml|mt|mt940|mt942|sta|ofx|qfx|qif|rtf|dockerfile|url|webloc|cif|cif2|mmcif|pdb|ent|mol|sd|sdf|bcf|db3|s3db|sl3|gpkg|mbtiles|fa|fasta|fna|faa|ffn|frn|fsa|mpfa|fq|fastq|bed|gff|gff3|gff2|gtf|hl7|hl7v2|msh|ini|cfg|conf|properties|env|toml|yaml|yml|jsonc|json5|jsonl|ndjson|ldjson|xsd|xsl|xslt|wsdl|pom|csproj|props|targets|resx|rss|atom|plist|stringsdict|strings|mobi|azw|eml|mbox|msg|mmp|mmpz|ppt|pot|pps|bson|cbor|msgpack|mpk|f3d|f3z|sketch|procreate|mat|dbf|exe|dll|dylib|macho|class|pyc|pyo|lnk|torrent)$/i, componentType:'upstreamViewer', titlePrefix:'Data: ', tag:'data'},
@@ -3155,7 +3182,7 @@ const FILE_VIEWERS = [
     { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
     { re: /\.(vcd|fst|ghw)$/i, componentType: 'waveformViewer', tag: 'wave', prefix: 'wave-' },
     { re: /\.wasm$/i, componentType: 'wasmInspector', tag: 'wasm', prefix: 'wasm-' },
-    { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
+    { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|3g2|mp3|m4a|aac|flac|wav|ogg|opus|aif|aifc|aiff|amr)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
     // .ts is usually TypeScript: offer the media viewer only when the file turned out binary (MPEG-TS)
     { re: /\.ts$/i, binaryOnly: true, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
     { re: /\.(fla|xfl)$/i, componentType: 'flaInspector', tag: 'fla', prefix: 'fla-' },
@@ -3170,8 +3197,8 @@ const FILE_VIEWERS = [
     // OpenPGP-encrypted files: asks for the passphrase, then shows the contents in their own viewer
     // MHTML web archives (saved by Chrome, IE, Word): the page rebuilt from its parts, sandboxed
     { re: /\.(mht|mhtml)$/i, componentType: 'mhtViewer', tag: 'mht', prefix: 'mht-' },
-    { re: /\.(gpg|pgp)$/i, componentType: 'gpgViewer', tag: 'decrypt', prefix: 'gpg-' },
-    { re: /\.asc$/i, sniff: /-----BEGIN PGP MESSAGE-----/, componentType: 'gpgViewer', tag: 'decrypt', prefix: 'gpg-' },
+    { re: /\.(gpg|pgp)$/i, componentType: 'gpgViewer', tag: 'OpenPGP', prefix: 'gpg-' },
+    { re: /\.asc$/i, sniff: /-----BEGIN PGP (MESSAGE|SIGNATURE|SIGNED MESSAGE|PUBLIC KEY BLOCK|PRIVATE KEY BLOCK)-----/, componentType: 'gpgViewer', tag: 'OpenPGP', prefix: 'gpg-' },
     // KeePass databases (KDBX 3.1/4.x; .kdb and KDBX 2 get a message): password/key file, then the entries, read-only
     { re: /\.(kdbx|kdb)$/i, componentType: 'kdbxViewer', tag: 'keepass', prefix: 'kdbx-' },
     // Paint Shop Pro thumbnail caches (pspbrwse.jbf)
@@ -3203,6 +3230,7 @@ const FILE_VIEWERS = [
     // .md is usually Markdown: a Mega Drive ROM only when the file turned out binary
     { re: /\.md$/i, binaryOnly: true, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-' },
     { re: /\.(iso|chd|img|bin)$/i, binaryOnly: true, componentType: 'emulatorViewer', tag: 'emulator', prefix: 'emu-', afterEditor: true },
+    { re: /\.(json|xml)$/i, componentType: 'sharedPreview', tag: 'structure', prefix: 'structure-', afterEditor: true },
     // Any other file that starts with \x7fELF (no extension, .bin, .out, .debug, …): last, so viewers for its extension come first
     { re: /^/, test: hasElfMagic, componentType: 'elfViewer', tag: 'elf', prefix: 'elf-' },
 ];

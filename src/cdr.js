@@ -115,6 +115,18 @@ function converter() {
     return converterPromise;
 }
 
+// Share the initialized LibreOffice worker and its serialization queue with
+// document previews. The resulting PDF stays in memory; the source is untouched.
+async function documentPdf(bytes, format, name) {
+    if (format !== 'odt' && format !== 'odp') throw new Error('Unsupported OpenDocument type.');
+    const c = await converter();
+    const run = queue.then(() => c.convert(bytes, { inputFormat: format, outputFormat: 'pdf' }, name));
+    queue = run.catch(() => {});
+    const data = (await run).data;
+    if (new TextDecoder().decode(data.subarray(0, 5)) !== '%PDF-') throw new Error('LibreOffice did not return a PDF.');
+    return data;
+}
+
 // The drawing's pages as SVG or PNG: [Uint8Array]. The converter knows no
 // CorelDRAW (it would allow PDF alone): it is told the document is a drawing
 // (.odg), and LibreOffice tells the format by its bytes, as it always does. A
@@ -193,4 +205,4 @@ function cdrImage(url, name) {
 
 const cdrPage = drawingPage;
 
-module.exports = { isCdrName, isCdr, isCdrUrl, cdrImage, cdrPage, drawingImage, drawingPage };
+module.exports = { isCdrName, isCdr, isCdrUrl, cdrImage, cdrPage, drawingImage, drawingPage, documentPdf };

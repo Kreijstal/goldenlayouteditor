@@ -20,6 +20,7 @@
         webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon', svg: 'image/svg+xml', pdf: 'application/pdf',
         mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mkv: 'video/x-matroska',
         mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav', ogg: 'audio/ogg', opus: 'audio/ogg',
+        aif: 'audio/aiff', aiff: 'audio/aiff', aifc: 'audio/aiff', amr: 'audio/amr', '3g2': 'video/3gpp2', ait: 'application/pdf',
         html: 'text/html', htm: 'text/html', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript', json: 'application/json',
         txt: 'text/plain', md: 'text/plain', xml: 'text/xml', wasm: 'application/wasm', zip: 'application/zip',
     };

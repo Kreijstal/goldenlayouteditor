@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const pty = require('node-pty');
+const { isVolumeHeader } = require('./src/volume-data');
 
 function log(...args) { console.log('[WS]', ...args); }
 function warn(...args) { console.warn('[WS]', ...args); }
@@ -20,6 +21,7 @@ const SERVED_EXTENSIONS = new Set(['lrx','azw3','dra','olb','lrf','sldprt','slda
   'bundle', 'usd', 'usda', 'usdc', 'usdz', 'fbx', 'pcd', 'vtk', 'vtp', 'xyz',
   'idml', 'xmind', 'fb2',
   'pdf', 'ai',
+  'ait', 'aab', '7z', 'aco', 'abr', '3g2', 'aif', 'aifc', 'aiff', 'amr',
   'djvu', 'djv',
   'vsd', 'vsdx',
   'swf',
@@ -30,7 +32,7 @@ const SERVED_EXTENSIONS = new Set(['lrx','azw3','dra','olb','lrf','sldprt','slda
   'pspimage', 'psptube', 'pspframe', 'pspmask', 'pspbrush', 'pspshape', 'pspselection', // not .psp/.tub/.pfr (PSP_MAYBE_RE)
   'clip',
   'sai2', // not .sai: SAIL programs and BWA indexes too (SAI_MAYBE_RE)
-  'xlsx', 'xlsm', 'xlsb', 'xls', 'ods',
+  'xlsx', 'xlsm', 'xlsb', 'xls', 'ods', 'numbers', 'odt', 'odp',
   'odg', 'otg', 'fodg', // OpenDocument drawings (a .fodg is XML, but shown drawn)
   'xps', 'oxps',
   'jb2', 'jbig2', // standalone JBIG2 files
@@ -38,6 +40,7 @@ const SERVED_EXTENSIONS = new Set(['lrx','azw3','dra','olb','lrf','sldprt','slda
   'glb', 'gltf', 'stl', 'obj', 'gcode', 'gco', 'blend',
   'dae', 'wrl', 'vrml', '3ds', '3dm', 'skp', // not .ply or .amf: other files' too (shown as models by their first bytes)
   'zgl', // zlib-compressed XGL (a .xgl stays text)
+  '3mf', 'kmz', 'nii',
   '3dxml', // Dassault Systèmes 3D XML (a ZIP)
   'x3dz', 'x3dvz', // gzipped X3D (.x3d, .x3dv, .x3dj stay text)
   'dwg', // AutoCAD drawings (a .dxf stays text, unless it is binary DXF)
@@ -641,6 +644,23 @@ const messageHandlers = {
           children.push({ name: entry.name, type: 'directory', children: subChildren });
         } else if (entry.isFile()) {
           const ext = entry.name.split('.').pop().toLowerCase();
+          if (ext === 'hdr' || ext === 'img') {
+            let handle;
+            try {
+              const sibling = entries.find(e => e.name.toLowerCase() === entry.name.replace(/\.img$/i, '.hdr').toLowerCase());
+              const headerPath = ext === 'hdr' ? fullPath : path.join(dir, sibling ? sibling.name : entry.name.replace(/\.img$/i, '.hdr'));
+              handle = await fs.promises.open(headerPath, 'r');
+              const header = Buffer.alloc(348);
+              const { bytesRead } = await handle.read(header, 0, 348, 0);
+              if (bytesRead === 348 && isVolumeHeader(header)) {
+                children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null,
+                  ...(ext === 'hdr' ? { head: Array.from(header) } : { volumeHeader: Array.from(header) }) });
+                fileCount++;
+                continue;
+              }
+            } catch (_) { /* Other HDR images and disk images keep their existing handling. */ }
+            finally { if (handle) await handle.close(); }
+          }
           if (SERVED_EXTENSIONS.has(ext)) {
             // Reference-only file — served via HTTP, not loaded into memory
             children.push({ name: entry.name, type: 'file', viewType: ext, content: null });
@@ -692,6 +712,7 @@ const messageHandlers = {
                 || (CIN_MAYBE_RE.test(entry.name) && buf.length >= 4 && [0x802a5fd7, 0xd75f2a80].includes(buf.readUInt32BE(0)))
                 || (MNG_MAYBE_RE.test(entry.name) && buf.toString('hex', 0, 8) === '8a4d4e470d0a1a0a')
                 || (ORA_MAYBE_RE.test(entry.name) && buf.toString('hex', 0, 4) === '504b0304')
+                || (/\.als$/i.test(entry.name) && buf[0] === 0x1f && buf[1] === 0x8b)
                 || (EPS_MAYBE_RE.test(entry.name) && buf.length >= 4 && buf.readUInt32LE(0) === 0xc6d3d0c5)) {
                 children.push({ name: entry.name, type: 'file', viewType: 'binary', content: null, size: stat.size });
                 fileCount++;

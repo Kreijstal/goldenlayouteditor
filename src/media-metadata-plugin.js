@@ -6,7 +6,7 @@ const { createLogger } = require('./debug');
 const log = createLogger('MediaMeta');
 const MEDIAINFO_SCRIPT_URL = 'https://unpkg.com/mediainfo.js@0.3.7/dist/umd/index.min.js';
 const MEDIAINFO_WASM_URL = 'https://unpkg.com/mediainfo.js@0.3.7/dist/MediaInfoModule.wasm';
-const MEDIA_RE = /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|ts|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|opus)$/i;
+const MEDIA_RE = /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|ts|m2ts|3gp|3g2|mp3|m4a|aac|flac|wav|ogg|opus|aif|aifc|aiff|amr)$/i;
 
 let _mediaInfoPromise = null;
 

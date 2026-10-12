@@ -1,4 +1,6 @@
 // --- OpenPGP (GnuPG) Plugin ---
+// Also inspects keys, detached signatures and signed containers through
+// pgp-inspection.js; signatures are verified only with supplied public keys.
 // Opens OpenPGP-encrypted files (.gpg, .pgp, and .asc holding an armored
 // message): asks for the passphrase in the tab, decrypts with OpenPGP.js (from
 // esm.sh, loaded when such a tab opens; it also undoes the ZIP/ZLIB/BZip2
@@ -12,6 +14,7 @@
 // viewers read through the page (archive-fallback.js), never sent to the
 // server or saved. Passphrases are only read from the fields, never logged or kept.
 const { registerPlugin } = require('./plugins');
+const { inspectPgp, mountPgpInspection } = require('./pgp-inspection');
 const { createLogger } = require('./debug');
 const { resolveFileUrl } = require('./archive-fallback');
 const { detectEncoding, decodeBytes } = require('./text-encoding');
@@ -144,7 +147,7 @@ class GpgViewer {
         const path = _ctx.currentWorkspacePath && _ctx.getRelativePath(this.fileId);
         if (!path) {
             // A file dropped into an in-memory project is read as text: only an armored message survives that
-            if (typeof file.content === 'string' && /-----BEGIN PGP MESSAGE-----/.test(file.content)) return new TextEncoder().encode(file.content);
+            if (typeof file.content === 'string' && /-----BEGIN PGP /.test(file.content)) return new TextEncoder().encode(file.content);
             throw new Error('encrypted files need the server workspace');
         }
         const resp = await fetch(await resolveFileUrl('/workspace-file?path=' + encodeURIComponent(_ctx.currentWorkspacePath + '/' + path)));
@@ -167,6 +170,13 @@ class GpgViewer {
             this.pgp = pgp;
             this.encrypted = bytes;
             this.armored = looksArmored(bytes);
+            const inspection = await inspectPgp(pgp, bytes);
+            if (this.destroyed) return;
+            if (inspection.kind !== 'encrypted message') {
+                this._status('Read-only inspection');
+                await mountPgpInspection(this.body, pgp, inspection, () => this.destroyed);
+                return;
+            }
             // Old messages without integrity protection are opened too, with a warning
             this.config = { ...pgp.config, allowUnauthenticatedMessages: true, enableParsingV5Entities: true };
             const message = await this._readMessage();
@@ -178,7 +188,7 @@ class GpgViewer {
             }
         } catch (err) {
             log.error('Load failed:', err.message);
-            return this._fail('Could not read the encrypted file: ' + err.message);
+            return this._fail('Could not read the OpenPGP file: ' + err.message);
         }
         this._status(this.armored ? 'ASCII-armored · read-only' : 'read-only');
         this._showPrompt();
@@ -345,6 +355,7 @@ class GpgViewer {
             signers: plain.getSigningKeyIDs().map(k => '0x' + k.toHex().toUpperCase()),
             size: data.length,
         };
+        this.signedMessage = plain;
         await this._showContents(data);
         log.log(`Decrypted ${this.fileData.name} (${data.length} bytes, in memory)`);
     }
@@ -405,6 +416,15 @@ class GpgViewer {
             meta.appendChild(span);
         }
         this.infoEl.appendChild(meta);
+        if (m.signers.length) {
+            const verify = el('button', null, 'Inspect / verify signatures');
+            verify.onclick = async () => {
+                this._unmountInner();
+                this.viewAs.hidden = true;
+                await mountPgpInspection(this.body, this.pgp, { kind: 'decrypted signed container', message: this.signedMessage }, () => this.destroyed);
+            };
+            meta.appendChild(verify);
+        }
         if (!m.integrity) {
             this.infoEl.appendChild(el('div', 'gpg-warn', '⚠ This message is not integrity-protected (no MDC or AEAD): '
                 + 'the contents could have been altered without it being noticed.'));
@@ -449,22 +469,24 @@ class GpgViewer {
     }
 
     _destroy() {
+        this.destroyed = true;
         this._unmountInner();
         if (this.memoryId) _ctx.removeMemoryFile(this.memoryId);
         this.memoryId = null;
         this.encrypted = null;
         this.meta = null;
+        this.signedMessage = null;
     }
 }
 
 registerPlugin({
     id: 'gpg',
-    name: 'OpenPGP encrypted files',
+    name: 'OpenPGP messages, signatures and certificates',
     components: {
         gpgViewer: GpgViewer,
     },
     contextMenuItems: [{
-        label: 'Decrypt (OpenPGP)',
+        label: 'Inspect / decrypt (OpenPGP)',
         canHandle: (fileName) => GPG_RE.test(fileName || ''),
         action: (fileId) => {
             const file = _ctx && _ctx.projectFiles[fileId];
