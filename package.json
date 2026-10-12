@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "build:lrx": "node scripts/build-lrx.js",
+    "test:loop": "node scripts/test-loop.js",
+    "test:loop-browser": "node scripts/test-loop-browser.js",
     "test:lrx": "node scripts/test-lrx.js",
     "build:azw3": "node scripts/build-azw3.js",
     "test:azw3": "node scripts/test-azw3.js",

@@ -1,0 +1,31 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {readLoop,decodeCompact}=require('../src/loop-reader');
+const {compact,fixture}=require('./loop-fixtures');
+const text='Hallo, 世界! <script>parent.hacked=1</script>',model=readLoop(fixture({text}));
+assert.equal(model.text,text);assert.equal(model.paragraphs[0][0].props.bold,true);assert.equal(model.entries.length,1);
+assert.equal(readLoop(fixture({empty:true})).text,'');
+assert.equal(readLoop(fixture({deltas:true})).warnings.length,2);
+assert.throws(()=>readLoop(fixture({start:1})),/incomplete or overlapping/);
+assert.throws(()=>readLoop(Buffer.from('not Loop')),/Prague/);
+const bad=fixture();bad[bad.indexOf(Buffer.from([31,139,8]))+20]^=1;
+assert.throws(()=>readLoop(bad));
+const crc=fixture(),start=crc.indexOf(Buffer.from([31,139,8])),zlib=require('node:zlib'),raw=zlib.inflateRawSync(crc.subarray(start+10),{info:true});
+crc[start+10+raw.engine.bytesWritten]^=1;assert.throws(()=>readLoop(crc));
+const version=fixture();version[version.indexOf(Buffer.from('0.2.1','utf16le'))]=50;assert.throws(()=>readLoop(version),/unsupported Prague version/);
+assert.throws(()=>readLoop(fixture().subarray(0,150)));
+assert.throws(()=>decodeCompact(Buffer.from([51,14,1,97,52])),/unpaired/);
+assert.throws(()=>decodeCompact(Buffer.from([17,1])),/unknown dictionary/);
+assert.throws(()=>decodeCompact(Buffer.from([49,52])),/unsupported compact marker/);
+assert.throws(()=>decodeCompact(Buffer.from([14,10,65])),/truncated/);
+assert.throws(()=>decodeCompact(Buffer.from([1,1])),/trailing/);
+assert.equal(decodeCompact(compact(-100)),-100);
+assert.equal(decodeCompact(Buffer.from([20,1,3,97,98,99,17,1])),'abc');
+if(process.argv[2]) {
+ const sample=readLoop(fs.readFileSync(process.argv[2]));
+ assert.equal(sample.paragraphs.length,1);assert.equal(sample.text,'');assert.equal(sample.entries.length,22);assert.equal(sample.offset,1090);
+ console.log('Uploaded Loop-Absatz.loop: empty paragraph, 22 snapshot entries decoded.');
+}
+const {makeInterface}=require('./viewer-interface');
+const metadata=makeInterface(fs.readFileSync(require.resolve('../src/loop-plugin'),'utf8'),'loop-plugin');
+assert(!metadata.includes('loop-reader'));assert(!metadata.includes('pako'));assert(metadata.includes('loopViewer'));assert(metadata.includes('registerLazyPlugin'));
+console.log('Loop: Unicode text, markers, empty paragraphs, operation warning, corrupt/truncated inputs and lazy metadata passed.');

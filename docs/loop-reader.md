@@ -1,0 +1,14 @@
+# Microsoft Loop stored-snapshot reader
+
+`.loop` files open in a lazy `loopViewer` through normal file detection, the Plugins menu and the file context menu. The reader runs locally. It previews SharedString text and paragraph markers (basic bold/italic/underline properties), and lists referenced snapshot entries with their JSON. All text is inserted through DOM `textContent`.
+
+Supported profile: Microsoft Prague 0.2.1 magic `578f1cd0d067344b9ffb4f5a48069ec5`, an `Microsoft.PragueOptimizedSnapshotWithOpsNode` containing a gzip-compressed Fluid compact snapshot with read/create version 1.0. The wrapper extractor locates the optimized node's `data` property; it is not a general Prague graph decoder. Compact dictionaries, lists/sets, exact integers, strings and blobs are decoded. Gzip CRC/trailer, byte boundaries, referenced blobs, chunk ordering and resource limits are checked; unsupported profiles throw. Input and inflated snapshot limits are 64 MiB, compact depth 128 and one million values.
+
+This is a **stored snapshot text and structure reader**, not full Microsoft Loop rendering. Collaboration operations are not replayed; an additional notice appears when compact deltas are present. Tables, attachments, arbitrary Loop components, native layout and proprietary inline property schemas are not implemented. Encrypted files and other Prague versions/profiles are not supported. Snapshot blobs must contain UTF-8 JSON. The supplied `Loop-Absatz.loop` has one empty paragraph, sequence 0 and 22 referenced entries. The uploaded file is not committed.
+
+GitHub research found the format identifiers in [digipres's TrID registry](https://github.com/digipres/digipres.github.io/blob/master/_sources/registries/trid/triddefs_xml/defs/m/ms-prague-bin.trid.xml), but no complete reusable `.loop` reader. The compact encoding reference is Microsoft's MIT-licensed [FluidFramework zipItDataRepresentationUtils.ts](https://github.com/microsoft/FluidFramework/blob/48942bf8a2ccebb6f1c681c4c0ce09c81db26eb3/packages/drivers/odsp-driver/src/zipItDataRepresentationUtils.ts) and [compactSnapshotParser.ts](https://github.com/microsoft/FluidFramework/blob/48942bf8a2ccebb6f1c681c4c0ce09c81db26eb3/packages/drivers/odsp-driver/src/compactSnapshotParser.ts). The local implementation is independent and uses the project's existing `pako` dependency.
+
+Validation:
+
+- `npm run test:loop` checks synthetic compact/envelope fixtures, Unicode text, paragraphs, empty content, delta notices, malformed/corrupt inputs and lazy metadata. Pass an optional path to `Loop-Absatz.loop` to check the actual upload.
+- After `node scripts/build-viewers.js`, `npm run test:loop-browser` checks the production lazy chunk, eager menu predicate, literal script text, basic styling, empty content and component disposal. An optional uploaded-file path exercises the real sample. Set `TEST_CHROMIUM_PATH` when using an installed Chromium.

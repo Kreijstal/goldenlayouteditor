@@ -86,6 +86,7 @@ require('./cd5-plugin');
 require('./vcard-plugin');
 require('./calendar-plugin');
 require('./fb2-plugin');
+require('./loop-plugin');
 require('./xmind-plugin');
 require('./idml-plugin');
 require('./bundle-plugin');
@@ -3162,6 +3163,7 @@ const FILE_VIEWERS = [
     { re: /\.(tex|ltx|latex)$/i, componentType: 'latexEditor', tag: 'latex', prefix: 'latex-' },
     { re: /\.(bpmn|bpmn20\.xml)$/i, componentType: 'bpmnEditor', tag: 'bpmn', prefix: 'bpmn-' },
     // Gliffy diagrams (JSON), converted and drawn by draw.io
+    { re: /\.loop$/i, componentType: 'loopViewer', tag: 'loop', prefix: 'loop-' },
     { re: /\.gliffy$/i, componentType: 'gliffyViewer', tag: 'gliffy', prefix: 'gliffy-' },
     { re: /\.graphml$/i, componentType: 'graphmlViewer', tag: 'graphml', prefix: 'graphml-' },
     { re: /\.flp$/i, componentType: 'flpViewer', tag: 'flp', prefix: 'flp-' },
