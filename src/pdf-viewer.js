@@ -234,6 +234,7 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
         }
         p.canvas.replaceWith(canvas);
         p.canvas = canvas;
+        p.drawn = true;
         placeMedia(p, viewport);
         if (forms) await forms.layer(p, viewport).catch(err => log.error('Form layer failed:', err));
     }
@@ -303,6 +304,7 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
     async function libOf() {
         const lib = await import(PDF_LIB);
         const { PDFDocument, PDFName, PDFDict, PDFArray, PDFRawStream, PDFString, PDFHexString, decodePDFRawStream } = lib;
+        const bytes = await fileBytes();
         if (!libDoc || libDoc.bytes !== bytes) libDoc = { bytes, doc: await PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true }) };
         const look = (d, k) => (d instanceof PDFDict ? d.lookup(PDFName.of(k)) : undefined);
         const items = (a) => (a instanceof PDFArray ? a.asArray().map((_, i) => a.lookup(i)) : []);
@@ -358,7 +360,7 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
                 p.wrap.appendChild(box);
                 p.media.push({ rect, box });
             }
-            if (p.canvas.width) placeMedia(p, p.page.getViewport({ scale: SCALE, rotation: rotation(p) }));
+            if (p.drawn) placeMedia(p, p.page.getViewport({ scale: SCALE, rotation: rotation(p) }));
         });
     }
 
@@ -441,6 +443,13 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
     function turn(p, by) {
         p.extra = (p.extra + by + 360) % 360;
         refresh();
+        if (!p.shown) {
+            // not drawn yet: only the blank turns
+            const blank = p.page.getViewport({ scale: SCALE, rotation: rotation(p) });
+            p.canvas.width = blank.width;
+            p.canvas.height = blank.height;
+            return;
+        }
         draw(p).catch(err => log.error('Draw failed:', err));
     }
 
@@ -450,18 +459,51 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
         p.wrap.classList.toggle('selected', on);
     }
 
-    async function load(data) {
+    // The whole file, for what reads all of it (pdf-lib, mupdf): one read in
+    // parts is fetched in full the first time
+    async function fileBytes() {
+        if (!bytes) bytes = await doc.getData();
+        return bytes;
+    }
+
+    const mediaOf = (p) => p.mediaFound || (p.mediaFound = findMedia(p));
+
+    // A page is drawn as it comes near the view; until then it is a blank of its size
+    let near = null;
+    function show(p) {
+        if (p.shown) return;
+        p.shown = true;
+        mediaOf(p)
+            .then(() => draw(p))
+            .catch(err => log.error('Draw failed:', err));
+    }
+
+    // src: { range } to read the file in parts (openInParts), or { data }: the whole of it
+    async function load(src) {
         const wasRunning = !!(forms && forms.running);
         if (forms) await forms.destroy();
         forms = null;
         movies.forEach(stopMovie);
         movies.clear();
+        if (near) near.disconnect();
         if (doc) doc.destroy();
         pagesEl.textContent = '';
         pages = [];
         lastPicked = null;
-        // pdf.js takes the buffer away from us (to its worker): give it a copy
-        doc = await pdfjs.getDocument({ data: data.slice(), pdfBug: true }).promise; // pdfBug: so Inspect can step through a page's drawing
+        bytes = src.data || null;
+        doc = await pdfjs.getDocument({
+            // pdf.js takes the buffer away from us (to its worker): give it a copy
+            ...(src.data ? { data: src.data.slice() } : { range: src.range, rangeChunkSize: PART, disableAutoFetch: true }),
+            pdfBug: true, // so Inspect can step through a page's drawing
+        }).promise;
+        near = new IntersectionObserver((entries) => {
+            for (const e of entries) {
+                if (!e.isIntersecting) continue;
+                near.unobserve(e.target);
+                const p = pages.find(q => q.wrap === e.target);
+                if (p) show(p);
+            }
+        }, { root: scroller, rootMargin: '100% 0px' });
         forms = await createForms({
             pdfjs, sandboxSrc: PDFJS + 'pdf.sandbox.mjs', doc, root, pages: () => pages,
             goToPage: (i) => { if (pages[i]) pages[i].wrap.scrollIntoView({ block: 'start' }); },
@@ -507,12 +549,17 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
                 const r = p.canvas.getBoundingClientRect();
                 inspector.pickAt(pages.indexOf(p), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
             });
+            // the blank holds the page's place until it is drawn
+            const blank = page.getViewport({ scale: SCALE, rotation: rotation(p) });
+            p.canvas.width = blank.width;
+            p.canvas.height = blank.height;
             pagesEl.appendChild(p.wrap);
             pages.push(p);
-            await findMedia(p);
-            await draw(p);
+            near.observe(p.wrap);
         }
         refresh();
+        // every page's Flash, so the buttons commanding a movie are found
+        await Promise.all(pages.map(mediaOf));
         await findControls().catch(err => log.error('Media controls:', err));
         if (wasRunning && forms && forms.hasScripts) await setScripts(true);
     }
@@ -521,7 +568,7 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
     async function pdfOf(list = kept()) {
         const { PDFDocument, degrees } = await import(PDF_LIB);
         // with the fields as filled in
-        const base = forms && forms.changed ? await forms.bytes() : bytes;
+        const base = forms && forms.changed ? await forms.bytes() : await fileBytes();
         const src = await PDFDocument.load(base, { updateMetadata: false });
         const turn = (page, extra) => { if (extra) page.setRotation(degrees((page.getRotation().angle + extra + 360) % 360)); };
         let out;
@@ -658,9 +705,8 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
         const data = await pdfOf();
         await put(path, new Blob([data], { type: 'application/pdf' }), true);
         // what is on screen is now the file: start again from it
-        bytes = data;
         busy = false;
-        await load(bytes);
+        await load({ data });
         if (inspector) inspector.reload();
         return `Saved ${baseName()}.pdf ${new Date().toLocaleTimeString()}`;
     });
@@ -696,7 +742,7 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
         inspector = createInspector({
             panel: side,
             pages: () => pages,
-            getBytes: () => bytes,
+            getBytes: fileBytes,
             pdfjs,
             saveBeside: path ? (name, ext, make, working) => saveBeside(`${baseName()}-${name}`, ext, make, working) : null,
         });
@@ -742,9 +788,13 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
         setStatus('Loading…');
         pdfjs = await import(PDFJS + 'pdf.mjs');
         pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.mjs';
-        bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
-        if (illustrator) checkIllustrator(bytes);
-        await load(bytes);
+        // From the server pdf.js reads the file in parts (HTTP ranges): its index
+        // at the end, then what each page needs as it is drawn, so the first page
+        // shows long before a large file is all here (openInParts). A blob: is read whole
+        const src = /^https?:$/.test(new URL(url, location.href).protocol) ? await openInParts(pdfjs, url)
+            : { data: new Uint8Array(await (await fetch(url)).arrayBuffer()) };
+        if (illustrator) checkIllustrator(src.data || src.head);
+        await load(src);
     } catch (err) {
         log.error('Load failed:', err);
         pagesEl.innerHTML = '';
@@ -752,7 +802,64 @@ async function mountPdfViewer(root, { url, path, illustrator }) {
         setStatus('');
         [selLeft, selRight, saveBtn, saveAsBtn, selectAllBtn, exportBtn, inspectBtn].forEach(b => { b.disabled = true; });
     }
-    return { destroy() { if (inspector) inspector.destroy(); movies.forEach(stopMovie); if (forms) forms.destroy(); if (doc) doc.destroy(); } };
+    return { destroy() { if (near) near.disconnect(); if (inspector) inspector.destroy(); movies.forEach(stopMovie); if (forms) forms.destroy(); if (doc) doc.destroy(); } };
+}
+
+// A file from the server is read in parts (HTTP ranges) as pdf.js asks for them,
+// and each part is kept in the browser's Cache Storage under the file's ETag:
+// opened again, the parts already here are not fetched again; a file changed on
+// the server has another ETag, and the old one's parts are dropped. Returns
+// { range, head } for pdf.js, or { data } when the server sends the whole file
+const PART = 65536;
+async function openInParts(pdfjs, url) {
+    const first = await fetch(url, { headers: { Range: `bytes=0-${PART - 1}` }, cache: 'no-store' });
+    if (!first.ok) throw new Error(`HTTP ${first.status}`);
+    const length = first.status === 206 && +(/\/(\d+)$/.exec(first.headers.get('Content-Range') || '') || [])[1];
+    if (!length) return { data: new Uint8Array(await first.arrayBuffer()) };
+    const head = new Uint8Array(await first.arrayBuffer());
+    const version = first.headers.get('ETag') || first.headers.get('Last-Modified');
+    const store = version && typeof caches !== 'undefined' ? await caches.open('pdf-parts').catch(() => null) : null;
+    const keyOf = (i) => '/pdf-part?' + new URLSearchParams({ url, version, i });
+    if (store) {
+        store.put(keyOf(0), new Response(head)).catch(() => {});
+        store.keys().then(keys => keys.forEach(req => {
+            const q = new URL(req.url).searchParams;
+            if (q.get('url') === url && q.get('version') !== version) store.delete(req);
+        })).catch(() => {});
+    }
+    // parts a…b-1, the missing ones fetched a run at a time
+    async function read(a, b) {
+        const parts = await Promise.all(Array.from({ length: b - a }, (_, k) => store
+            ? store.match(keyOf(a + k)).then(r => r && r.arrayBuffer()).then(buf => buf && new Uint8Array(buf)).catch(() => null)
+            : null));
+        for (let k = 0; k < parts.length;) {
+            if (parts[k]) { k++; continue; }
+            let e = k;
+            while (e < parts.length && !parts[e]) e++;
+            const from = (a + k) * PART, to = Math.min((a + e) * PART, length);
+            const r = await fetch(url, { headers: { Range: `bytes=${from}-${to - 1}` }, cache: 'no-store' });
+            if (r.status !== 206 || (r.headers.get('ETag') || r.headers.get('Last-Modified')) !== version) {
+                throw new Error('the file changed on the server while it was read: open it again');
+            }
+            const got = new Uint8Array(await r.arrayBuffer());
+            for (let j = k; j < e; j++) {
+                parts[j] = got.subarray((j - k) * PART, (j - k + 1) * PART);
+                if (store) store.put(keyOf(a + j), new Response(parts[j].slice())).catch(() => {});
+            }
+            k = e;
+        }
+        const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+        parts.reduce((at, p) => { out.set(p, at); return at + p.length; }, 0);
+        return out;
+    }
+    const range = new pdfjs.PDFDataRangeTransport(length, head);
+    range.requestDataRange = (begin, end) => {
+        const a = Math.floor(begin / PART);
+        read(a, Math.ceil(end / PART))
+            .then(data => range.onDataRange(begin, data.subarray(begin - a * PART, end - a * PART)))
+            .catch(err => log.error('Reading the PDF failed:', err));
+    };
+    return { range, head };
 }
 
 // An Illustrator file before version 9 is PostScript, not PDF

@@ -1192,7 +1192,7 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
 
     async function load() {
         try {
-            info = await openDocument(getBytes());
+            info = await openDocument(await getBytes());
             parsed = [];
             pdfFonts.clear();
             uses.clear();
@@ -1212,7 +1212,7 @@ function createInspector({ panel, pages, getBytes, saveBeside, onClose, pdfjs })
 
     // A readable copy, as qpdf's QDF mode: streams decompressed, objects one by one, indented
     async function readableCopy() {
-        if (!info) info = await openDocument(getBytes());
+        if (!info) info = await openDocument(await getBytes());
         return new Blob([info.doc.saveToBuffer('decompress,pretty').asUint8Array().slice()], { type: 'application/pdf' });
     }
 
