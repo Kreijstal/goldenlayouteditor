@@ -12,8 +12,11 @@ function readIfc(buffer,signal){
   worker.postMessage({bytes:new Uint8Array(buffer)});
  });
 }
+// The meshes grouped as the file arranges the building: project, site, building, storeys,
+// spaces and their elements, each group carrying its IFC id and type; elements outside that
+// structure in a group of their own
 function buildIfcObject(THREE,model){
- const group=new THREE.Group();const geometries=new Map();
+ const root=new THREE.Group();const geometries=new Map(),meshesOf=new Map(),info=model.info||{};
  for(const mesh of model.meshes){
   const geometry=new THREE.BufferGeometry(),count=mesh.vertices.length/6;
   const positions=new Float32Array(count*3),normals=new Float32Array(count*3);
@@ -22,8 +25,16 @@ function buildIfcObject(THREE,model){
  }
  for(const instance of model.instances){
   const c=instance.color,material=new THREE.MeshStandardMaterial({color:new THREE.Color(c.x,c.y,c.z),opacity:c.w,transparent:c.w<1,side:THREE.DoubleSide});
-  const mesh=new THREE.Mesh(geometries.get(instance.id),material);mesh.name='IFC #'+instance.expressID;mesh.userData.expressID=instance.expressID;mesh.applyMatrix4(new THREE.Matrix4().fromArray(instance.matrix));group.add(mesh);
+  const mesh=new THREE.Mesh(geometries.get(instance.id),material);mesh.name='IFC #'+instance.expressID;mesh.userData.expressID=instance.expressID;mesh.applyMatrix4(new THREE.Matrix4().fromArray(instance.matrix));
+  if(!meshesOf.has(instance.expressID))meshesOf.set(instance.expressID,[]);meshesOf.get(instance.expressID).push(mesh);
  }
- group.userData.ifcSchema=model.schema;return group;
+ const node=(id,children)=>{
+  const group=new THREE.Group(),i=info[id]||{};group.name=i.attrs?.Name||i.attrs?.LongName||i.type||'#'+id;group.userData.ifc={id,type:i.type||''};
+  for(const mesh of meshesOf.get(id)||[])group.add(mesh);meshesOf.delete(id);for(const child of children)group.add(child);return group;
+ };
+ const build=n=>node(n.id,n.children.map(build));
+ if(model.structure)root.add(build(model.structure));
+ if(meshesOf.size){const rest=new THREE.Group();rest.name='Outside the spatial structure';rest.userData.ifc={type:''};for(const id of [...meshesOf.keys()])rest.add(node(id,[]));root.add(rest);}
+ root.userData.ifcSchema=model.schema;root.userData.ifcInfo=info;return root;
 }
 module.exports={readIfc,buildIfcObject};

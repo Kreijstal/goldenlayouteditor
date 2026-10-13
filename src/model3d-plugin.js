@@ -800,6 +800,15 @@ class Model3dComponent {
 .model3d-part-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;border:1px solid #5f6368}
 .model3d-part-name{overflow:hidden;text-overflow:ellipsis}
 .model3d-part.group .model3d-part-name{color:#8ab4f8}
+.model3d-part.selected{background:#1f3550}
+.model3d-part-type{color:#9aa0a6;font-size:11px;margin-left:auto;padding-left:6px}
+.model3d-props{display:flex;flex-direction:column;min-height:0;max-height:45%;flex-shrink:0;border-bottom:1px solid #3c4043}
+.model3d-props[hidden]{display:none}
+.model3d-prop-list{overflow:auto;padding:4px 6px 6px;font-size:12px}
+.model3d-prop-list table{border-collapse:collapse;width:100%;margin-bottom:4px}
+.model3d-prop-list td{padding:1px 4px;vertical-align:top;word-break:break-word}
+.model3d-prop-list td:first-child{color:#9aa0a6;white-space:nowrap}
+.model3d-prop-list summary{cursor:pointer;color:#8ab4f8;margin-top:4px}
 `;
         document.head.appendChild(style);
     }
@@ -869,12 +878,14 @@ class Model3dComponent {
         this.side = document.createElement('div');
         this.side.className = 'model3d-side';
         this.side.innerHTML = '<div class="model3d-params" hidden><h3>Parameters <button type="button" title="Back to the values in the file">Reset all</button></h3><div class="model3d-param-list"></div></div>'
-            + '<div class="model3d-parts" hidden><h3>Parts</h3><div class="model3d-part-list"></div></div><h3>Model Stats</h3><div class="model3d-stats"></div>';
+            + '<div class="model3d-parts" hidden><h3>Parts</h3><div class="model3d-part-list"></div></div><div class="model3d-props" hidden><h3>Properties</h3><div class="model3d-prop-list"></div></div><h3>Model Stats</h3><div class="model3d-stats"></div>';
         this.statsEl = this.side.querySelector('.model3d-stats');
         this.paramsEl = this.side.querySelector('.model3d-params');
         this.paramListEl = this.side.querySelector('.model3d-param-list');
         this.partsEl = this.side.querySelector('.model3d-parts');
         this.partListEl = this.side.querySelector('.model3d-part-list');
+        this.propsEl = this.side.querySelector('.model3d-props');
+        this.propListEl = this.side.querySelector('.model3d-prop-list');
         this.paramsEl.querySelector('h3 button').onclick = () => this._resetParams();
         this.main.appendChild(this.stage);
         this.main.appendChild(this.side);
@@ -959,6 +970,9 @@ class Model3dComponent {
             this.layersBar.hidden = true;
             this.consoleEl.hidden = true;
             this.partsEl.hidden = true;
+            this.partsEl.querySelector('h3').textContent = 'Parts';
+            this.propsEl.hidden = true;
+            this.ifcSelected = null;
             // .csg is OpenSCAD's flattened CSG tree, in OpenSCAD syntax
             const isScad = ext === 'scad' || ext === 'csg';
             this.renderBtn.hidden = !isScad;
@@ -981,9 +995,11 @@ class Model3dComponent {
                 if (ext === 'prc') this.statusEl.textContent = 'Reading with prc-convert...';
                 if (ext === 'skp') this.statusEl.textContent = 'Reading with openskp...';
                 if (ext === '3dxml') this.statusEl.textContent = 'Reading with xeokit...';
+                if (ext === 'ifc') this.statusEl.textContent = 'Reading with web-ifc...';
                 object = await parseModel(libs, ext, buffer, manager, this.abortController.signal);
                 manager.settled().then(() => dropMissingTextures(object));
                 if (CAD_FORMATS[ext]) this._showCadParts(object, ext, buffer);
+                if (ext === 'ifc') this._showIfcTree(object);
                 if (ASSIMP_FORMATS[ext]) this.extraStats = { format: ASSIMP_FORMATS[ext], reader: 'assimpjs 0.0.10 (Assimp)' };
                 if (ext === 'prc') this.extraStats = { format: 'PRC', reader: '@needle-tools/prc 0.1.0 (prc-convert)' };
                 if (ext === 'skp') this.extraStats = { format: 'SketchUp', reader: 'openskp 1.3.0' };
@@ -1598,6 +1614,110 @@ class Model3dComponent {
         this.partsEl.hidden = list.childElementCount < 2;
     }
 
+    // IFC: the building as the file arranges it (site, building, storeys, spaces, elements), each
+    // with a check box to show or hide it; an element picked here or in the view shows what the
+    // file says of it: its attributes, property sets and quantities
+    _showIfcTree(object) {
+        const counts = {};
+        let elements = 0;
+        object.traverse(o => {
+            const type = o.userData.ifc && o.userData.ifc.type;
+            if (type) counts[type] = (counts[type] || 0) + 1;
+            if (o.isGroup && o.children.some(c => c.isMesh)) elements++;
+        });
+        this.extraStats = {
+            format: 'IFC',
+            ...(object.userData.ifcSchema ? { schema: object.userData.ifcSchema } : {}),
+            reader: 'web-ifc 0.0.77',
+            ...(counts.IfcBuilding ? { buildings: counts.IfcBuilding } : {}),
+            ...(counts.IfcBuildingStorey ? { storeys: counts.IfcBuildingStorey } : {}),
+            ...(counts.IfcSpace ? { spaces: counts.IfcSpace } : {}),
+            'elements with geometry': elements,
+        };
+        this.partsEl.querySelector('h3').textContent = 'Building';
+        const list = this.partListEl;
+        list.innerHTML = '';
+        this.ifcRows = new Map();
+        const walk = (obj, depth) => {
+            for (const child of obj.children) {
+                if (!child.isGroup) continue;
+                const el = document.createElement('label');
+                el.className = 'model3d-part' + (child.children.some(c => c.isGroup) ? ' group' : '');
+                el.style.paddingLeft = (depth * 14) + 'px';
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = true;
+                box.onchange = () => { child.visible = box.checked; };
+                const name = document.createElement('span');
+                name.className = 'model3d-part-name';
+                name.textContent = child.name;
+                const type = child.userData.ifc.type;
+                name.title = type ? `${child.name} (${type})` : child.name;
+                el.append(box, name);
+                if (type && type !== child.name) {
+                    const t = document.createElement('span');
+                    t.className = 'model3d-part-type';
+                    t.textContent = type.replace(/^Ifc/, '');
+                    el.appendChild(t);
+                }
+                // the name picks the element; the box only shows or hides it
+                name.onclick = (e) => { e.preventDefault(); this._selectIfc(child); };
+                list.appendChild(el);
+                this.ifcRows.set(child, el);
+                walk(child, depth + 1);
+            }
+        };
+        walk(object, 0);
+        this.partsEl.hidden = !list.childElementCount;
+    }
+
+    _selectIfc(group) {
+        if (this.ifcSelected) {
+            this.ifcSelected.traverse(o => { if (o.isMesh) o.material.emissive.setHex(0); });
+            const row = this.ifcRows.get(this.ifcSelected);
+            if (row) row.classList.remove('selected');
+        }
+        this.ifcSelected = group;
+        if (!group) { this.propsEl.hidden = true; return; }
+        group.traverse(o => { if (o.isMesh) o.material.emissive.setHex(0x2a6fdb); });
+        const row = this.ifcRows.get(group);
+        if (row) { row.classList.add('selected'); row.scrollIntoView({ block: 'nearest' }); }
+        const { id, type } = group.userData.ifc;
+        const info = (this.model.userData.ifcInfo || {})[id];
+        const list = this.propListEl;
+        list.innerHTML = '';
+        const table = (pairs) => {
+            const t = document.createElement('table');
+            for (const [k, v] of pairs) {
+                const tr = t.insertRow();
+                tr.insertCell().textContent = k;
+                tr.insertCell().textContent = v;
+            }
+            return t;
+        };
+        list.appendChild(table([['type', type], ...(id !== undefined ? [['id', '#' + id]] : []), ...Object.entries(info ? info.attrs : {})]));
+        for (const set of info ? info.sets : []) {
+            const d = document.createElement('details');
+            d.open = true;
+            const sum = document.createElement('summary');
+            sum.textContent = set.name || 'Properties';
+            d.append(sum, table(set.values));
+            list.appendChild(d);
+        }
+        this.propsEl.hidden = false;
+    }
+
+    // An IFC element clicked in the view (a click, not the end of a drag)
+    _pickIfc(e) {
+        if (!this.model || !this.model.userData.ifcInfo) return;
+        const r = this.renderer.domElement.getBoundingClientRect();
+        const ray = new this.THREE.Raycaster();
+        ray.setFromCamera(new this.THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), this.camera);
+        const visible = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
+        const hit = ray.intersectObject(this.model, true).find(h => h.object.isMesh && visible(h.object));
+        this._selectIfc(hit ? hit.object.parent : null);
+    }
+
     // Build line geometry for a G-code toolpath: extrusion colored by height, travel dimmed
     _buildGcode(text) {
         const THREE = this.THREE;
@@ -1663,6 +1783,12 @@ class Model3dComponent {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.stage.appendChild(this.renderer.domElement);
+        let down = null;
+        this.renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+        this.renderer.domElement.addEventListener('pointerup', e => {
+            if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4) this._pickIfc(e);
+            down = null;
+        });
         this.scene.add(new THREE.HemisphereLight(0xffffff, 0x293241, 2.1));
         const light = new THREE.DirectionalLight(0xffffff, 1.7);
         light.position.set(5, 7, 4);
