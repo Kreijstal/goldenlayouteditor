@@ -59,7 +59,7 @@ jobs:
         run: sed -i 's|src="bundle.js"|src="bundle.js?v=${{ github.sha }}"|' public/index.html && grep -q "bundle.js?v=" public/index.html
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
