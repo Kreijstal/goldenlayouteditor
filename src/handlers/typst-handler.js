@@ -14,7 +14,7 @@ let typstInitializationPromise = null;
  */
 function canHandle(fileName) {
   const extension = fileName.split('.').pop().toLowerCase();
-  return extension === 'typ';
+  return extension === 'typ' || extension === 'typst';
 }
 
 /**

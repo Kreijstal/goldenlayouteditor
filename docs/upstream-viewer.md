@@ -107,9 +107,7 @@ Twelve more extensions are `.markdown`, `.mdown`, `.mkd`, `.txt`, `.text`, `.lot
 
 ## Typst documents
 
-`.typst` compiles native Typst source with the local Apache-2.0 Typst.ts 0.7.0 WASM compiler and renders its vector artifact as sanitized SVG pages. Compiler diagnostics are checked before rendering; an invalid source is rejected instead of producing an empty document. The compiler has a memory-only access model and no package registry; external files/packages are unavailable. Only the bundled DejaVu Sans Mono font is present. Source is limited to 2 MiB, SVG output to 32 MiB and the worker to 30 seconds; completion, cancellation and errors terminate the worker. These output limits do not constitute a strict native heap cap.
-
-`npm run build:typst` checks package versions and the pinned Flyfish font source. Retained licenses include the exact upstream Apache-2.0 text omitted by the native npm packages and the font notices. `npm run test:typst` compiles an original document with text and a colored rectangle, checks vector paths/pixels, invalid-source rejection, lazy loading, zero external requests and disposal.
+`.typst` is handled like `.typ`: the editor with the Typst preview (`src/handlers/typst-handler.js`, typst.ts 0.7.0 from esm.sh and jsDelivr).
 
 ## UMD books and Mermaid diagrams
 
@@ -145,7 +143,7 @@ ODT/ODP validate native mimetype and manifest, ZIP entry paths/ranges/counts and
 
 `.vhd` checks native footer version/checksum, disk type, virtual size and fixed-image length. Dynamic/differencing containers also expose checksummed headers, block size/table entries and allocation counts, validating bounds and overlapping allocated blocks. This is container inspection, not filesystem browsing, parent reconstruction, mounting or VM execution. Limits: 64 MiB input, 32 MiB blocks and 1000000 table entries. Format/source references: https://www.microsoft.com/en-us/download/details.aspx?id=23850 and https://github.com/microsoft/azure-vhd-utils.
 
-`.hex` matches the upstream binary-inspector meaning: raw bytes with hex offsets and ASCII, capped at 65536 displayed bytes. It does not parse Intel HEX records. `npm run test:binary-extras` creates original fixed/dynamic VHD containers and an EOT wrapper around the already licensed DejaVu font, checks actual header/allocation/checksum values, native FontFace glyph pixels and cleanup, byte values/ASCII, corrupt checksums/headers, lazy loading and zero external requests. The EOT fixture writer requires Python fontTools and the bundled Typst font from build:typst.
+`.hex` matches the upstream binary-inspector meaning: raw bytes with hex offsets and ASCII, capped at 65536 displayed bytes. It does not parse Intel HEX records. `npm run test:binary-extras` creates original fixed/dynamic VHD containers and an EOT wrapper around KenPixel (CC0, shipped with three.js), checks actual header/allocation/checksum values, native FontFace glyph pixels and cleanup, byte values/ASCII, corrupt checksums/headers, lazy loading and zero external requests. The EOT fixture writer requires Python fontTools and the three.js dependency.
 
 ## Calendar aliases and free/busy interchange
 

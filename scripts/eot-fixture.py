@@ -1,8 +1,8 @@
-"""Original EOT container writer wrapping the already licensed DejaVu font."""
+"""Original EOT container writer wrapping KenPixel (CC0, shipped with three.js)."""
 import struct, sys
 from pathlib import Path
 from fontTools.ttLib import TTFont
-font_path=Path(__file__).resolve().parents[1]/'public/typst-viewer/fonts/DejaVuSansMono.ttf'
+font_path=Path(__file__).resolve().parents[1]/'node_modules/three/examples/fonts/ttf/kenpixel.ttf'
 font=TTFont(font_path);data=font_path.read_bytes();os2=font['OS/2'];name=font['name']
 header=bytearray(80)
 struct.pack_into('<III',header,4,len(data),0x20001,0x80)
