@@ -102,7 +102,7 @@
   "dependencies": {
     "@ffmpeg/core": "0.12.10",
     "@ffmpeg/ffmpeg": "0.12.15",
-    "@paged-media/introspect-wasm": "0.63.0",
+    "@paged-media/introspect-wasm": "0.73.4",
     "@xmldom/xmldom": "0.9.12",
     "ag-psd": "30.2.0",
     "apache-arrow": "21.1.0",
