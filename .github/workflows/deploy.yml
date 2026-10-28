@@ -32,11 +32,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup pinned Rust and WASM target
-        run: rustup toolchain install 1.88.0 --profile minimal --component rust-docs --target wasm32-unknown-unknown
+      # The SolidWorks reader builds with the default toolchain (scripts/build-solidworks.js)
+      - name: Setup Rust and WASM target
+        run: rustup toolchain install stable --profile minimal --component rust-docs --target wasm32-unknown-unknown && rustup default stable
 
       - name: Install pinned WASM glue generator
-        run: cargo +1.88.0 install wasm-bindgen-cli --version 0.2.129 --locked
+        run: cargo install wasm-bindgen-cli --version 0.2.129 --locked
 
       - name: Check WASM C compiler
         run: clang --version
