@@ -361,6 +361,11 @@ function attachLyrics(audio, opts) {
             };
             const lineNotes = (line.notes || []).filter(n => !translations.includes(n.lang));
             if (line.words) r.words = line.words.flatMap(w => word(w, row));
+            // Untimed words: lit with their line, not one by one
+            else if (line.parts) for (const part of line.parts) {
+                word({ ...part, text: part.text.trimEnd() }, row);
+                if (part.text !== part.text.trimEnd()) row.appendChild(document.createTextNode(' '));
+            }
             else row.textContent = line.text || ' ';
             marker(row, lineNotes);
             for (const [kind, lang] of extras) {
@@ -423,8 +428,10 @@ function attachLyrics(audio, opts) {
         const partners = w.id && lyrics && lyrics.links ? lyrics.links[w.id] || [] : [];
         if (partners.length) {
             const found = {};
-            for (const l of lyrics.lines) for (const x of l.extras || []) for (const part of x.words || x.parts || []) {
-                if (part.id && partners.includes(part.id)) (found[x.lang] = found[x.lang] || []).push(part.text.trim());
+            const add = (lang, part) => { if (part.id && partners.includes(part.id)) (found[lang] = found[lang] || []).push(part.text.trim()); };
+            for (const l of lyrics.lines) {
+                for (const part of l.words || l.parts || []) add(lyrics.lang || 'sung', part);
+                for (const x of l.extras || []) for (const part of x.words || x.parts || []) add(x.lang, part);
             }
             for (const [lang, texts] of Object.entries(found)) {
                 const d = el('div', 'm al', card);

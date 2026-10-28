@@ -503,6 +503,8 @@ function parseTtml(text) {
                         text: ws.map(w => w.text).join(''), words: timed ? ws.map(wordOf) : null,
                         voice: voiceOf(who), bg,
                     };
+                    // Untimed words with ids, notes or readings: kept for their cards and alignment
+                    if (!timed && ws.some(w => w.id || w.notes || (w.ruby && w.ruby.length))) line.parts = ws.map(w => Object.assign({ text: w.text }, w.id && { id: w.id }, w.notes && { notes: w.notes }, w.ruby && w.ruby.length && { ruby: w.ruby.map(r => ({ text: r.text })) }));
                     if (part) { line.part = part; part = null; }
                     lines.push(line);
                     made[bg ? 'back' : 'main'] = line;
@@ -545,6 +547,7 @@ function parseTtml(text) {
         if (!/^\(/.test(first.text)) { first.text = '(' + first.text; last.text += ')'; }
     }
     const out = finish(lines, meta);
+    if (tt.attrs.lang) out.lang = tt.attrs.lang;
     if (kinds.length) out.extras = kinds;
     if (Object.keys(annotations).length) out.annotations = annotations;
     const links = alignment(doc);

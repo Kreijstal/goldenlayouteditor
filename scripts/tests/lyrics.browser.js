@@ -174,6 +174,8 @@ async function main() {
         // A word-timed file beside the audio wins over line-timed SYLT inside it
         await open('song.mp3');
         await page.waitForFunction(() => document.querySelector('.lyr-line') && document.querySelector('.lyr-line').textContent === 'Beside the song');
+        // The file beside the audio can win before the one inside it is read
+        await page.waitForFunction(() => !/Looking for lyrics/.test(document.querySelector('.lyr-menu').textContent));
         const sm = await menu();
         assert.ok(sm.some(x => x.startsWith('✓ song.elrc')), sm.join(' | '));
         assert.ok(sm.some(x => x === 'ID3 synced lyricsSYLT, line by line'), sm.join(' | '));

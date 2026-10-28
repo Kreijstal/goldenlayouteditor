@@ -137,6 +137,14 @@ test('TTML: word alignment with a translation, by TEI corresp and linkGrp', () =
     assert.deepEqual(tr.parts, [{ text: 'I love ', id: 'en1' }, { text: 'you', id: 'en2' }, { text: '.' }]);
 });
 
+test('TTML: untimed sung words keep their ids, and the sung language', () => {
+    const l = L.parseTtml(`<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:itunes="http://music.apple.com/lyric-ttml-internal" xml:lang="ja">
+<body><div><p begin="1s" end="3s" itunes:key="L1"><span xml:id="ja1" tei:corresp="#en1">待って</span><span>よ</span></p></div></body></tt>`);
+    assert.equal(l.lang, 'ja');
+    assert.equal(l.lines[0].words, null);
+    assert.deepEqual(l.lines[0].parts, [{ text: '待って', id: 'ja1' }, { text: 'よ' }]);
+});
+
 test('TTML: notes (TEI) in lines, translations and words, and pointing at them', () => {
     const l = L.parseTtml(`<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal"><head><metadata>
 <tei:respStmt><tei:name xml:id="tr1">Ayşe Y.</tei:name></tei:respStmt>
