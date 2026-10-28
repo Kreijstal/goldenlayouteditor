@@ -116,7 +116,7 @@
     "events": "3.3.0",
     "express": "^5.0.0",
     "golden-layout": "^2.6.0",
-    "h5wasm": "0.10.0",
+    "h5wasm": "0.10.3",
     "hyparquet": "1.30.0",
     "hyparquet-compressors": "1.1.2",
     "js-yaml": "^5.4.2",
