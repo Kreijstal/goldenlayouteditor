@@ -313,6 +313,28 @@ function ttmlTime(s, rates) {
     return { h: v * 3600, m: v * 60, s: v, ms: v / 1000, f: v / rates.frame, t: v / rates.tick }[m[2] || 's'];
 }
 
+// Text of a node and its descendants
+// (a note in it is not part of it)
+const textOf = n => typeof n === 'string' ? n : n.name === 'note' ? '' : n.children.map(textOf).join('');
+// TTML's whitespace: runs of it are one space
+const squeeze = t => t.replace(/\s+/g, ' ');
+
+// Apple Music's and AMLL's TTML (amll.dev/en/guides/lyric/ttml), and plain TTML. Besides the
+// timed lines and words, kept for the player:
+// - translations and romanizations, inline (<span ttm:role="x-translation|x-roman" xml:lang>)
+//   or in <head><iTunesMetadata> (<translation|transliteration><text for="L1">, the line's
+//   itunes:key), plain or timed word by word: line.extras [{ kind, lang, text, words }]
+// - ruby (<span tts:ruby="container"> with a base and timed text spans): word.ruby [{ text, start, end }]
+// - word ids (xml:id), for annotations about them, and itunes:song-part on a div: line.part
+// - language-learning annotations in a foreign namespace, linked to words by id:
+//   <annotations><word ref="w1" lemma pos difficulty sense><meaning xml:lang>…</meaning>
+//   <grammar>…</grammar><morpheme form meaning/></word></annotations> (docs/lyrics.md)
+// - which sung words go with which translation words: TEI's corresp and link (alignment())
+// - notes (TEI's <note type="translator" resp target>): in a line or its translation
+//   (line.notes), or pointing at a line or a word from anywhere (lyrics.notes { id: [notes] })
+// The result also lists the extras there are (lyrics.extras [{ kind, lang }]) and has
+// lyrics.annotations { id: { lemma, pos, … } } and lyrics.links { id: [ids] }. Untimed
+// translation words with ids are kept as extra.parts [{ text, id }].
 function parseTtml(text) {
     const doc = parseXml(text);
     const tt = find(doc, 'tt');
@@ -323,12 +345,33 @@ function parseTtml(text) {
     if (!body) return null;
     const meta = {};
     const title = find(tt, 'title');
-    if (title) meta.title = title.children.filter(c => typeof c === 'string').join('').trim();
+    if (title) meta.title = textOf(title).trim();
     // Agents: the first person sings on the left, the others on the right; a group is everyone
     const agents = {};
     const head = find(tt, 'head');
+    const sidecar = []; // { kind, lang, key, node }
+    const annotations = {};
     if (head) {
-        const collect = n => { if (typeof n === 'string') return; if (n.name === 'agent' && n.attrs.id) agents[n.attrs.id] = n.attrs.type || 'person'; n.children.forEach(collect); };
+        const collect = n => {
+            if (typeof n === 'string') return;
+            if (n.name === 'agent' && n.attrs.id) agents[n.attrs.id] = n.attrs.type || 'person';
+            // AMLL's metadata
+            if (n.name === 'meta' && n.attrs.key && n.attrs.value) {
+                const k = { musicName: 'title', artists: 'artist', album: 'album', isrc: 'isrc' }[n.attrs.key];
+                if (k && !meta[k]) meta[k] = n.attrs.value;
+            }
+            if (n.name === 'translation' || n.name === 'transliteration') {
+                const kind = n.name === 'translation' ? 'translation' : 'roman';
+                for (const t of n.children) {
+                    if (typeof t !== 'string' && t.name === 'text' && t.attrs.for) sidecar.push({ kind, lang: n.attrs.lang || '', key: t.attrs.for, node: t });
+                }
+            }
+            if (n.name === 'annotations') {
+                for (const w of n.children) if (typeof w !== 'string' && w.name === 'word' && w.attrs.ref) annotations[w.attrs.ref] = annotation(w);
+                return;
+            }
+            n.children.forEach(collect);
+        };
         collect(head);
     }
     const voices = {};
@@ -339,6 +382,8 @@ function parseTtml(text) {
         return voices[id];
     };
     const lines = [];
+    const kinds = []; // the extras there are, in order: { kind, lang }
+    const noteKind = (kind, lang) => { if (!kinds.some(k => k.kind === kind && k.lang === lang)) kinds.push({ kind, lang }); };
     // Times of a child: relative to its parent's begin, as TTML says, unless (as
     // Apple Music writes them) they are on the document's clock already
     const span = (b, e, dur, base, parentEnd) => {
@@ -349,10 +394,12 @@ function parseTtml(text) {
         if (end === null) end = d !== null ? start + d : parentEnd;
         return { start, end };
     };
-    const walkText = (node, base, end, words, bg) => {
+    // The words in a node: { start, end, text, untimed, bg, id, ruby }; translations and
+    // romanizations met on the way go to extras
+    const walkText = (node, base, end, words, bg, extras) => {
         for (const c of node.children) {
             if (typeof c === 'string') {
-                const t = c.replace(/\s+/g, ' ');
+                const t = squeeze(c);
                 if (!t) continue;
                 if (words.length && !t.trim()) { words[words.length - 1].text += ' '; continue; }
                 if (t.trim()) words.push({ start: base, end, text: t, untimed: true, bg });
@@ -360,58 +407,228 @@ function parseTtml(text) {
             }
             if (c.name === 'br') { if (words.length) words[words.length - 1].text += '\n'; continue; }
             if (c.name !== 'span') continue;
-            const isBg = bg || c.attrs.role === 'x-bg';
+            const role = c.attrs.role;
+            if (role === 'x-translation' || role === 'x-roman') {
+                if (extras) extras.push({ kind: role === 'x-roman' ? 'roman' : 'translation', lang: c.attrs.lang || '', node: c, base, end, bg });
+                continue;
+            }
+            const isBg = bg || role === 'x-bg';
             const t = span(c.attrs.begin, c.attrs.end, c.attrs.dur, base, end);
+            if (c.attrs.ruby === 'container') {
+                // A word and its reading above it, the reading timed in parts
+                const ruby = [];
+                let baseText = '';
+                const each = n => {
+                    if (typeof n === 'string') return;
+                    if (n.attrs.ruby === 'base') baseText += textOf(n);
+                    else if (n.attrs.ruby === 'text') {
+                        const rt = span(n.attrs.begin, n.attrs.end, n.attrs.dur, t.start, t.end);
+                        ruby.push({ text: squeeze(textOf(n)).trim(), start: rt.start, end: rt.end, timed: n.attrs.begin != null });
+                    } else n.children.forEach(each);
+                };
+                c.children.forEach(each);
+                const timedRuby = ruby.filter(r => r.timed);
+                const untimed = c.attrs.begin == null && !timedRuby.length;
+                const start = c.attrs.begin != null || !timedRuby.length ? t.start : Math.min(...timedRuby.map(r => r.start));
+                const stop = c.attrs.end != null || !timedRuby.length ? t.end : Math.max(...timedRuby.map(r => r.end));
+                if (baseText) words.push({ start, end: stop, text: squeeze(baseText), untimed, bg: isBg, id: c.attrs.id, ruby: ruby.map(({ timed, ...r }) => r) });
+                continue;
+            }
             const timedKids = c.children.some(k => typeof k !== 'string' && k.name === 'span');
-            if (timedKids || (c.attrs.begin == null && c.children.some(k => typeof k !== 'string'))) walkText(c, t.start, t.end, words, isBg);
+            const notes = inlineNotes(c, {});
+            if (timedKids || (c.attrs.begin == null && c.children.some(k => typeof k !== 'string' && k.name !== 'note'))) walkText(c, t.start, t.end, words, isBg, extras);
             else {
-                const txt = c.children.map(k => typeof k === 'string' ? k : '').join('').replace(/\s+/g, ' ');
-                if (txt) words.push({ start: t.start, end: t.end, text: txt, untimed: c.attrs.begin == null, bg: isBg });
+                const txt = squeeze(textOf(c));
+                if (txt) words.push({ start: t.start, end: t.end, text: txt, untimed: c.attrs.begin == null, bg: isBg, id: c.attrs.id, notes: notes.length ? notes : undefined });
             }
         }
     };
-    const walk = (node, base, end, agent) => {
+    // Words → a line's words: untimed text among timed words (a styled span, punctuation)
+    // goes with the word before it; null when none is timed
+    const tidy = (ws, timed) => {
+        if (timed) ws = ws.reduce((out, w) => {
+            if (!w.untimed) out.push({ ...w });
+            else if (out.length) out[out.length - 1].text += w.text;
+            else out.lead = (out.lead || '') + w.text;
+            return out;
+        }, []);
+        if (ws.lead && ws.length) ws[0].text = ws.lead + ws[0].text;
+        if (!ws.length) return ws;
+        ws[ws.length - 1].text = ws[ws.length - 1].text.replace(/\s+$/, '');
+        ws[0].text = ws[0].text.replace(/^\s+/, '');
+        return ws;
+    };
+    const wordOf = w => {
+        const out = { start: w.start, end: w.end, text: w.text };
+        if (w.id) out.id = w.id;
+        if (w.ruby && w.ruby.length) out.ruby = w.ruby;
+        if (w.notes) out.notes = w.notes;
+        return out;
+    };
+    // A translation or romanization: its text, and its words when they are timed
+    const extraOf = (x, base, end) => {
+        const ws = [];
+        walkText(x.node, base, end, ws, false, null);
+        const main = ws.filter(w => !w.bg), back = ws.filter(w => w.bg);
+        const make = list => {
+            const timed = list.some(w => !w.untimed);
+            const tidied = tidy(list, timed);
+            const text = tidied.map(w => w.text).join('').replace(/[ \t]+$/gm, '').trim();
+            if (!text) return null;
+            const out = { kind: x.kind, lang: x.lang, text, words: timed ? tidied.map(wordOf) : null };
+            // Untimed words with ids, for alignment with the sung ones
+            if (!timed && tidied.some(w => w.id || w.notes)) out.parts = tidied.map(w => Object.assign({ text: w.text }, w.id && { id: w.id }, w.notes && { notes: w.notes }));
+            return out;
+        };
+        return { main: make(x.bg ? ws : main), back: x.bg ? null : make(back) };
+    };
+    const byKey = {};
+    const walk = (node, base, end, agent, part) => {
         for (const c of node.children) {
             if (typeof c === 'string') continue;
             const t = span(c.attrs.begin, c.attrs.end, c.attrs.dur, base, end);
             const who = c.attrs.agent || agent;
             if (c.name === 'p') {
-                const words = [];
-                walkText(c, t.start, t.end, words, false);
+                const words = [], extras = [];
+                walkText(c, t.start, t.end, words, false, extras);
                 if (!words.length) continue;
                 const timed = words.some(w => !w.untimed);
                 const main = words.filter(w => !w.bg), back = words.filter(w => w.bg);
+                const made = {};
                 const make = (ws, bg) => {
-                    // Untimed text among timed words (a styled span, punctuation) goes with the word before it
-                    if (timed) ws = ws.reduce((out, w) => {
-                        if (!w.untimed) out.push({ ...w });
-                        else if (out.length) out[out.length - 1].text += w.text;
-                        else out.lead = (out.lead || '') + w.text;
-                        return out;
-                    }, []);
-                    if (ws.lead && ws.length) ws[0].text = ws.lead + ws[0].text;
+                    ws = tidy(ws, timed);
                     if (!ws.length) return;
-                    ws[ws.length - 1].text = ws[ws.length - 1].text.replace(/\s+$/, '');
-                    ws[0].text = ws[0].text.replace(/^\s+/, '');
-                    lines.push({
+                    const line = {
                         start: timed ? Math.min(...ws.map(w => w.start)) : t.start, end: timed ? Math.max(...ws.map(w => w.end ?? t.end)) : t.end,
-                        text: ws.map(w => w.text).join(''), words: timed ? ws.map(w => ({ start: w.start, end: w.end, text: w.text })) : null,
+                        text: ws.map(w => w.text).join(''), words: timed ? ws.map(wordOf) : null,
                         voice: voiceOf(who), bg,
-                    });
+                    };
+                    if (part) { line.part = part; part = null; }
+                    lines.push(line);
+                    made[bg ? 'back' : 'main'] = line;
                 };
                 make(main.length ? main : back, !main.length);
                 if (main.length) make(back, true);
-            } else walk(c, t.start, t.end, who);
+                if (!made.main && made.back) made.main = made.back;
+                for (const x of extras) {
+                    const e = extraOf(x, t.start, t.end);
+                    const target = x.bg ? made.back || made.main : made.main;
+                    if (e.main) (target.extras = target.extras || []).push(e.main), noteKind(x.kind, x.lang);
+                    if (e.back && made.back) (made.back.extras = made.back.extras || []).push(e.back);
+                }
+                // Notes in the line, and in its translations (the translator's, in their language)
+                const notes = inlineNotes(c, {});
+                for (const x of extras) if (!x.bg) notes.push(...inlineNotes(x.node, { type: x.kind === 'translation' ? 'translator' : '', lang: x.lang }));
+                if (notes.length) made.main.notes = notes;
+                if (c.attrs.key) byKey[c.attrs.key] = made;
+                if (c.attrs.id) byKey[c.attrs.id] = made;
+            } else walk(c, t.start, t.end, who, c.attrs['song-part'] || c.attrs.songPart || null);
         }
     };
-    walk(body, 0, null, null);
+    walk(body, 0, null, null, null);
     if (!lines.length) return null;
+    // Translations and romanizations in the head, for the lines with those keys
+    for (const x of sidecar) {
+        const made = byKey[x.key];
+        if (!made) continue;
+        const e = extraOf(x, made.main.start, made.main.end);
+        const notes = inlineNotes(x.node, { type: x.kind === 'translation' ? 'translator' : '', lang: x.lang });
+        if (notes.length) (made.main.notes = made.main.notes || []).push(...notes);
+        // A language given inline too is shown once
+        const has = (l, k) => l && l.extras && l.extras.some(y => y.kind === k.kind && y.lang === k.lang);
+        if (e.main && !has(made.main, e.main)) (made.main.extras = made.main.extras || []).push(e.main), noteKind(x.kind, x.lang);
+        if (e.back && made.back && made.back !== made.main && !has(made.back, e.back)) (made.back.extras = made.back.extras || []).push(e.back);
+    }
     // Background vocals ("(ooh)") sung in their brackets, mostly written so already
     for (const l of lines) if (l.bg && l.words) {
         const first = l.words[0], last = l.words[l.words.length - 1];
         if (!/^\(/.test(first.text)) { first.text = '(' + first.text; last.text += ')'; }
     }
-    return finish(lines, meta);
+    const out = finish(lines, meta);
+    if (kinds.length) out.extras = kinds;
+    if (Object.keys(annotations).length) out.annotations = annotations;
+    const links = alignment(doc);
+    if (Object.keys(links).length) out.links = links;
+    // Notes pointing at lines (their xml:id or itunes:key) or at words (their xml:id)
+    const wordNotes = {};
+    const each = n => {
+        if (typeof n === 'string') return;
+        if (n.name === 'note' && n.attrs.target) {
+            const note = noteOf(n, {}, doc);
+            for (const id of n.attrs.target.split(/\s+/).filter(x => x.startsWith('#')).map(x => x.slice(1))) {
+                const line = byKey[id] && byKey[id].main;
+                if (line) (line.notes = line.notes || []).push(note);
+                else (wordNotes[id] = wordNotes[id] || []).push(note);
+            }
+            return;
+        }
+        n.children.forEach(each);
+    };
+    each(doc);
+    if (Object.keys(wordNotes).length) out.notes = wordNotes;
+    return out;
+}
+
+// Notes (TEI's <note type resp target>, any namespace): { text, type, resp, lang }. Who
+// wrote one (resp="#tr1") is named by the element with that id, if there is one.
+function noteOf(n, defaults, doc) {
+    const text = squeeze(n.children.map(c => typeof c === 'string' ? c : textOf(c)).join('')).trim();
+    let resp = n.attrs.resp || '';
+    if (resp.startsWith('#') && doc) {
+        const id = resp.slice(1);
+        const find = x => typeof x === 'string' ? null : x.attrs.id === id ? x : x.children.reduce((f, c) => f || find(c), null);
+        const who = find(doc);
+        resp = who ? squeeze(textOf(who)).trim() || id : id;
+    }
+    return { text, type: n.attrs.type || defaults.type || '', resp, lang: n.attrs.lang || defaults.lang || '' };
+}
+// The notes directly in a line or a translation, not pointing elsewhere
+const inlineNotes = (node, defaults) => node.children
+    .filter(c => typeof c !== 'string' && c.name === 'note' && !c.attrs.target)
+    .map(c => noteOf(c, defaults, null))
+    .filter(n => n.text);
+
+// Which words go with which (TEI P5's alignment, tei-c.org/release/doc/tei-p5-doc/en/html/SA.html):
+// corresp="#en1 #en2" on an element with an xml:id, and <linkGrp><link target="#w1 #en2"/>,
+// each in any namespace. Both ways: { id: [ids] }
+function alignment(doc) {
+    const links = {};
+    const join = ids => {
+        ids = [...new Set(ids)];
+        for (const a of ids) for (const b of ids) if (a !== b) {
+            const l = links[a] = links[a] || [];
+            if (!l.includes(b)) l.push(b);
+        }
+    };
+    const ids = v => (v || '').split(/\s+/).filter(x => x.startsWith('#')).map(x => x.slice(1));
+    const each = n => {
+        if (typeof n === 'string') return;
+        if (n.attrs.corresp && n.attrs.id) for (const to of ids(n.attrs.corresp)) join([n.attrs.id, to]);
+        if (n.name === 'link' && n.attrs.target) join(ids(n.attrs.target));
+        n.children.forEach(each);
+    };
+    each(doc);
+    return links;
+}
+
+// A word's annotation: <word ref lemma pos difficulty sense> with <meaning xml:lang>,
+// <grammar>, <morpheme form meaning> (and lemma, pos, … as elements too)
+function annotation(w) {
+    const a = {};
+    for (const k of ['lemma', 'pos', 'difficulty', 'sense']) if (w.attrs[k]) a[k] = w.attrs[k];
+    const meanings = [], grammar = [], morphemes = [];
+    for (const c of w.children) {
+        if (typeof c === 'string') continue;
+        const t = squeeze(textOf(c)).trim();
+        if (c.name === 'meaning') { if (t) meanings.push({ lang: c.attrs.lang || '', text: t }); }
+        else if (c.name === 'grammar') { if (t) grammar.push(t); }
+        else if (c.name === 'morpheme') morphemes.push({ form: c.attrs.form || t, meaning: c.attrs.meaning || (c.attrs.form ? t : '') });
+        else if (['lemma', 'pos', 'difficulty', 'sense'].includes(c.name) && t) a[c.name] = t;
+    }
+    if (meanings.length) a.meanings = meanings;
+    if (grammar.length) a.grammar = grammar;
+    if (morphemes.length) a.morphemes = morphemes;
+    return a;
 }
 
 // "1000 1001" → 1000/1001
@@ -830,20 +1047,29 @@ async function mp4Lyrics(reader) {
 // An MP4 TTML track: each sample a TTML document. Its times count from the start of the
 // track (as ffmpeg writes them) or, when they fall before the sample, from the sample.
 async function mp4Ttml(reader, track) {
-    const lines = [];
+    const lines = [], extras = [], annotations = {}, links = {};
     let meta = {};
     for (const s of track.samples.filter(x => x.size > 0)) {
         const doc = parseTtml(new TextDecoder().decode(await reader.read(s.offset, s.offset + s.size)));
         if (!doc) continue;
         meta = { ...doc.meta, ...meta };
+        for (const k of doc.extras || []) if (!extras.some(x => x.kind === k.kind && x.lang === k.lang)) extras.push(k);
+        Object.assign(annotations, doc.annotations);
+        for (const [k, v] of Object.entries(doc.links || {})) links[k] = [...new Set([...(links[k] || []), ...v])];
         const first = Math.min(...doc.lines.map(l => l.start));
         const shift = first < s.time - 0.01 ? s.time : 0;
         for (const l of doc.lines) {
             const move = x => ({ ...x, start: x.start + shift, end: x.end == null ? x.end : x.end + shift });
-            lines.push({ ...move(l), words: l.words && l.words.map(move) });
+            const moveWords = ws => ws && ws.map(w => ({ ...move(w), ruby: w.ruby && w.ruby.map(move) }));
+            lines.push({ ...move(l), words: moveWords(l.words), extras: l.extras && l.extras.map(x => ({ ...x, words: moveWords(x.words) })) });
         }
     }
-    return lines.length ? finish(lines, meta) : null;
+    if (!lines.length) return null;
+    const out = finish(lines, meta);
+    if (extras.length) out.extras = extras;
+    if (Object.keys(annotations).length) out.annotations = annotations;
+    if (Object.keys(links).length) out.links = links;
+    return out;
 }
 
 // --- Matroska ---

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml"
+    xmlns:ttm="http://www.w3.org/ns/ttml#metadata"
+    xmlns:itunes="http://music.apple.com/lyric-ttml-internal"
+    xmlns:learn="https://example.org/ns/lyrics-learning"
+    xml:lang="tr"
+    itunes:timing="Word">
+  <head>
+    <metadata>
+      <ttm:title>Turkish Learning Example</ttm:title>
+      <ttm:agent xml:id="v1" type="person"/>
+      <learn:annotations>
+        <learn:word ref="w1" lemma="sen" pos="pronoun">
+          <learn:meaning xml:lang="en">you</learn:meaning>
+          <learn:grammar>Accusative case</learn:grammar>
+        </learn:word>
+        <learn:word ref="w2" lemma="sevmek" pos="verb">
+          <learn:meaning xml:lang="en">I love</learn:meaning>
+          <learn:grammar>
+            Present continuous, first person singular
+          </learn:grammar>
+          <learn:morpheme form="sev" meaning="love"/>
+          <learn:morpheme form="iyor" meaning="progressive"/>
+          <learn:morpheme form="um" meaning="first person"/>
+        </learn:word>
+      </learn:annotations>
+      <iTunesMetadata
+          xmlns="http://music.apple.com/lyric-ttml-internal">
+        <translations>
+          <translation type="subtitle" xml:lang="en">
+            <text for="L1">I love you.</text>
+          </translation>
+          <translation type="subtitle" xml:lang="de">
+            <text for="L1">Ich liebe dich.</text>
+          </translation>
+        </translations>
+      </iTunesMetadata>
+    </metadata>
+  </head>
+  <body>
+    <div>
+      <p begin="10s" end="12s"
+         itunes:key="L1" ttm:agent="v1">
+        <span xml:id="w1" begin="10s" end="10.6s">Seni</span>
+        <span xml:id="w2" begin="10.6s" end="12s">seviyorum</span>
+      </p>
+    </div>
+  </body>
+</tt>

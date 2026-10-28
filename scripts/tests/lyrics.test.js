@@ -86,6 +86,80 @@ test('TTML: times relative to their parent, offset and clock forms, line timing'
     assert.deepEqual(l.lines.slice(1).map(x => [x.text, x.start, x.end, x.words]), [['Line\ntwo', 75.5, 77, null]]);
 });
 
+test('TTML (AMLL): translations and romanizations inline and in the head, background vocals, ruby, song parts', () => {
+    const ttml = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:tts="http://www.w3.org/ns/ttml#styling" xmlns:itunes="http://itunes.apple.com/lyric-ttml-extensions" xmlns:amll="http://www.example.com/ns/amll" xml:lang="ja" itunes:timing="Word">
+<head><metadata><ttm:agent type="person" xml:id="v1"/><amll:meta key="musicName" value="Song Title"/><amll:meta key="artists" value="Artist Name"/>
+<iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+<translations><translation type="subtitle" xml:lang="en"><text for="L1">ignored: given inline</text><text for="L2">After all</text></translation></translations>
+<transliterations><transliteration xml:lang="ja-Latn"><text for="L2"><span begin="00:27.690" end="00:27.820">sho</span><span begin="00:27.820" end="00:27.950">sen</span></text></transliteration></transliterations>
+</iTunesMetadata></metadata></head>
+<body><div itunes:song-part="Verse">
+<p begin="00:25.100" end="00:32.500" itunes:key="L1" ttm:agent="v1"><span begin="00:25.100" end="00:25.800">君</span><span begin="00:25.900" end="00:26.100">の</span><span begin="00:26.300" end="00:27.600">物語</span>
+<span ttm:role="x-translation" xml:lang="en">Your story</span>
+<span ttm:role="x-roman" xml:lang="ja-Latn">kimi no monogatari</span>
+<span ttm:role="x-bg" begin="00:30.500" end="00:32.500"><span begin="00:30.500" end="00:31.500">(秘密</span><span begin="00:31.600" end="00:32.500">だよ)</span><span ttm:role="x-translation" xml:lang="en">It's a secret</span></span>
+</p>
+<p begin="00:27.690" end="00:28.000" itunes:key="L2" ttm:agent="v1"><span tts:ruby="container"><span tts:ruby="base">所</span><span tts:ruby="textContainer"><span tts:ruby="text" begin="00:27.690" end="00:27.820">しょ</span></span></span><span tts:ruby="container"><span tts:ruby="base">詮</span><span tts:ruby="textContainer"><span tts:ruby="text" begin="00:27.820" end="00:27.880">せ</span><span tts:ruby="text" begin="00:27.880" end="00:27.950">ん</span></span></span></p>
+</div></body></tt>`;
+    const l = L.parseLyrics(ttml, 'a.ttml');
+    assert.deepEqual(l.meta, { title: 'Song Title', artist: 'Artist Name' });
+    assert.deepEqual(l.extras, [{ kind: 'translation', lang: 'en' }, { kind: 'roman', lang: 'ja-Latn' }]);
+    // The translations are not sung: not in the line's text or words
+    assert.deepEqual(l.lines.map(x => [x.text, !!x.bg, x.part]), [['君の物語', false, 'Verse'], ['所詮', false, undefined], ['(秘密だよ)', true, undefined]]);
+    const ex = x => (x.extras || []).map(e => [e.kind, e.lang, e.text, e.words && e.words.map(w => [w.text, w.start, w.end])]);
+    assert.deepEqual(ex(l.lines[0]), [['translation', 'en', 'Your story', null], ['roman', 'ja-Latn', 'kimi no monogatari', null]]);
+    assert.deepEqual(ex(l.lines[1]), [['translation', 'en', 'After all', null], ['roman', 'ja-Latn', 'shosen', [['sho', 27.69, 27.82], ['sen', 27.82, 27.95]]]]);
+    assert.deepEqual(ex(l.lines[2]), [['translation', 'en', "It's a secret", null]]);
+    assert.deepEqual(l.lines[1].words.map(w => [w.text, w.start, w.end, w.ruby.map(r => [r.text, r.start, r.end])]),
+        [['所', 27.69, 27.82, [['しょ', 27.69, 27.82]]], ['詮', 27.82, 27.95, [['せ', 27.82, 27.88], ['ん', 27.88, 27.95]]]]);
+});
+
+test('TTML: language-learning annotations linked to words by xml:id', () => {
+    const l = L.parseLyrics(fs.readFileSync(path.join(FIXTURES, 'learn.ttml'), 'utf8'), 'learn.ttml');
+    assert.equal(l.meta.title, 'Turkish Learning Example');
+    assert.deepEqual(l.lines[0].words.map(w => [w.text, w.id]), [['Seni ', 'w1'], ['seviyorum', 'w2']]);
+    assert.deepEqual(l.lines[0].extras.map(e => [e.lang, e.text]), [['en', 'I love you.'], ['de', 'Ich liebe dich.']]);
+    assert.deepEqual(l.annotations.w2, {
+        lemma: 'sevmek', pos: 'verb', meanings: [{ lang: 'en', text: 'I love' }], grammar: ['Present continuous, first person singular'],
+        morphemes: [{ form: 'sev', meaning: 'love' }, { form: 'iyor', meaning: 'progressive' }, { form: 'um', meaning: 'first person' }],
+    });
+    assert.deepEqual(l.annotations.w1, { lemma: 'sen', pos: 'pronoun', meanings: [{ lang: 'en', text: 'you' }], grammar: ['Accusative case'] });
+});
+
+test('TTML: word alignment with a translation, by TEI corresp and linkGrp', () => {
+    const l = L.parseTtml(`<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:itunes="http://music.apple.com/lyric-ttml-internal"><head><metadata>
+<iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal"><translations><translation xml:lang="en"><text for="L1"><span xml:id="en1">I love</span> <span xml:id="en2">you</span>.</text></translation></translations></iTunesMetadata>
+<tei:linkGrp type="alignment"><tei:link target="#w1 #en2"/></tei:linkGrp></metadata></head>
+<body><div><p begin="1s" end="3s" itunes:key="L1"><span xml:id="w1" begin="1s" end="2s">Seni </span><span xml:id="w2" tei:corresp="#en1" begin="2s" end="3s">seviyorum</span></p></div></body></tt>`);
+    assert.deepEqual(l.links, { w1: ['en2'], en2: ['w1'], w2: ['en1'], en1: ['w2'] });
+    const tr = l.lines[0].extras[0];
+    assert.equal(tr.text, 'I love you.');
+    assert.deepEqual(tr.parts, [{ text: 'I love ', id: 'en1' }, { text: 'you', id: 'en2' }, { text: '.' }]);
+});
+
+test('TTML: notes (TEI) in lines, translations and words, and pointing at them', () => {
+    const l = L.parseTtml(`<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal"><head><metadata>
+<tei:respStmt><tei:name xml:id="tr1">Ayşe Y.</tei:name></tei:respStmt>
+<iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal"><translations><translation xml:lang="en"><text for="L1"><span xml:id="en1">I love</span> <span xml:id="en2">you</span>.<tei:note>No separate word for I.</tei:note></text></translation></translations></iTunesMetadata>
+<tei:note type="translator" resp="#tr1" target="#w1 #en2">Seni: the accusative of sen.</tei:note>
+<tei:note type="cultural" target="#L1">A folk song's line.</tei:note>
+</metadata></head>
+<body><div><p begin="1s" end="3s" itunes:key="L1"><span xml:id="w1" begin="1s" end="2s">Seni </span><span begin="2s" end="3s">seviyorum<tei:note>Sung twice live.</tei:note></span><tei:note resp="editor">Second verse only.</tei:note><span ttm:role="x-translation" xml:lang="de">Ich liebe dich<tei:note>Du, not Sie.</tei:note></span></p></div></body></tt>`);
+    const line = l.lines[0];
+    // Notes are not sung, nor part of a translation
+    assert.equal(line.text, 'Seni seviyorum');
+    assert.deepEqual(line.extras.map(e => e.text), ['Ich liebe dich', 'I love you.']);
+    assert.deepEqual(line.notes, [
+        { text: 'Second verse only.', type: '', resp: 'editor', lang: '' },
+        { text: 'Du, not Sie.', type: 'translator', resp: '', lang: 'de' },
+        { text: 'No separate word for I.', type: 'translator', resp: '', lang: 'en' },
+        { text: "A folk song's line.", type: 'cultural', resp: '', lang: '' },
+    ]);
+    assert.deepEqual(line.words[1].notes, [{ text: 'Sung twice live.', type: '', resp: '', lang: '' }]);
+    const seni = { text: 'Seni: the accusative of sen.', type: 'translator', resp: 'Ayşe Y.', lang: '' };
+    assert.deepEqual(l.notes, { w1: [seni], en2: [seni] });
+});
+
 test('Musixmatch richsync and subtitles', () => {
     const rich = JSON.stringify([{ ts: 1, te: 3, x: 'Hello world', l: [{ c: 'Hello', o: 0 }, { c: ' ', o: 0.6 }, { c: 'world', o: 1 }] }]);
     const l = L.parseRichsync(rich);
