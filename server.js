@@ -136,6 +136,53 @@ app.all(/^\/cors-proxy\/([^/]+)(\/.*)$/, async (req, res) => {
   }
 });
 
+// Lyrics from Musixmatch for the audio player (src/lyrics-view.js), asked for as its
+// desktop app does (github.com/OrfiDev/orpheusdl-musixmatch): its lyrics methods only,
+// with the viewer's own user token or one this server asks Musixmatch for
+const MXM_API = 'https://apic-desktop.musixmatch.com/ws/1.1/';
+const MXM_METHODS = new Set(['macro.subtitles.get', 'matcher.track.get', 'track.get', 'track.richsync.get', 'track.subtitle.get', 'track.lyrics.get']);
+const MXM_PARAMS = /^(q_\w+|f_\w+|track_\w+|commontrack_id|subtitle_format|namespace|optional_calls|format)$/;
+const MXM_HEADERS = {
+  'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Musixmatch/0.19.4 Chrome/58.0.3029.110 Electron/1.7.6 Safari/537.36',
+  cookie: 'AWSELB=0; AWSELBCORS=0',
+};
+let mxmToken = null;
+async function mxmCall(method, params) {
+  const url = new URL(MXM_API + method);
+  for (const [k, v] of Object.entries({ ...params, app_id: 'web-desktop-app-v1.0' })) url.searchParams.set(k, v);
+  const resp = await fetch(url, { headers: MXM_HEADERS });
+  if (!resp.ok) throw new Error(`Musixmatch answered HTTP ${resp.status}`);
+  return (await resp.json()).message;
+}
+async function mxmUserToken() {
+  if (!mxmToken) {
+    const m = await mxmCall('token.get', { user_language: 'en' });
+    const token = m.header.status_code === 200 && m.body && m.body.user_token;
+    // An all-zero token is anonymous: Musixmatch answers it with made-up words
+    if (!token || token.startsWith('UpgradeOnly') || /^0+$/.test(token)) throw Object.assign(new Error(`Musixmatch gave no user token (${m.header.hint || m.header.status_code})`), { hint: m.header.hint });
+    mxmToken = token;
+  }
+  return mxmToken;
+}
+app.get(/^\/musixmatch\/([\w.]+)$/, async (req, res) => {
+  const method = req.params[0];
+  if (!MXM_METHODS.has(method)) return res.status(403).json({ error: 'Only Musixmatch lyrics methods are passed on' });
+  const params = {};
+  for (const [k, v] of Object.entries(req.query)) if (MXM_PARAMS.test(k) && typeof v === 'string') params[k] = v;
+  const own = req.get('x-musixmatch-token');
+  try {
+    for (let attempt = 0; ; attempt++) {
+      if (own && /^0+$/.test(own)) return res.status(400).json({ error: 'An all-zero user token gets made-up lyrics from Musixmatch' });
+      const m = await mxmCall(method, { ...params, usertoken: own || await mxmUserToken() });
+      // An expired token of ours: a new one, once
+      if (!own && attempt === 0 && m.header.status_code === 401 && m.header.hint === 'renew') { mxmToken = null; continue; }
+      return res.json(m);
+    }
+  } catch (err) {
+    res.status(502).json({ error: err.message, hint: err.hint });
+  }
+});
+
 // Fritzing (github.com/Kreijstal/fritzing-app, wasm branch), Mogan STEM (TeXmacs
 // fork, github.com/MoganLab/mogan), the office editor for .docx/.pptx (Euro-Office's
 // editors with x2t as WebAssembly, scripts/build-eurooffice.sh) and the Rust

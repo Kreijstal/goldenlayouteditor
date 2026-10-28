@@ -82,7 +82,7 @@ const SERVED_EXTENSIONS = new Set(['lrx','azw3','dra','olb','lrf','sldprt','slda
   'dng', 'crw', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'raf', 'pef', 'srw', '3fr', 'fff', 'erf', 'kdc', 'mrw', 'mos', 'iiq', 'rwl', 'mef',
   // not 'ts': that is TypeScript far more often than MPEG transport stream
   'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpg', 'mpeg', 'm2ts', '3gp',
-  'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus',
+  'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus', 'mka',
 ]);
 
 // Names an SGI image shares with other files: one only if its magic number is SGI's

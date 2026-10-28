@@ -355,6 +355,7 @@ const { isGemName, isGemMaybeName, isGemUrl, gemImage } = require('./gem');
 const { isHfaMaybeName, isHfaUrl, addHfaControls } = require('./hfa');
 const { addEcwControls } = require('./ecw');
 const { attachSubtitles } = require('./subtitles');
+const { attachLyrics } = require('./lyrics-view');
 
 // Current workspace path (null = in-memory only)
 let currentWorkspacePath = null;
@@ -889,6 +890,7 @@ class EditorComponent {
                 log.log(`Editor: Destroying viewer for ${logName}`);
                 if (this._flaViewer && this._flaViewer.destroy) this._flaViewer.destroy();
                 if (this._subtitles) this._subtitles.destroy();
+                if (this._lyrics) this._lyrics.destroy();
                 if (this._pdfViewer) this._pdfViewer.destroy();
             });
             return;
@@ -991,7 +993,7 @@ class EditorComponent {
 
         const IMAGE_EXTS = new Set(['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'jls', 'webp', 'avif', 'svg', 'tvg', 'hvif', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'pgf', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'ximg', 'timg', 'hfa', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'cin', 'mng', 'jng', 'miff', 'wbmp', 'xwd', 'pictor', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'dng', 'crw', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'raf', 'pef', 'srw', '3fr', 'fff', 'erf', 'kdc', 'mrw', 'mos', 'iiq', 'rwl', 'mef']);
         const VIDEO_EXTS = new Set(['mp4', 'm4v', 'mov', 'mkv', 'webm', 'ogg']);
-        const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg']);
+        const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'mka']);
         let ext = fileData.viewType;
         // .pic is a Radiance picture only if it says so, a QuickDraw PICT or PICtor (PC Paint) if it starts as one (Softimage's... are neither)
         const radiancePic = ext === 'pic' && await isRadianceUrl(url).catch(() => false);
@@ -1232,22 +1234,17 @@ class EditorComponent {
             video.src = url;
             video.controls = true;
             // Subtitles: files beside it (same folder), tracks inside it, or opened by hand
-            const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/') + 1) : '';
-            const siblings = Object.keys(projectFiles).map(id => ({ id, rel: this._getRelativePath(id) }))
-                .filter(f => f.rel && f.rel.startsWith(dir) && !f.rel.slice(dir.length).includes('/'))
-                .map(f => ({
-                    name: projectFiles[f.id].name,
-                    url: () => resolveFileUrl('/workspace-file?path=' + encodeURIComponent(currentWorkspacePath + '/' + f.rel)),
-                }));
-            this._subtitles = await attachSubtitles(video, { url, name: fileData.name, siblings });
+            this._subtitles = await attachSubtitles(video, { url, name: fileData.name, siblings: this._siblingFiles(relPath) });
             this.rootElement.style.cssText += 'display:flex;align-items:center;justify-content:center;';
             this.rootElement.appendChild(this._subtitles.element);
         } else if (AUDIO_EXTS.has(ext)) {
             const audio = document.createElement('audio');
             audio.src = url;
             audio.controls = true;
-            this.rootElement.style.cssText += 'display:flex;align-items:center;justify-content:center;';
-            this.rootElement.appendChild(audio);
+            // Lyrics: files beside it, tags and tracks inside it, Musixmatch, or opened by hand
+            this._lyrics = await attachLyrics(audio, { url, name: fileData.name, siblings: this._siblingFiles(relPath) });
+            this.rootElement.style.cssText += 'display:flex;';
+            this.rootElement.appendChild(this._lyrics.element);
         } else if (ext === 'fla') {
             this._initFlaViewer(url, fileData.name);
         } else if (ext === 'binary') {
@@ -1261,6 +1258,17 @@ class EditorComponent {
             iframe.style.cssText = 'width:100%;height:100%;border:none;';
             this.rootElement.appendChild(iframe);
         }
+    }
+
+    // The files in the same folder as relPath: [{ name, url: () => Promise<string> }]
+    _siblingFiles(relPath) {
+        const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/') + 1) : '';
+        return Object.keys(projectFiles).map(id => ({ id, rel: this._getRelativePath(id) }))
+            .filter(f => f.rel && f.rel.startsWith(dir) && !f.rel.slice(dir.length).includes('/'))
+            .map(f => ({
+                name: projectFiles[f.id].name,
+                url: () => resolveFileUrl('/workspace-file?path=' + encodeURIComponent(currentWorkspacePath + '/' + f.rel)),
+            }));
     }
 
     async _initFlaViewer(url, fileName) {
@@ -1956,7 +1964,7 @@ class ProjectFilesComponent {
         const ext = (name.lastIndexOf('.') !== -1) ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
         const codeExts = ['js', 'ts', 'jsx', 'tsx', 'py', 'rb', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'java', 'cs', 'php', 'sh', 'bash', 'zsh', 'ps1', 'lua', 'r', 'swift', 'kt', 'scala', 'zig', 'nim', 'toml', 'yaml', 'yml', 'json', 'xml', 'sql', 'graphql', 'wasm', 'vue', 'svelte'];
         const imageExts = ['png', 'apng', 'jxl', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'tvg', 'hvif', 'fxg', 'webp', 'ico', 'cur', 'ani', 'icns', 'dds', 'exr', 'jls', 'tif', 'tiff', 'jp2', 'j2k', 'j2c', 'jpc', 'jpf', 'jpx', 'jph', 'jhc', 'heic', 'heif', 'hif', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'hdr', 'rgbe', 'xyze', 'tga', 'tpic', 'icb', 'vda', 'vst', 'qoi', 'pcx', 'dcx', 'sgi', 'rgb', 'rgba', 'bw', 'ras', 'sun', 'im1', 'im8', 'im24', 'im32', 'ilbm', 'lbm', 'ham', 'ham8', 'deep', 'anim', 'anm', 'fli', 'flc', 'flx', 'fits', 'fit', 'fts', 'jxr', 'bpg', 'flif', 'wdp', 'hdp', 'nrrd', 'nhdr', 'vic', 'vicar', 'xisf', 'xish', 'ecw', 'drw', 'cdr', 'odg', 'otg', 'fodg', 'xps', 'oxps', 'jb2', 'jbig2', 'pict', 'pct', 'cals', 'ct1', 'dpx', 'jng', 'miff', 'wbmp', 'xwd', 'xbm', 'xpm', 'wmf', 'emf', 'wmz', 'emz', 'mpo', 'jps', 'pns', 'ximg', 'timg', 'dng', 'crw', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'raf', 'pef', 'srw', '3fr', 'fff', 'erf', 'kdc', 'mrw', 'mos', 'iiq', 'rwl', 'mef'];
-        const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'];
+        const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma', 'opus', 'mka'];
         const videoExts = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'];
         if (ext === 'fla') return 'FLA';
         if (ext === 'pdf' || ext === 'ai' || ext === 'ait') return '\uD83D\uDCCA';
@@ -3182,7 +3190,7 @@ const FILE_VIEWERS = [
     { re: /\.gpx$/i, componentType: 'gpxViewer', tag: 'map', prefix: 'gpx-' },
     { re: /\.(vcd|fst|ghw)$/i, componentType: 'waveformViewer', tag: 'wave', prefix: 'wave-' },
     { re: /\.wasm$/i, componentType: 'wasmInspector', tag: 'wasm', prefix: 'wasm-' },
-    { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|3g2|mp3|m4a|aac|flac|wav|ogg|opus|aif|aifc|aiff|amr)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
+    { re: /\.(mp4|m4v|mov|mkv|webm|avi|wmv|mpg|mpeg|m2ts|3gp|3g2|mp3|m4a|aac|flac|wav|ogg|opus|mka|aif|aifc|aiff|amr)$/i, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
     // .ts is usually TypeScript: offer the media viewer only when the file turned out binary (MPEG-TS)
     { re: /\.ts$/i, binaryOnly: true, componentType: 'mediaMetadata', tag: 'metadata', prefix: 'media-meta-' },
     { re: /\.(fla|xfl)$/i, componentType: 'flaInspector', tag: 'fla', prefix: 'fla-' },

@@ -419,7 +419,7 @@ function streamReader(body) {
     };
 }
 
-// Subtitle tracks, their blocks and the attached fonts of a Matroska file,
+// Subtitle tracks, their blocks and the attached fonts (and lyrics files) of a Matroska file,
 // in one pass: only subtitle blocks are kept, the rest is skipped over
 async function mkvScan(url, onTracks) {
     const resp = await fetch(url);
@@ -427,7 +427,7 @@ async function mkvScan(url, onTracks) {
     const r = streamReader(resp.body);
     let scale = 1000000;
     const tracks = {};
-    const fonts = [];
+    const fonts = [], attachments = [];
     let clusterTime = 0;
     let wanted = null; // track numbers to keep, once Tracks is read
     const containers = new Set([MKV.Segment, MKV.Cluster, MKV.BlockGroup]);
@@ -521,6 +521,9 @@ async function mkvScan(url, onTracks) {
                         const mime = f[MKV.FileMimeType] ? ebmlString(f[MKV.FileMimeType]) : '';
                         if (f[MKV.FileData] && (/font|truetype|opentype|sfnt|woff/i.test(mime) || /\.(ttf|otf|ttc|woff2?)$/i.test(fname))) {
                             fonts.push({ name: fname, data: new Uint8Array(f[MKV.FileData]) });
+                        } else if (f[MKV.FileData] && /\.(lrc|elrc|ttml|srt|vtt|ass|ssa)$/i.test(fname)) {
+                            // lyrics attached to an audio file (src/lyrics.js)
+                            attachments.push({ name: fname, data: new Uint8Array(f[MKV.FileData]) });
                         }
                     }
                     break;
@@ -530,7 +533,7 @@ async function mkvScan(url, onTracks) {
     } finally {
         r.cancel();
     }
-    return { tracks: Object.values(tracks), fonts };
+    return { tracks: Object.values(tracks), fonts, attachments };
 }
 
 // A Matroska subtitle track's content: WebVTT, or a whole ASS script

@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "build:lrx": "node scripts/build-lrx.js",
+    "test:lyrics": "node --test scripts/tests/lyrics.test.js && node scripts/tests/lyrics.browser.js",
+    "fixtures:lyrics": "python3 scripts/lyrics-fixtures.py",
     "test:loop": "node scripts/test-loop.js",
     "test:loop-browser": "node scripts/test-loop-browser.js",
     "test:lrx": "node scripts/test-lrx.js",
