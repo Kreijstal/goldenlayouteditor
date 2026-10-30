@@ -338,7 +338,21 @@ function attachLyrics(audio, opts) {
             const word = (w, parent) => {
                 const x = { w, el: el('span', 'lyr-w', parent), state: '', cls: '' };
                 const parts = [x];
-                if (w.ruby) {
+                if (w.ruby && w.ruby[0].base != null) {
+                    // Readings over some characters only: the rest of the word as plain text
+                    let at = 0;
+                    const segs = [...new Set(w.ruby.map(p => p.seg))];
+                    for (const seg of segs) {
+                        const ps = w.ruby.filter(p => p.seg === seg), i = w.text.indexOf(ps[0].base, at);
+                        if (i < 0) continue;
+                        if (i > at) x.el.append(w.text.slice(at, i));
+                        const ruby = el('ruby', '', x.el, ps[0].base);
+                        const rt = el('rt', '', ruby);
+                        for (const p of ps) parts.push({ w: p, el: el('span', 'lyr-w', rt, p.text), state: '', cls: '' });
+                        at = i + ps[0].base.length;
+                    }
+                    x.el.append(w.text.slice(at));
+                } else if (w.ruby) {
                     const ruby = el('ruby', '', x.el, w.text);
                     const rt = el('rt', '', ruby);
                     for (const p of w.ruby) parts.push({ w: p, el: el('span', 'lyr-w', rt, p.text), state: '', cls: '' });

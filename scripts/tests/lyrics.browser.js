@@ -33,6 +33,7 @@ async function main() {
 <body><div>
 <p begin="0.5s" end="1.8s" itunes:key="L1"><span xml:id="w1" begin="0.5s" end="1.0s">Seni </span><span xml:id="w2" tei:corresp="#en1" begin="1.0s" end="1.8s">seviyorum</span><span ttm:role="x-roman" xml:lang="tr-Latn">se-ni se-vi-yo-rum</span></p>
 <p begin="2s" end="3s" itunes:key="L2"><span tts:ruby="container"><span tts:ruby="base">世界</span><span tts:ruby="textContainer"><span tts:ruby="text" begin="2s" end="2.4s">せ</span><span tts:ruby="text" begin="2.4s" end="3s">かい</span></span></span></p>
+<p begin="3s" end="4s" itunes:key="L3"><span begin="3s" end="4s"><span tts:ruby="container"><span tts:ruby="base">会</span><span tts:ruby="text">あ</span></span>いたい</span></p>
 </div></body></tt>`);
         await fs.writeFile(path.join(temp, 'song.elrc'), '[00:00.20]v1:<00:00.20>Beside <00:00.60>the <00:00.90>song<00:01.50>\n');
         server = spawn(process.execPath, ['server.js'], { cwd: root, env: { ...process.env, PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -123,10 +124,12 @@ async function main() {
 
         // TTML: translation and romanization under the lines, ruby, a word's card
         await open('learn.mp3');
-        await page.waitForFunction(() => document.querySelectorAll('.lyr-line').length === 2);
+        await page.waitForFunction(() => document.querySelectorAll('.lyr-line').length === 3);
         const subs = () => page.evaluate(() => [...document.querySelectorAll('.lyr-line')].map(l => [...l.querySelectorAll('.lyr-sub')].map(s => s.className.replace('lyr-sub ', '') + ':' + [...s.childNodes].filter(n => !(n.classList && n.classList.contains('lyr-tn'))).map(n => n.textContent).join(''))));
-        assert.deepEqual(await subs(), [['ro:se-ni se-vi-yo-rum', 'tr:I love you.'], ['tr:The world']]);
+        assert.deepEqual(await subs(), [['ro:se-ni se-vi-yo-rum', 'tr:I love you.'], ['tr:The world'], []]);
         assert.equal(await page.locator('.lyr-line').nth(1).locator('ruby').evaluate(r => r.firstChild.textContent + '|' + r.querySelector('rt').textContent), '世界|せかい');
+        // Furigana over a word's kanji only
+        assert.equal(await page.locator('.lyr-line').nth(2).evaluate(l => l.innerHTML.replace(/ class="[^"]*"/g, '')), '<span><ruby>会<rt><span>あ</span></rt></ruby>いたい</span>');
         // Aligned words: the one being sung lights its translation, and so does pointing at one
         const paired = () => page.evaluate(() => [...document.querySelectorAll('[data-pair]')].map(e => e.textContent));
         await seek(1.4);
@@ -144,7 +147,7 @@ async function main() {
         assert.ok(lm.includes('✓ Englishen') && lm.includes('Germande') && lm.includes('✓ Turkish (Latin)tr-Latn'), lm.join(' | '));
         await page.locator('.lyr-src > button').click();
         await page.locator('.lyr-menu button', { hasText: 'German' }).click();
-        assert.deepEqual(await subs(), [['ro:se-ni se-vi-yo-rum', 'tr:Ich liebe dich.'], []]);
+        assert.deepEqual(await subs(), [['ro:se-ni se-vi-yo-rum', 'tr:Ich liebe dich.'], [], []]);
         // An annotated word opens its card and does not seek
         const before = await page.evaluate(() => document.querySelector('.lyr-wrap audio').currentTime);
         await page.locator('.lyr-w.ann', { hasText: 'seviyorum' }).click();

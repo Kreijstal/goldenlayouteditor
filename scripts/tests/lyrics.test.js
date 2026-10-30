@@ -114,6 +114,21 @@ test('TTML (AMLL): translations and romanizations inline and in the head, backgr
         [['所', 27.69, 27.82, [['しょ', 27.69, 27.82]]], ['詮', 27.82, 27.95, [['せ', 27.82, 27.88], ['ん', 27.88, 27.95]]]]);
 });
 
+test('TTML: furigana over the kanji of a timed word, its kana left plain', () => {
+    const ttml = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling"><body><div>
+<p begin="1" end="3"><span xml:id="w1" begin="1" end="2"><span tts:ruby="container"><span tts:ruby="base">会</span><span tts:ruby="text">あ</span></span>いたい</span><span begin="2" end="3"><span tts:ruby="container"><span tts:ruby="base">気持</span><span tts:ruby="text">きも</span></span>ち<span tts:ruby="container"><span tts:ruby="base">一番</span><span tts:ruby="text">いちばん</span></span></span></p>
+</div></body></tt>`;
+    const l = L.parseLyrics(ttml, 'a.ttml');
+    assert.equal(l.lines[0].text, '会いたい気持ち一番');
+    assert.deepEqual(l.lines[0].words.map(w => [w.text, w.id, w.start, w.end, w.ruby.map(r => [r.text, r.base, r.seg, r.start, r.end])]), [
+        ['会いたい', 'w1', 1, 2, [['あ', '会', 0, 1, 2]]],
+        ['気持ち一番', undefined, 2, 3, [['きも', '気持', 0, 2, 3], ['いちばん', '一番', 2, 2, 3]]],
+    ]);
+    // Untimed words keep their readings as parts
+    const u = L.parseLyrics(ttml.replace(/ begin="\d" end="\d"/g, '').replace('<p>', '<p begin="1" end="3">'), 'a.ttml');
+    assert.deepEqual(u.lines[0].parts.map(p => [p.text, p.ruby.map(r => [r.text, r.base, r.seg])]), [['会いたい', [['あ', '会', 0]]], ['気持ち一番', [['きも', '気持', 0], ['いちばん', '一番', 2]]]]);
+});
+
 test('TTML: language-learning annotations linked to words by xml:id', () => {
     const l = L.parseLyrics(fs.readFileSync(path.join(FIXTURES, 'learn.ttml'), 'utf8'), 'learn.ttml');
     assert.equal(l.meta.title, 'Turkish Learning Example');

@@ -324,7 +324,9 @@ const squeeze = t => t.replace(/\s+/g, ' ');
 // - translations and romanizations, inline (<span ttm:role="x-translation|x-roman" xml:lang>)
 //   or in <head><iTunesMetadata> (<translation|transliteration><text for="L1">, the line's
 //   itunes:key), plain or timed word by word: line.extras [{ kind, lang, text, words }]
-// - ruby (<span tts:ruby="container"> with a base and timed text spans): word.ruby [{ text, start, end }]
+// - ruby (<span tts:ruby="container"> with a base and timed text spans): word.ruby [{ text, start, end }];
+//   a word made of containers and text (furigana over its kanji): each part also has
+//   base, the characters it reads, and seg, which container it came from
 // - word ids (xml:id), for annotations about them, and itunes:song-part on a div: line.part
 // - language-learning annotations in a foreign namespace, linked to words by id:
 //   <annotations><word ref="w1" lemma pos difficulty sense><meaning xml:lang>…</meaning>
@@ -414,9 +416,8 @@ function parseTtml(text) {
             }
             const isBg = bg || role === 'x-bg';
             const t = span(c.attrs.begin, c.attrs.end, c.attrs.dur, base, end);
-            if (c.attrs.ruby === 'container') {
-                // A word and its reading above it, the reading timed in parts
-                const ruby = [];
+            // A ruby container's base text, and its reading's parts
+            const readingOf = (box, ruby) => {
                 let baseText = '';
                 const each = n => {
                     if (typeof n === 'string') return;
@@ -426,7 +427,30 @@ function parseTtml(text) {
                         ruby.push({ text: squeeze(textOf(n)).trim(), start: rt.start, end: rt.end, timed: n.attrs.begin != null });
                     } else n.children.forEach(each);
                 };
-                c.children.forEach(each);
+                box.children.forEach(each);
+                return baseText;
+            };
+            const kids = c.children.filter(k => typeof k !== 'string' && k.name === 'span');
+            if (kids.length && kids.every(k => k.attrs.ruby === 'container')) {
+                // A word with readings over some of its characters (furigana over the kanji):
+                // each part of a reading knows the text it sits on (base) and its run (seg)
+                const ruby = [];
+                let text = '';
+                c.children.forEach((k, seg) => {
+                    if (typeof k === 'string') { text += k; return; }
+                    if (k.name !== 'span') return;
+                    const from = ruby.length, base = readingOf(k, ruby);
+                    text += base;
+                    for (const r of ruby.slice(from)) Object.assign(r, { base, seg });
+                });
+                const txt = squeeze(text);
+                if (txt) words.push({ start: t.start, end: t.end, text: txt, untimed: c.attrs.begin == null, bg: isBg, id: c.attrs.id, ruby: ruby.map(({ timed, ...r }) => r) });
+                continue;
+            }
+            if (c.attrs.ruby === 'container') {
+                // A word and its reading above it, the reading timed in parts
+                const ruby = [];
+                const baseText = readingOf(c, ruby);
                 const timedRuby = ruby.filter(r => r.timed);
                 const untimed = c.attrs.begin == null && !timedRuby.length;
                 const start = c.attrs.begin != null || !timedRuby.length ? t.start : Math.min(...timedRuby.map(r => r.start));
@@ -504,7 +528,7 @@ function parseTtml(text) {
                         voice: voiceOf(who), bg,
                     };
                     // Untimed words with ids, notes or readings: kept for their cards and alignment
-                    if (!timed && ws.some(w => w.id || w.notes || (w.ruby && w.ruby.length))) line.parts = ws.map(w => Object.assign({ text: w.text }, w.id && { id: w.id }, w.notes && { notes: w.notes }, w.ruby && w.ruby.length && { ruby: w.ruby.map(r => ({ text: r.text })) }));
+                    if (!timed && ws.some(w => w.id || w.notes || (w.ruby && w.ruby.length))) line.parts = ws.map(w => Object.assign({ text: w.text }, w.id && { id: w.id }, w.notes && { notes: w.notes }, w.ruby && w.ruby.length && { ruby: w.ruby.map(r => Object.assign({ text: r.text }, r.base && { base: r.base, seg: r.seg })) }));
                     if (part) { line.part = part; part = null; }
                     lines.push(line);
                     made[bg ? 'back' : 'main'] = line;
